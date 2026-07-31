@@ -83,12 +83,14 @@ At n = 8,000 contacts per day, a standard p-chart's binomial limits around a 72%
 
 ## Customizing it
 
-The file is plain HTML with an inline `<style>` block and one `<script>` at the bottom — no framework, no build. To adapt it:
+The file is plain HTML with an inline `<style>` block and one `<script>` at the bottom — no framework, and nothing to build to *use* it. To adapt it:
 
 - **Benchmarks** — the figures cited (≈80% of calls answered in 20 seconds; FCR 70–75%; shrinkage 26–30%; occupancy ceilings in the mid-80s) are industry conventions, not standards. Replace them with your own measured values. A benchmark used as a target is how support organizations end up optimizing for someone else's business.
 - **Certification thresholds** — the $150k benefit hurdle, 90-day control period and belt ratios are sized for a 500–2,000 FTE support organization. Scale them.
 - **Colors** — edit the CSS custom properties in `:root` at the top of the file.
 - **Opportunity count** — the DPMO examples assume 5 opportunities per contact. Fix this at program level for your org and never renegotiate it mid-project, or benefits become uncomparable across projects.
+
+The Excel templates are the one exception: each workbook is embedded in the HTML as well as shipped in `templates/`, so it is generated rather than hand-edited. Formulas live in `tools/patch_workbooks.py`; `tools/sync_html.py` propagates them and `tools/verify.py` checks the copies agree. See [PUBLISH.md](PUBLISH.md).
 
 ## Body of knowledge coverage
 

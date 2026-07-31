@@ -1,0 +1,4 @@
+# Build and test dependencies for tools/. Not needed to *use* the program —
+# the published HTML is self-contained and has no runtime dependencies.
+openpyxl>=3.1          # read/write the Excel templates
+formulas>=1.2          # optional: recalculates workbooks for tools/verify.py

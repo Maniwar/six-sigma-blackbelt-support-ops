@@ -1,3 +1,9 @@
 .DS_Store
 node_modules/
 *.log
+
+# tools/ is plain Python; keep local build cruft out of the repo
+__pycache__/
+*.pyc
+.venv/
+venv/
