@@ -22,7 +22,9 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.chart import BarChart, LineChart, Reference, ScatterChart, Series
+from openpyxl.chart.legend import Legend
 from openpyxl.chart.marker import Marker
+from openpyxl.chart.series import SeriesLabel
 from openpyxl.comments import Comment
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -110,7 +112,25 @@ def howto(wb, lines):
 
 
 
-def bar(ws, title_, cat_ref, val_ref, anchor, horizontal=False, pct=False, series=None):
+def overlay(ch, ws, ref, name, colour="C0392B"):
+    """Lay a dashed reference line over a bar chart — the standard, on the data."""
+    from openpyxl.chart.legend import Legend
+    ln = LineChart()
+    sr = Series(ref, title=name)
+    sr.graphicalProperties.line.solidFill = colour
+    sr.graphicalProperties.line.width = 18000
+    sr.graphicalProperties.line.dashStyle = "dash"
+    sr.marker = Marker(symbol="none")
+    sr.smooth = False
+    ln.series.append(sr)
+    ch += ln
+    ch.legend = Legend()
+    ch.legend.position = "b"
+    return ch
+
+
+def bar(ws, title_, cat_ref, val_ref, anchor, horizontal=False, pct=False, series=None,
+        colours=None):
     """A chart bound to the cells, so it moves when the numbers do.
 
     Series titles are set here rather than read from a header cell, because the
@@ -125,14 +145,20 @@ def bar(ws, title_, cat_ref, val_ref, anchor, horizontal=False, pct=False, serie
     ch.gapWidth = 60
     ch.add_data(val_ref, titles_from_data=False)
     ch.set_categories(cat_ref)
-    if ch.series:
+    if ch.series and colours:
+        from openpyxl.chart.marker import DataPoint
+        from openpyxl.chart.shapes import GraphicalProperties
+        ch.series[0].data_points = [
+            DataPoint(idx=i, spPr=GraphicalProperties(solidFill=c))
+            for i, c in enumerate(colours)]
+    elif ch.series:
         ch.series[0].graphicalProperties.solidFill = "1F4E79"
         ch.series[0].graphicalProperties.line.solidFill = "1F4E79"
-        # OOXML's invertIfNegative defaults on, and with no negative fill
-        # defined the renderer draws negative bars as nothing at all. The DOE
-        # effects chart is entirely negative values, so it was drawing an empty
-        # plot area with a correctly scaled axis beside it.
-        ch.series[0].invertIfNegative = False
+    # OOXML's invertIfNegative defaults on, and with no negative fill defined
+    # the renderer draws negative bars as nothing at all. This has to apply on
+    # both paths above — the per-point-colour branch used to skip it.
+    for ser in ch.series:
+        ser.invertIfNegative = False
     if series:
         ch.series[0].tx = None
     ch.y_axis.majorGridlines = None if horizontal else ch.y_axis.majorGridlines
@@ -340,9 +366,18 @@ def fishbone():
         c2.value = f'=IF(COUNTIF($A$8:$A$35,A{r})=0,"EMPTY — look again","")'
         SHOWN[("Fishbone", f"C{r}")] = "" if n else "EMPTY — look again"
         ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=6)
-    bar(ws, "Causes per branch — a thin bar is a blind spot",
-        Reference(ws, min_col=1, min_row=38, max_row=44),
-        Reference(ws, min_col=2, min_row=38, max_row=44), "H8")
+    for i in range(7):
+        r = 38 + i
+        c = mark(ws, r, 8, "calc")
+        c.value = "=AVERAGE($B$38:$B$44)"
+        c.number_format = "#,##0.0"
+        SHOWN[("Fishbone", f"H{r}")] = "%.1f" % (len(ex) / 7.0)
+    ws.cell(row=37, column=8, value="Mean causes per branch").font = F_NOTE
+    fb = bar(ws, "Causes per branch — a thin bar is a blind spot",
+             Reference(ws, min_col=1, min_row=38, max_row=44),
+             Reference(ws, min_col=2, min_row=38, max_row=44), "J8")
+    overlay(fb, ws, Reference(ws, min_col=8, min_row=38, max_row=44),
+            "Mean — below this is a branch you are not looking at")
     ws.merge_cells("A46:F46")
     ws.cell(row=46, column=1, value="Support teams over-populate People and under-populate Systems and Knowledge, "
             "because blaming agents is culturally available. An empty Measurement branch is almost always wrong — "
@@ -521,6 +556,9 @@ def stakeholder():
     sc.y_axis.delete = False
     sc.x_axis.scaling.min, sc.x_axis.scaling.max = -2.5, 2.5
     sc.y_axis.scaling.min, sc.y_axis.scaling.max = 0, 6
+    # Without an explicit scatterStyle no series gets a line, so the quadrant
+    # dividers were written to the file and then not drawn by anything.
+    sc.scatterStyle = "lineMarker"
     sc.legend = None
     pts = Series(Reference(ws, min_col=3, min_row=5, max_row=4 + len(STAKEHOLDERS)),
                  xvalues=Reference(ws, min_col=4, min_row=5, max_row=4 + len(STAKEHOLDERS)),
@@ -529,7 +567,41 @@ def stakeholder():
     pts.marker.graphicalProperties.solidFill = "1F4E79"
     pts.graphicalProperties.line.noFill = True      # points only, no joining line
     sc.series.append(pts)
-    ws.add_chart(sc, "I4")
+
+    # Without the dividers this is a scatter of two columns you already have.
+    # With them it is the map: the top-left quadrant is who can stop you.
+    n = len(STAKEHOLDERS)
+    for i in range(n):
+        r = 5 + i
+        ws.cell(row=r, column=9, value=3.5).font = F_NOTE          # influence split
+        ws.cell(row=r, column=10, value="=D%d" % r).font = F_NOTE  # support, for the x
+        ws.cell(row=r, column=11, value=0).font = F_NOTE           # support split
+        ws.cell(row=r, column=12, value="=C%d" % r).font = F_NOTE  # influence, for the y
+        SHOWN[("Stakeholders", f"J{r}")] = str(STAKEHOLDERS[i][3])
+        SHOWN[("Stakeholders", f"L{r}")] = str(STAKEHOLDERS[i][2])
+    ws.cell(row=4, column=9, value="quadrant dividers — the chart reads these").font = F_NOTE
+    for col in "IJKL":
+        ws.column_dimensions[col].width = 6      # narrow, not hidden: a chart
+                                                 # will not plot a hidden cell
+
+    hline = Series(Reference(ws, min_col=9, min_row=5, max_row=4 + n),
+                   xvalues=Reference(ws, min_col=10, min_row=5, max_row=4 + n),
+                   title="High influence threshold")
+    hline.marker = Marker(symbol="none")
+    hline.graphicalProperties.line.solidFill = "C0392B"
+    hline.graphicalProperties.line.dashStyle = "dash"
+    sc.series.append(hline)
+
+    vline = Series(Reference(ws, min_col=12, min_row=5, max_row=4 + n),
+                   xvalues=Reference(ws, min_col=11, min_row=5, max_row=4 + n),
+                   title="Opposed / supportive threshold")
+    vline.marker = Marker(symbol="none")
+    vline.graphicalProperties.line.solidFill = "C0392B"
+    vline.graphicalProperties.line.dashStyle = "dash"
+    sc.series.append(vline)
+    sc.legend = Legend()
+    sc.legend.position = "b"
+    ws.add_chart(sc, "N4")
 
     dvi = DataValidation(type="whole", operator="between", formula1=1, formula2=5, allow_blank=True)
     ws.add_data_validation(dvi); dvi.add("C5:C23")
@@ -660,9 +732,12 @@ def kano():
         ws.merge_cells(start_row=i, start_column=1, end_row=i, end_column=3)
         mark(ws, i, 4, "calc").value = f'=COUNTIF($D$7:$D$25,"{cat}")'
         SHOWN[("Kano analysis", f"D{i}")] = shown
-    bar(ws, "Where your requirements fall",
+    # red = you get no credit for it and all the blame without it;
+    # blue = worth scaling; green = worth a little; grey = worth nothing
+    bar(ws, "Where your requirements fall — and which ones are worth money",
         Reference(ws, min_col=1, min_row=28, max_row=31),
-        Reference(ws, min_col=4, min_row=28, max_row=31), "G7")
+        Reference(ws, min_col=4, min_row=28, max_row=31), "G7",
+        colours=["C0392B", "1F4E79", "3F8F5A", "9AA4B2"])
     ws.merge_cells("A33:F33")
     ws.cell(row=33, column=1, value="Speed in support is usually a must-have: being twice as fast wins you nothing "
             "once you are fast enough, while being slow loses you everything. Spending your improvement budget on a "
@@ -746,9 +821,21 @@ def doe():
         ws.merge_cells(start_row=r, start_column=5, end_row=r, end_column=9)
         ws.cell(row=r, column=5, value="Bigger absolute value = bigger effect. A large interaction means the two "
                 "factors cannot be set independently.").font = F_NOTE
-    bar(ws, "Effect size — which factor actually moved the response",
-        Reference(ws, min_col=1, min_row=20, max_row=25),
-        Reference(ws, min_col=4, min_row=20, max_row=25), "K5", horizontal=True)
+    # A..I are merged across the effects block, so the reference column goes
+    # to the right of everything the sheet already uses
+    for r in range(20, 26):
+        c = ws.cell(row=r, column=11)
+        c.value = "=-AVERAGE(ABS($D$23),ABS($D$24),ABS($D$25))"
+        c.number_format = "#,##0.0"
+        c.font = F_NOTE
+        SHOWN[("2^3 design", f"K{r}")] = "-2.8"
+    ws.cell(row=19, column=11, value="Noise floor").font = F_NOTE
+    ws.column_dimensions["K"].width = 11         # visible: charts skip hidden cells
+    de = bar(ws, "Effect size — which factor actually moved the response",
+             Reference(ws, min_col=1, min_row=20, max_row=25),
+             Reference(ws, min_col=4, min_row=20, max_row=25), "M5", horizontal=True)
+    overlay(de, ws, Reference(ws, min_col=11, min_row=20, max_row=25),
+            "Noise floor — the mean interaction, anything smaller is nothing")
     ws.merge_cells("A27:I27")
     ws.cell(row=27, column=1, value="Randomise the run order before you execute, and repeat the whole design if you "
             "can afford it. Eight runs with no replication tells you about size, not about noise.").font = F_NOTE
@@ -820,14 +907,31 @@ def pareto():
     pc.height, pc.width = 9, 19
     pc.gapWidth = 40
     pc.legend = None
+    pc.legend = Legend()
+    pc.legend.position = "b"
     pc.add_data(Reference(ws, min_col=2, min_row=5, max_row=14), titles_from_data=False)
     pc.set_categories(Reference(ws, min_col=1, min_row=5, max_row=14))
     for ser in pc.series:
         ser.invertIfNegative = False
         ser.graphicalProperties.solidFill = "1F4E79"
+        ser.tx = SeriesLabel(v="Count")
     pc.y_axis.title = "Count"
+    for r in range(5, 15):
+        c = mark(ws, r, 6, "calc")
+        c.value = f'=IF(B{r}="","",0.8)'
+        c.number_format = "0%"
+        SHOWN[("Pareto", f"F{r}")] = "80%" if r < 10 else ""
+    ws.cell(row=4, column=6, value="80% line").font = F_NOTE
     line = LineChart()
     line.add_data(Reference(ws, min_col=4, min_row=5, max_row=14), titles_from_data=False)
+    line.series[0].tx = SeriesLabel(v="Cumulative share")
+    line.add_data(Reference(ws, min_col=6, min_row=5, max_row=14), titles_from_data=False)
+    line.series[1].tx = SeriesLabel(v="80% — the vital few are left of here")
+    line.series[1].graphicalProperties.line.dashStyle = "dash"
+    line.series[1].graphicalProperties.line.solidFill = "C0392B"
+    line.series[0].graphicalProperties.line.solidFill = "B45309"
+    line.series[0].graphicalProperties.line.width = 24000
+    line.y_axis.delete = False
     line.y_axis.axId = 200
     line.y_axis.numFmt = "0%"
     line.y_axis.title = "Cumulative share"
@@ -940,7 +1044,8 @@ def flow():
     SHOWN[("WIP and lead time", "B22")] = "2.00"
     bar(ws, "Where you are against what you promised (days)",
         Reference(ws, min_col=1, min_row=21, max_row=22),
-        Reference(ws, min_col=2, min_row=21, max_row=22), "F5")
+        Reference(ws, min_col=2, min_row=21, max_row=22), "F5",
+        colours=["C0392B", "3F8F5A"])
     ws.merge_cells("A19:D19")
     ws.cell(row=19, column=1, value="There is no third option. If you cannot cap the work and cannot raise the "
             "closing rate, the wait will not fall — and saying so early is more useful than promising otherwise.").font = F_NOTE
@@ -1440,7 +1545,8 @@ def control_charts():
     spc_chart(ws, "CUSUM — the sum climbs from the day the change landed", cats, [
         (Reference(ws, min_col=5, min_row=16, max_row=39), "SH (evidence it went up)", "1F4E79", False, True),
         (Reference(ws, min_col=6, min_row=16, max_row=39), "SL (evidence it went down)", "6B4FA0", False, True),
-        (Reference(ws, min_col=7, min_row=16, max_row=39), "h", "C0392B", True, False),
+        (Reference(ws, min_col=7, min_row=16, max_row=39),
+         "Decision limit h — crossing it is the signal", "C0392B", True, False),
     ], "K4", ylim=bounds([0, 4], _cusum_shown))
 
     # ---- t and g --------------------------------------------------------

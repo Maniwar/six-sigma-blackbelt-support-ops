@@ -110,6 +110,10 @@ def polish_workbook(wb, landscape: bool = True) -> int:
 
         # --- charts ---
         for ch in getattr(ws, "_charts", []):
+            # Charts skip hidden cells by default. Several templates keep their
+            # reference columns hidden — a quadrant divider, a noise floor —
+            # and those series silently vanished from the plot.
+            ch.plotVisOnly = False
             _fix_axes(ch)
             _thin_category_labels(ch, _series_span(ch))
             # openpyxl never round-trips this one, so setting it must not count

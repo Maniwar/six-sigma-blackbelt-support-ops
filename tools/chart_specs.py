@@ -112,6 +112,30 @@ def _bar(ws, title, cats, vals, anchor, colours=None, horizontal=False,
     return ch
 
 
+def _overlay(ch, ws, ref, name, colour=RED):
+    """Lay a reference line over a bar chart.
+
+    A ranked bar chart of a column you already have is worth about ten seconds
+    of your own time. The line is what makes it worth downloading: it brings the
+    standard — the mean, the action threshold, the 80% mark — to the data.
+    """
+    ln = LineChart()
+    sr = Series(ref, title=name)
+    sr.graphicalProperties.line.solidFill = colour
+    sr.graphicalProperties.line.width = 18000
+    sr.graphicalProperties.line.dashStyle = "dash"
+    sr.marker = Marker(symbol="none")
+    sr.smooth = False
+    ln.series.append(sr)
+    ch += ln
+    # _bar suppresses the legend for a single series; with a reference line
+    # there are two, and an unlabelled dashed line is a mystery
+    from openpyxl.chart.legend import Legend
+    ch.legend = Legend()
+    ch.legend.position = "b"
+    return ch
+
+
 def _grouped(ws, title, cats, series, anchor, fmt=None, height=8, width=17):
     """Two bars per category — before/after, gross/realised."""
     ch = BarChart()
@@ -181,11 +205,17 @@ def data_collection_plan(wb) -> int:
         r = r0 + 3 + i
         sh.put(r, 1, moe, fmt="0.0%")
         sh.put(r, 2, f"=CEILING(1.96^2*0.25/A{r}^2,1)", fmt="#,##0")
+    sh.put(r0 + 2, 3, "At 5% margin", bold=True)
+    for i in range(9):
+        r = r0 + 3 + i
+        sh.put(r, 3, "=CEILING(1.96^2*0.25/0.05^2,1)", fmt="#,##0")
     _line(sh.ws, "Sample size against margin of error",
           Reference(sh.ws, min_col=1, min_row=r0 + 3, max_row=r0 + 11),
           [(Reference(sh.ws, min_col=2, min_row=r0 + 3, max_row=r0 + 11),
-            "Sample needed", BLUE, False, True)],
-          f"D{r0}", fmt="#,##0", y_title="Contacts to sample")
+            "Sample needed", BLUE, False, True),
+           (Reference(sh.ws, min_col=3, min_row=r0 + 3, max_row=r0 + 11),
+            "The usual choice: 5% margin", RED, True, False)],
+          f"E{r0}", fmt="#,##0", y_title="Contacts to sample")
     return sh.changed
 
 
@@ -213,8 +243,14 @@ def value_stream_map(wb) -> int:
         s.invertIfNegative = False
         ch.series.append(s)
     ch.set_categories(cats)
-    ws.add_chart(ch, "L9")
-    return 0
+    sh = Sheet(ws)
+    sh.put(9, 12, "Average wait", bold=True)
+    for r in range(10, LAST + 1):
+        sh.put(r, 12, f'=IF(B{r}="","",AVERAGE($F$10:$F${LAST}))', fmt="#,##0")
+    _overlay(ch, ws, Reference(ws, min_col=12, min_row=10, max_row=LAST),
+             "Average wait per step")
+    ws.add_chart(ch, "N9")
+    return sh.changed
 
 
 # ---------------------------------------------------------------- 11
@@ -223,11 +259,16 @@ def value_stream_map(wb) -> int:
 def xy_matrix(wb) -> int:
     """Which candidate causes actually drive the CTQs."""
     ws = wb["X-Y matrix"]
-    _bar(ws, "Weighted total by candidate cause — the tall bars are where to look",
-         Reference(ws, min_col=1, min_row=15, max_row=36),   # 37 is the note banner
-         Reference(ws, min_col=8, min_row=15, max_row=36),
-         "K14", horizontal=True, height=11, width=17, labels=False)
-    return 0
+    sh = Sheet(ws)
+    sh.put(14, 10, "Mean", bold=True)
+    for r in range(15, 37):
+        sh.put(r, 10, f'=IF(H{r}="","",AVERAGE($H$15:$H$36))', fmt="#,##0")
+    ch = _bar(ws, "Weighted total by candidate cause — the tall bars are where to look",
+              Reference(ws, min_col=1, min_row=15, max_row=36),   # 37 is the note banner
+              Reference(ws, min_col=8, min_row=15, max_row=36),
+              "L14", horizontal=True, height=11, width=17, labels=False)
+    _overlay(ch, ws, Reference(ws, min_col=10, min_row=15, max_row=36), "Mean score")
+    return sh.changed
 
 
 # ---------------------------------------------------------------- 12
@@ -236,12 +277,18 @@ def xy_matrix(wb) -> int:
 def fmea(wb) -> int:
     """RPN before and after the action — the only view that shows whether it worked."""
     ws = wb["FMEA"]
-    _grouped(ws, "Risk priority number, before and after the action",
-             Reference(ws, min_col=2, min_row=11, max_row=36),   # 37 is the note banner
-             [(Reference(ws, min_col=10, min_row=11, max_row=36), "RPN now", RED),
-              (Reference(ws, min_col=18, min_row=11, max_row=36), "RPN after", GREEN)],
-             "T10", height=10, width=22)
-    return 0
+    sh = Sheet(ws)
+    sh.put(10, 20, "Act above", bold=True)
+    for r in range(11, 37):
+        sh.put(r, 20, f'=IF(J{r}="","",100)', fmt="#,##0")
+    ch = _grouped(ws, "Risk priority number — did the action actually reduce it?",
+                  Reference(ws, min_col=2, min_row=11, max_row=36),   # 37 is the banner
+                  [(Reference(ws, min_col=10, min_row=11, max_row=36), "RPN now", RED),
+                   (Reference(ws, min_col=18, min_row=11, max_row=36), "RPN after", GREEN)],
+                  "V10", height=10, width=22)
+    _overlay(ch, ws, Reference(ws, min_col=20, min_row=11, max_row=36),
+             "Act above this (RPN 100)", AMBER)
+    return sh.changed
 
 
 # ---------------------------------------------------------------- 13
@@ -268,11 +315,16 @@ def hypothesis_log(wb) -> int:
 
 def solution_selection(wb) -> int:
     ws = wb["Solution selection"]
-    _bar(ws, "Weighted score by solution — and remember the hierarchy level",
-         Reference(ws, min_col=2, min_row=14, max_row=33),   # 34 is the note banner
-         Reference(ws, min_col=10, min_row=14, max_row=33),
-         "O13", horizontal=True, height=11, width=17, labels=False)
-    return 0
+    sh = Sheet(ws)
+    sh.put(13, 15, "Mean", bold=True)
+    for r in range(14, 34):
+        sh.put(r, 15, f'=IF(J{r}="","",AVERAGE($J$14:$J$33))', fmt="#,##0")
+    ch = _bar(ws, "Weighted score by solution — and remember the hierarchy level",
+              Reference(ws, min_col=2, min_row=14, max_row=33),   # 34 is the note banner
+              Reference(ws, min_col=10, min_row=14, max_row=33),
+              "Q13", horizontal=True, height=11, width=17, labels=False)
+    _overlay(ch, ws, Reference(ws, min_col=15, min_row=14, max_row=33), "Mean score")
+    return sh.changed
 
 
 # ---------------------------------------------------------------- 17
@@ -296,7 +348,9 @@ def control_plan(wb) -> int:
     _bar(sh.ws, "Controls by level — lower is more durable",
          Reference(sh.ws, min_col=1, min_row=r0 + 2, max_row=r0 + 7),
          Reference(sh.ws, min_col=2, min_row=r0 + 2, max_row=r0 + 7),
-         f"E{r0}", horizontal=True, height=8, width=17)
+         f"E{r0}", horizontal=True, height=8, width=17,
+         # levels 1-3 survive attrition; 4-6 rely on someone remembering
+         colours=[GREEN, GREEN, GREEN, AMBER, RED, RED])
     return sh.changed
 
 
@@ -329,10 +383,13 @@ def calculators(wb) -> int:
         sh.put(17 + i, 2, v, fmt="0.00")
     sh.put(20, 1, "YOUR KAPPA", bold=True)
     sh.put(20, 2, "=IFERROR(B13,\"\")", fmt="0.00")
-    _bar(sh.ws, "Cohen's kappa against the usual thresholds",
-         Reference(sh.ws, min_col=1, min_row=17, max_row=20),
-         Reference(sh.ws, min_col=2, min_row=17, max_row=20), "D4",
-         colours=[RED, AMBER, GREEN, BLUE], fmt="0.00", height=8, width=16)
+    kch = _bar(sh.ws, "Cohen's kappa against the usual thresholds",
+               Reference(sh.ws, min_col=1, min_row=17, max_row=20),
+               Reference(sh.ws, min_col=2, min_row=17, max_row=20), "D4",
+               colours=[RED, AMBER, GREEN, BLUE], fmt="0.00", height=8, width=16)
+    # kappa runs 0 to 1 by definition; letting it auto-scale to 0.55-0.95 makes
+    # a 0.72 look like it is nearly at the top of the scale
+    kch.y_axis.scaling.min, kch.y_axis.scaling.max = 0, 1
     changed += sh.changed
 
     # 3 — the capability picture: your distribution against the SLA
@@ -399,7 +456,7 @@ def calculators(wb) -> int:
     sh.put(18, 2, "=IFERROR(B12,\"\")", fmt="#,##0.0")
     sh.put(19, 1, "PAID FTE", bold=True)
     sh.put(19, 2, "=IFERROR(B13,\"\")", fmt="#,##0.0")
-    _bar(sh.ws, "From offered load to paid FTE",
+    _bar(sh.ws, "From offered load to paid FTE — where does the headcount actually go?",
          Reference(sh.ws, min_col=1, min_row=16, max_row=19),
          Reference(sh.ws, min_col=2, min_row=16, max_row=19), "D4",
          colours=[BLUE, AMBER, RED, GREEN], fmt="#,##0.0", height=8, width=16)

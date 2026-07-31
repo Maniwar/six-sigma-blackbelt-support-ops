@@ -339,25 +339,57 @@ def render(books: list[Path], outdir: Path) -> list[Path]:
     return pngs
 
 
+def audit_rubric(path: Path, wb, guidance: int) -> list[dict]:
+    """Grade every chart against CHART-QA.md and fail the ones below the bar."""
+    from chart_rubric import charts_in, grade, ships
+    out = []
+    for ch in charts_in(path):
+        g = grade(path.name, ch, wb)
+        g["guidance"] = guidance
+        g["ships"] = ships(g, guidance)
+        out.append(g)
+        if not g["ships"]:
+            fail(path.name, "RUBRIC",
+                 f"{g['title'][:46] or '(untitled)'} — " + "; ".join(g["notes"] or ["below the bar"]))
+    return out
+
+
 def main() -> int:
     fast = "--fast" in sys.argv
     visual = "--visual" in sys.argv
+    rubric = "--rubric" in sys.argv
     only = [a for a in sys.argv[1:] if not a.startswith("-")]
     books = sorted(TEMPLATES.glob("*.xlsx"))
     if only:
         books = [b for b in books if any(o in b.name for o in only)]
     print(f"Auditing {len(books)} workbook(s) in templates/\n")
     charts = 0
+    graded: list[dict] = []
     for path in books:
         wb = load_workbook(path)
         n = audit_charts(path, wb)
+        before = len(fails)
         audit_guided(path, wb)
+        guidance = 2 if len(fails) == before else 1
         charts += n
+        if rubric:
+            graded += audit_rubric(path, wb, guidance)
         note = f"  ({NO_CHART_OK[path.name]})" if n == 0 and path.name in NO_CHART_OK else ""
         print(f"  {path.name:36s} sheets={len(wb.worksheets):2d}  charts={n:2d}{note}")
         if not fast:
             audit_numeric(path)
     print(f"\n  {charts} charts across {len(books)} workbooks")
+    if rubric and graded:
+        ok = sum(1 for g in graded if g["ships"])
+        print(f"\n  SCORECARD — {ok}/{len(graded)} charts clear the bar "
+              "(gates pass, worth>=3, example=3, guidance=2)\n")
+        print(f"  {'chart':50s} {'form':>6s} {'read':>5s} {'worth':>6s} {'exmpl':>6s} {'guide':>6s}")
+        for g in sorted(graded, key=lambda x: (x["ships"], x["book"])):
+            mark = "  " if g["ships"] else "->"
+            print(f"{mark}{(g['title'] or '(untitled)')[:48]:50s} "
+                  f"{'ok' if g['right_chart'] else 'FAIL':>6s} "
+                  f"{'ok' if g['readable'] else 'FAIL':>5s} "
+                  f"{g['worth']}/4{'':>3s} {g['example']}/3{'':>3s} {g['guidance']}/2")
     if visual:
         # --visual takes no value of its own: the positional arguments are
         # workbook filters, and consuming one here rendered into a directory

@@ -19,6 +19,7 @@ Requires: openpyxl
 """
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -33,6 +34,9 @@ from xlpolish import polish_workbook  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATES = ROOT / "templates"
+
+# Built by tools/build_templates.py, which owns them end to end.
+BUILT = re.compile(r"^(2[0-9])-")
 
 # Fill colours used across the workbooks; the preview renderer keys off these.
 YELLOW_INPUT = "FFFFF9E3"
@@ -235,6 +239,12 @@ def patch_formulas(verbose: bool = True) -> int:
     # X-Y matrix is pure scoring and would otherwise never be polished at all.
     for path in sorted(TEMPLATES.glob("*.xlsx")):
         if path.name in by_file:
+            continue
+        if BUILT.match(path.name):
+            # build_templates.py already polishes these at build time. Loading
+            # and re-saving here would be destructive: openpyxl's reader keeps
+            # only the first chart type in a combo, so every reference line laid
+            # over a bar chart would be dropped on the way back out.
             continue
         wb = load_workbook(path)
         local = add_examples(wb, path.name)
