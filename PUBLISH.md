@@ -27,22 +27,29 @@ of the folder. Use this one.
 
 ## GitHub Pages
 
-The workflow in `.github/workflows/pages.yml` has `enablement: true`, so the
-first successful run turns Pages on by itself and publishes the `docs/` folder.
+Pages is configured as **Settings → Pages → Source: Deploy from a branch →
+`main` / `/docs`**. Every push to `main` rebuilds the site automatically; there
+is no workflow to watch and nothing to enable.
 
-After pushing:
+The site is live at
+**https://maniwar.github.io/six-sigma-blackbelt-support-ops/**
 
-1. Open the **Actions** tab and watch the "Deploy to GitHub Pages" run.
-2. When it goes green, the site is live at
-   **https://maniwar.github.io/six-sigma-blackbelt-support-ops/**
+The folder must stay `/docs`, not `/` — the repo root has no `index.html`, so a
+root-published site serves a Jekyll-rendered README instead of the program.
 
-If the run fails with a permissions error, set it manually once:
-**Settings → Pages → Source: GitHub Actions**, then re-run the workflow from the
-Actions tab. You may also need **Settings → Actions → General → Workflow
-permissions → Read and write permissions**.
+Two things worth knowing:
 
-First deployments can take a couple of minutes to appear after the run goes
-green. A 404 immediately afterwards usually just means DNS/CDN hasn't caught up.
+- Only `docs/` is published. `templates/` is not reachable over HTTP, which does
+  not matter: the page carries every template inside itself as base64 and makes
+  no network calls. Template downloads work offline, from a file:// URL, and
+  from any host.
+- There is deliberately **no** Actions workflow. "Deploy from a branch" and
+  "GitHub Actions" are mutually exclusive Pages sources; running both means one
+  fails on every push. If you ever switch the source back to GitHub Actions, you
+  will need to restore a deploy workflow that publishes `docs/`.
+
+A build takes about a minute. A 404 straight afterwards usually just means the
+CDN has not caught up yet.
 
 ## What's in here
 
@@ -54,7 +61,6 @@ green. A 404 immediately afterwards usually just means DNS/CDN hasn't caught up.
 | `tools/` | Build and test scripts for the templates (see below) |
 | `README.md` | Repo front page |
 | `LICENSE` | CC BY 4.0 |
-| `.github/workflows/pages.yml` | Auto-enables and deploys Pages on every push to `main` |
 
 ## Editing templates or formulas
 
