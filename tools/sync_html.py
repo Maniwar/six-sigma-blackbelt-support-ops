@@ -103,6 +103,10 @@ def rebuild_preview(preview: str, wbpath: Path, stats: dict) -> str:
         idx = int(m.group(2))
         ws = wb.worksheets[idx]
         row_no = [0]
+        # Columns claimed by a rowspan started in an earlier row. Without this
+        # the walk shifts left on every row under a vertical merge, and the
+        # fishbone's bones are vertical merges.
+        held: dict[int, set[int]] = {}
 
         def do_row(rm: re.Match) -> str:
             row_no[0] += 1
@@ -112,8 +116,16 @@ def rebuild_preview(preview: str, wbpath: Path, stats: dict) -> str:
             def do_td(tm: re.Match) -> str:
                 attrs, inner = tm.group(1), tm.group(2)
                 cs = re.search(r'colspan="(\d+)"', attrs)
+                rs = re.search(r'rowspan="(\d+)"', attrs)
+                nc = int(cs.group(1)) if cs else 1
+                nr = int(rs.group(1)) if rs else 1
+                while col[0] in held.get(r, ()):
+                    col[0] += 1
                 c = col[0]
-                col[0] += int(cs.group(1)) if cs else 1
+                col[0] += nc
+                if nr > 1:
+                    for rr in range(r + 1, r + nr):
+                        held.setdefault(rr, set()).update(range(c, c + nc))
                 cell = ws.cell(row=r, column=c)
                 val = cell.value
                 key = (fname, ws.title, cell.coordinate)
@@ -128,7 +140,19 @@ def rebuild_preview(preview: str, wbpath: Path, stats: dict) -> str:
                     elif H.unescape(re.search(r'title="([^"]*)"', attrs).group(1)) != val:
                         stats["title_changed"] += 1
                     attrs = _set_attr(attrs, "title", esc_f)
-                elif isinstance(val, str):
+                elif 'title="' in attrs:
+                    # This cell used to hold a formula and no longer does. The
+                    # tooltip has to go, or it survives every future sync and
+                    # describes a cell somewhere else entirely.
+                    stats["title_changed"] += 1
+                    attrs = re.sub(r'\s*title="[^"]*"', "", attrs)
+                    attrs = _set_attr(attrs, "class",
+                                      (re.search(r'class="([^"]*)"', attrs).group(1)
+                                       if re.search(r'class="([^"]*)"', attrs) else "").replace("x-f", "").strip())
+                    if isinstance(val, str):
+                        inner = H.escape(val, quote=True)
+
+                if isinstance(val, str) and not val.startswith("="):
                     want = H.escape(val, quote=True)
                     if want != inner:
                         stats["text_changed"] += 1

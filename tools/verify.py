@@ -318,6 +318,19 @@ def test_sync() -> None:
             check(meta.group(1) == badge.group(1) == newest,
                   "meta tag, sidebar badge and CHANGELOG agree on the version",
                   f"meta={meta.group(1)} sidebar={badge.group(1)} changelog={newest}")
+    # The glossary explainer must outrank every dialog. It renders inside the
+    # template preview, the export dialog and the download menu, and at a lower
+    # z-index it opens behind them where nobody can read it.
+    zs = {}
+    for zm in re.finditer(r"z-index\s*:\s*(\d+)", src):
+        a, b = src.rfind("}", 0, zm.start()), src.rfind("{", 0, zm.start())
+        zs[src[a + 1:b].strip().split()[-1]] = int(zm.group(1))
+    pop = zs.get("#pop", 0)
+    over = {k: v for k, v in zs.items() if k != "#pop" and v >= pop and k != ".skiplink"}
+    check(pop > 0 and not over,
+          "the glossary explainer sits above every dialog",
+          f"#pop={pop} but these are at or above it: {over}")
+
     for dead in ("parseCSV", "renderCSV"):
         check(dead not in src, f"dead {dead}() removed")
     check("function esc2(" in src, "esc2() retained (renderMD depends on it)")
@@ -331,14 +344,23 @@ def _check_preview(entry: dict, path: Path) -> None:
     seen = 0
     for m in RE_SHEET.finditer(entry["preview"]):
         ws = wb.worksheets[int(m.group(2))]
+        held: dict[int, set[int]] = {}      # columns claimed by an earlier rowspan
         for r, rm in enumerate(RE_ROW.finditer(m.group(3)), start=1):
             col = 1
             for tm in RE_TD.finditer(rm.group(2)):
                 attrs = tm.group(1)
                 cs = re.search(r'colspan="(\d+)"', attrs)
+                rs = re.search(r'rowspan="(\d+)"', attrs)
                 ti = re.search(r'title="([^"]*)"', attrs)
+                nc = int(cs.group(1)) if cs else 1
+                nr = int(rs.group(1)) if rs else 1
+                while col in held.get(r, ()):
+                    col += 1
                 cell = ws.cell(row=r, column=col)
-                col += int(cs.group(1)) if cs else 1
+                if nr > 1:
+                    for rr in range(r + 1, r + nr):
+                        held.setdefault(rr, set()).update(range(col, col + nc))
+                col += nc
                 wf = cell.value if isinstance(cell.value, str) and cell.value.startswith("=") else None
                 pf = H.unescape(ti.group(1)) if ti else None
                 if pf or wf:

@@ -54,13 +54,46 @@ def _fmt(cell):
     return str(v)
 
 
+def _edge_style(cell) -> str:
+    """Diagonals and heavy rules, which is how the fishbone is actually drawn.
+
+    The Ishikawa diagram's bones are a merged block carrying a single diagonal
+    border, and its spine is a thick bottom rule. Without these the preview
+    renders the diagram as a grid of empty boxes and the shape disappears.
+    """
+    b = getattr(cell, "border", None)
+    if b is None:
+        return ""
+    bits = []
+    diag = getattr(b, "diagonal", None)
+    if diag is not None and diag.style:
+        line = "#333c49"
+        if getattr(b, "diagonalDown", False):
+            corner = "to bottom right"
+        elif getattr(b, "diagonalUp", False):
+            corner = "to top right"
+        else:
+            corner = None
+        if corner:
+            bits.append(
+                "background-image:linear-gradient(%s,transparent calc(50%% - 1px),"
+                "%s calc(50%% - 1px),%s calc(50%% + 1px),transparent calc(50%% + 1px))"
+                % (corner, line, line))
+    bottom = getattr(b, "bottom", None)
+    if bottom is not None and bottom.style in ("thick", "medium"):
+        bits.append("border-bottom:%dpx solid #151b24" % (3 if bottom.style == "thick" else 2))
+    return ";".join(bits)
+
+
 def sheet_html(ws, shown: dict) -> str:
     """One sheet as the preview's table markup."""
-    # merged ranges: the anchor spans, the rest are skipped
+    # merged ranges: the anchor spans, the rest are skipped. Both directions —
+    # emitting colspan alone silently drops every vertically merged block and
+    # shifts the rest of the grid left.
     spans, covered = {}, set()
     for rng in ws.merged_cells.ranges:
         c1, r1, c2, r2 = range_boundaries(str(rng))
-        spans[(r1, c1)] = c2 - c1 + 1
+        spans[(r1, c1)] = (c2 - c1 + 1, r2 - r1 + 1)
         for r in range(r1, r2 + 1):
             for c in range(c1, c2 + 1):
                 if (r, c) != (r1, c1):
@@ -76,7 +109,7 @@ def sheet_html(ws, shown: dict) -> str:
                 c += 1
                 continue
             cell = ws.cell(row=r, column=c)
-            span = spans.get((r, c), 1)
+            span, rspan = spans.get((r, c), (1, 1))
 
             cls = ""
             try:
@@ -99,8 +132,13 @@ def sheet_html(ws, shown: dict) -> str:
             attrs = ""
             if span > 1:
                 attrs += ' colspan="%d"' % span
+            if rspan > 1:
+                attrs += ' rowspan="%d"' % rspan
             if cls:
                 attrs += ' class="%s"' % cls
+            edge = _edge_style(cell)
+            if edge:
+                attrs += ' style="%s"' % H.escape(edge, quote=True)
             attrs += title
             cells.append("<td%s>%s</td>" % (attrs, text))
             c += span
