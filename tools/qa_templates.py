@@ -176,6 +176,12 @@ def audit_charts(path: Path, wb) -> int:
                                  "Excel will silently drop the overhang")
                 else:
                     warn(book, "CHARTS", f"{label} series {si} has no category axis — points get numbered 1..n")
+            if ch.__class__.__name__ == "BarChart":
+                for si, ser in enumerate(ch.series, start=1):
+                    if ser.invertIfNegative is not False:
+                        fail(book, "CHARTS",
+                             f"{label} series {si} leaves invertIfNegative unset — any negative "
+                             "value renders as a blank bar")
             if ch.height and ch.height < 5:
                 warn(book, "CHARTS", f"{label} is only {ch.height}cm tall — labels will collide")
     if total == 0 and book not in NO_CHART_OK:

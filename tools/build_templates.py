@@ -125,6 +125,14 @@ def bar(ws, title_, cat_ref, val_ref, anchor, horizontal=False, pct=False, serie
     ch.gapWidth = 60
     ch.add_data(val_ref, titles_from_data=False)
     ch.set_categories(cat_ref)
+    if ch.series:
+        ch.series[0].graphicalProperties.solidFill = "1F4E79"
+        ch.series[0].graphicalProperties.line.solidFill = "1F4E79"
+        # OOXML's invertIfNegative defaults on, and with no negative fill
+        # defined the renderer draws negative bars as nothing at all. The DOE
+        # effects chart is entirely negative values, so it was drawing an empty
+        # plot area with a correctly scaled axis beside it.
+        ch.series[0].invertIfNegative = False
     if series:
         ch.series[0].tx = None
     ch.y_axis.majorGridlines = None if horizontal else ch.y_axis.majorGridlines
@@ -157,17 +165,17 @@ def five_whys():
     wb = Workbook(); wb.remove(wb.active)
     ws = wb.create_sheet("5 Whys tree")
     title(ws, "5 Whys — run it as a tree, not a chain",
-          "A single chain gives you one cause and false confidence. Branching gives you a hypothesis set you can test.", 8)
-    widths(ws, [10, 34, 34, 34, 34, 16, 18, 30])   # 6 clipped "Instance" to "Instan"
-    band(ws, 4, "THE PROBLEM — one specific instance, not a general statement", 8)
+          "A single chain gives you one cause and false confidence. Branching gives you a hypothesis set you can test.", 9)
+    widths(ws, [10, 30, 30, 30, 30, 30, 12, 14, 32])   # 6 clipped "Instance" to "Instan"
+    band(ws, 4, "THE PROBLEM — one specific instance, not a general statement", 9)
     ws.cell(row=5, column=1, value="Instance").font = F_B
     ws.merge_cells("B5:E5"); mark(ws, 5, 2, "in")
     ws.cell(row=5, column=2, value="Billing ticket #48217, closed 12 Mar, reopened 14 Mar")
     note(ws, 5, 2, "One concrete record, with it open in front of you: ticket number, what happened, "
                    "and when. 'Reopens are high' is not an instance and cannot be walked back to a cause.")
-    ws.cell(row=5, column=6, value="Date").font = F_B
-    mark(ws, 5, 7, "in").value = "2026-03-14"
-    note(ws, 5, 7, "The date of the instance, not the date you ran the session. You will want to go "
+    ws.cell(row=5, column=7, value="Date").font = F_B
+    mark(ws, 5, 8, "in").value = "2026-03-14"
+    note(ws, 5, 8, "The date of the instance, not the date you ran the session. You will want to go "
                    "back to the system state as it was.")
     ws.cell(row=6, column=1, value="Effect").font = F_B
     ws.merge_cells("B6:E6"); mark(ws, 6, 2, "in")
@@ -177,25 +185,30 @@ def five_whys():
     ws.cell(row=7, column=2, value="Start from a concrete instance with the record in front of you. "
             "At each level ask 'what else could cause this?' before you go deeper.").font = F_NOTE
 
-    header(ws, 9, ["#", "Why 1", "Why 2", "Why 3", "Why 4 / 5", "Branch?",
+    # It is called the 5 Whys. Collapsing four and five into one column asks
+    # four, and four is usually one short of anything you can act on.
+    header(ws, 9, ["#", "Why 1", "Why 2", "Why 3", "Why 4", "Why 5", "Branch?",
                    "Testable with data?", "How you would test it"])
     # The tool is called "a tree, not a chain", so a single-branch example
     # argues against the template. Three branches from the same instance.
     ex = [
         ["1", "The adjustment had not posted when the ticket was closed",
          "Closure is allowed before the posting webhook confirms",
-         "The status model has no pending state",
-         "Nobody owns the ticket lifecycle across billing and support",
+         "The ticket status model has no 'pending adjustment' state",
+         "The billing integration was specified as fire-and-forget, with no callback",
+         "No one owned the ticket lifecycle across billing and support when it was designed",
          "A", "Yes", "Count reopens where closure preceded the webhook timestamp"],
         ["2", "The agent could not see whether the adjustment had posted",
          "Billing status lives in another system with no view inside the ticket",
          "The integration was scoped to write, never to read",
-         "No one owned the end-to-end lifecycle when it was designed",
+         "Scope was cut on integration cost, with no one costing the agent's workflow",
+         "Design reviews do not require sign-off from anyone who works the queue",
          "B", "Yes", "Sample 50 reopens and check whether the agent had visibility at closure"],
         ["3", "We only count reopens raised for the same reason",
          "The metric was defined by reporting without asking operations",
          "No operational definition was agreed when the project started",
-         "The organisation has no standard for who signs off a metric definition",
+         "The charter template does not require one before the baseline is taken",
+         "Metric definitions have no owner anywhere in the organisation",
          "C", "Yes", "Recount reopens on an any-reason definition and compare the two series"],
     ]
     for k, row in enumerate(ex):
@@ -205,23 +218,25 @@ def five_whys():
         ws.row_dimensions[10 + k].height = 30
     for r in range(13, 26):
         ws.cell(row=r, column=1, value=r - 9).font = F_NOTE
-        for c in range(2, 9):
+        for c in range(2, 10):
             mark(ws, r, c, "in").alignment = Alignment(wrap_text=True, vertical="top")
         ws.row_dimensions[r].height = 30
     dv = DataValidation(type="list", formula1='"Yes,No"', allow_blank=True)
-    ws.add_data_validation(dv); dv.add("G10:G25")
+    ws.add_data_validation(dv); dv.add("H10:H25")
 
-    band(ws, 27, "CHECK BEFORE YOU LEAVE THIS TOOL", 8)
+    band(ws, 27, "CHECK BEFORE YOU LEAVE THIS TOOL", 9)
     rows = [("Branches explored", '=COUNTA(B10:B25)', "3"),
-            ("Branches you can test with data", '=COUNTIF(G10:G25,"Yes")', "3"),
-            ("Chains that stopped at a person", '=COUNTIF(E10:E25,"*training*")+COUNTIF(E10:E25,"*follow*")', "0")]
+            ("Branches you can test with data", '=COUNTIF(H10:H25,"Yes")', "3"),
+            ("Chains that reached five levels", '=COUNTA(F10:F25)', "3"),
+            ("Chains that stopped at a person",
+             '=COUNTIF(F10:F25,"*training*")+COUNTIF(F10:F25,"*follow the process*")', "0")]
     for i, (label, f, shown) in enumerate(rows, start=28):
         ws.cell(row=i, column=1, value=label).font = F_B
-        ws.merge_cells(start_row=i, start_column=1, end_row=i, end_column=4)
-        c = mark(ws, i, 5, "calc"); c.value = f
-        SHOWN[("5 Whys tree", f"E{i}")] = shown
-    ws.merge_cells("A32:H32")
-    ws.cell(row=32, column=1, value="If your last why is 'not enough training' or 'the agent did not follow the "
+        ws.merge_cells(start_row=i, start_column=1, end_row=i, end_column=5)
+        c = mark(ws, i, 6, "calc"); c.value = f
+        SHOWN[("5 Whys tree", f"F{i}")] = shown
+    ws.merge_cells("A33:I33")
+    ws.cell(row=33, column=1, value="If your last why is 'not enough training' or 'the agent did not follow the "
             "process', you stopped one level too early. Ask why the process was skippable — that is the cause you "
             "can actually fix.").font = F_NOTE
     howto(wb, LEGEND + [
@@ -765,6 +780,9 @@ def pareto():
     pc.legend = None
     pc.add_data(Reference(ws, min_col=2, min_row=5, max_row=14), titles_from_data=False)
     pc.set_categories(Reference(ws, min_col=1, min_row=5, max_row=14))
+    for ser in pc.series:
+        ser.invertIfNegative = False
+        ser.graphicalProperties.solidFill = "1F4E79"
     pc.y_axis.title = "Count"
     line = LineChart()
     line.add_data(Reference(ws, min_col=4, min_row=5, max_row=14), titles_from_data=False)

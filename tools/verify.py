@@ -364,6 +364,27 @@ def test_sync() -> None:
           "the glossary explainer sits above every dialog",
           f"#pop={pop} but these are at or above it: {over}")
 
+    # Every template card must be a direct child of .tplgrid. Cards nested one
+    # level deeper still render, but the CSS grid only lays out its own
+    # children, so the whole section collapses into a single narrow column.
+    g0 = src.index('<div class="tplgrid">')
+    depth, j = 0, g0
+    while j < len(src):
+        if src.startswith("<div", j):
+            depth += 1
+        elif src.startswith("</div>", j):
+            depth -= 1
+            if depth == 0:
+                break
+        j += 1
+    grid = src[g0:j]
+    total_cards = src.count('class="tplc"')
+    check(grid.count('class="tplc"') == total_cards,
+          "every template card is a direct child of the grid",
+          f"{grid.count('class=\"tplc\"')} of {total_cards} inside .tplgrid — the rest are nested")
+    check(total_cards == len(tpls),
+          f"a card for every registered template ({len(tpls)})", f"cards={total_cards}")
+
     for dead in ("parseCSV", "renderCSV"):
         check(dead not in src, f"dead {dead}() removed")
     check("function esc2(" in src, "esc2() retained (renderMD depends on it)")

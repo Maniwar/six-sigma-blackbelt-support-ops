@@ -102,6 +102,12 @@ def _bar(ws, title, cats, vals, anchor, colours=None, horizontal=False,
             for i, col in enumerate(colours)]
     elif ch.series:
         ch.series[0].graphicalProperties.solidFill = BLUE
+        # OOXML's invertIfNegative defaults on, and with no negative fill
+        # defined the renderer draws negative bars as nothing at all. The DOE
+        # effects chart is entirely negative values, so it was drawing an empty
+        # plot area with a correctly scaled axis beside it.
+    for ser in ch.series:
+        ser.invertIfNegative = False
     ws.add_chart(ch, anchor)
     return ch
 
@@ -120,6 +126,7 @@ def _grouped(ws, title, cats, series, anchor, fmt=None, height=8, width=17):
     for ref, name, colour in series:
         s = Series(ref, title=name)
         s.graphicalProperties.solidFill = colour
+        s.invertIfNegative = False       # negative bars render as nothing otherwise
         ch.series.append(s)
     ch.set_categories(cats)
     if fmt:
@@ -203,6 +210,7 @@ def value_stream_map(wb) -> int:
     for col, nm, colour in ((5, "Touch time", GREEN), (6, "Waiting", RED)):
         s = Series(Reference(ws, min_col=col, min_row=10, max_row=LAST), title=nm)
         s.graphicalProperties.solidFill = colour
+        s.invertIfNegative = False
         ch.series.append(s)
     ch.set_categories(cats)
     ws.add_chart(ch, "L9")
