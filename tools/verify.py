@@ -276,10 +276,10 @@ def test_numeric_other() -> None:
 def test_sync() -> None:
     src = HTML.read_text(encoding="utf-8")
     _, _, tpls = extract_tpls(src)
-    check(len(tpls) == 19, f"19 templates registered (found {len(tpls)})")
+    check(len(tpls) == 27, f"27 templates registered (found {len(tpls)})")
 
     exts = [e.get("ext") for e in tpls.values()]
-    check(exts.count("xlsx") == 8, f"8 Excel workbooks (found {exts.count('xlsx')})")
+    check(exts.count("xlsx") == 16, f"16 Excel workbooks (found {exts.count('xlsx')})")
     check(exts.count("md") == 11, f"11 Markdown templates (found {exts.count('md')})")
 
     for slug, entry in tpls.items():
