@@ -27,6 +27,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.datavalidation import DataValidation
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from chart_specs import add_charts  # noqa: E402
 from xlpolish import polish_workbook  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -217,6 +218,7 @@ def patch_formulas(verbose: bool = True) -> int:
                 local += 1
         _style_new_cells(wb)
         local += _add_validations(wb, wbname)
+        local += add_charts(wb, wbname)
         local += polish_workbook(wb)
         # openpyxl's zip output is not byte-stable, so saving an unchanged
         # workbook would churn its base64 copy in the HTML on every run.
@@ -233,7 +235,8 @@ def patch_formulas(verbose: bool = True) -> int:
         if path.name in by_file:
             continue
         wb = load_workbook(path)
-        local = polish_workbook(wb)
+        local = add_charts(wb, path.name)
+        local += polish_workbook(wb)
         if local:
             wb.save(path)
             changed += local

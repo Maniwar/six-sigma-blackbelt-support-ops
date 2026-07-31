@@ -288,19 +288,27 @@ def test_sync() -> None:
 
     check(HTML.read_bytes() == DOCS.read_bytes(), "docs/index.html is identical to the root HTML")
 
-    # Version: the meta tag, the sidebar badge and the newest release-note
-    # callout must agree, so a deploy can be identified without opening the page.
+    # Version: the meta tag and the sidebar badge must agree, so a deploy can be
+    # identified without opening the page. The release notes themselves live in
+    # CHANGELOG.md — a reader who has just opened the document should not have to
+    # scroll past its maintenance history — but the newest entry there has to
+    # match what the page claims to be.
     meta = re.search(r'<meta name="app-version" content="([0-9.]+)"', src)
     badge = re.search(r"Customer Support Operations &middot; v([0-9.]+)", src)
-    notes = re.findall(r"New in v([0-9.]+)", src)
     check(bool(meta), "an <meta name=\"app-version\"> tag is present")
     check(bool(badge), "the sidebar shows a version")
-    check(bool(notes), "there are release notes for the current version")
-    if meta and badge and notes:
-        newest = max(notes, key=lambda v: [int(p) for p in v.split(".")])
-        check(meta.group(1) == badge.group(1) == newest,
-              "meta tag, sidebar badge and release notes agree on the version",
-              f"meta={meta.group(1)} sidebar={badge.group(1)} notes={newest}")
+    check(not re.search(r'<div class="t">(New )?[Ii]n v[0-9.]+ &mdash;', src),
+          "release notes are not in the product — they belong in CHANGELOG.md")
+    changelog = ROOT / "CHANGELOG.md"
+    check(changelog.exists(), "CHANGELOG.md exists")
+    if changelog.exists():
+        notes = re.findall(r"^## (?:New in )?v?([0-9.]+)", changelog.read_text(encoding="utf-8"), re.M)
+        check(bool(notes), "CHANGELOG.md has at least one release entry")
+        if meta and badge and notes:
+            newest = max(notes, key=lambda v: [int(p) for p in v.split(".")])
+            check(meta.group(1) == badge.group(1) == newest,
+                  "meta tag, sidebar badge and CHANGELOG agree on the version",
+                  f"meta={meta.group(1)} sidebar={badge.group(1)} changelog={newest}")
     for dead in ("parseCSV", "renderCSV"):
         check(dead not in src, f"dead {dead}() removed")
     check("function esc2(" in src, "esc2() retained (renderMD depends on it)")
