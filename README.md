@@ -39,12 +39,16 @@ Every module carries its BOK mapping, learning objectives, the support-specific 
 - **Interactive statistical test selector** — six branches down to the exact test plus its caveat
 - **Business case & ROI wizard** — seven guided steps from "something is wrong" to a costed, downloadable business case, with every field explaining where the number comes from
 - **A full worked project** — charter through 6-month re-audit, including the measurement-system finding that redirected it
-- **18 artifact templates you can actually download** — Markdown documents and CSV grids, with the guidance built into the file so you don't have to come back
+- **19 templates you can actually download** — including **8 real Excel workbooks with live formulas**, data-validation dropdowns and conditional formatting. RPN, weighted scores, Process Cycle Efficiency, kappa, sigma level and ROI all calculate themselves. Every workbook has a "how to use this" tab, a worked example row, and a legend telling you which cells to fill in.
 
 ### Built for people who are not statisticians
 - **Every acronym is clickable.** 97 glossary entries. Anything with a dotted underline opens a plain-English explainer: what it means, why it matters, and exactly where to find the number in your own systems.
 - **14 live formula cards.** Change any input and the arithmetic redoes itself line by line — you see the substitution, not just the answer. Each one ends with what the result actually means for your operation.
-- **"Where does this number come from?" on every input**, everywhere — the calculators, the wizard, the glossary.
+- **"Where does this number come from?" on every input** — the calculators, the wizard, the glossary, and every yellow cell in every workbook.
+
+### The Black Belt Calculator Workbook
+
+One of the nineteen templates is a nine-tab Excel workbook: sigma level and DPMO, QA analyst agreement (kappa), SLA capability and breach rate, backlog and lead time, process cycle efficiency, staffing, two benefit models, and ROI / payback / NPV. Change the yellow cells; everything else recalculates. Every input carries a note naming the system that number lives in and the trap to watch for when you pull it.
 
 ### Phase 3 — Deployment
 24-month rollout sequence, two-year investment and return model, the benefit accounting policy to agree with Finance before you start, project pipeline sources and a weighted selection matrix, governance forums and role definitions, ten program health KPIs, and a failure-mode register.

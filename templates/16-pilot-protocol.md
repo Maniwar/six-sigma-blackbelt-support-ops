@@ -66,8 +66,10 @@ support improvement programs.**
 - [ ] Operational feasibility confirmed by supervisors
 
 **Kill or redesign if:**
-- [ ]
-- [ ]
+- [ ] Primary metric moves in the wrong direction at any point
+- [ ] Any counter-balancing metric breaches its stated tolerance
+- [ ] Supervisors report the change is operationally unworkable
+- [ ] _______________________________________________
 
 ## 6. Results
 
