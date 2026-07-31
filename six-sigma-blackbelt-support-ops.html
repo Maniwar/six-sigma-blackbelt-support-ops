@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="app-version" content="2.1">
+<meta name="app-version" content="2.2">
 <title>Six Sigma Black Belt Program — Customer Support Operations</title>
 <style>
 :root{
@@ -488,7 +488,7 @@ table.xgrid td{border:1px solid #dfe4ec;padding:5px 7px;vertical-align:top;line-
   <div class="brand">
     <div class="k">Operational Excellence</div>
     <h1>Six Sigma Black Belt Program</h1>
-    <p>Customer Support Operations &middot; v2.1</p>
+    <p>Customer Support Operations &middot; v2.2</p>
   </div>
   <div class="navsearch"><input id="q" type="search" placeholder="Filter curriculum modules&hellip;" autocomplete="off"></div>
 
@@ -576,7 +576,7 @@ table.xgrid td{border:1px solid #dfe4ec;padding:5px 7px;vertical-align:top;line-
   </div>
 
 <div class="box good" style="margin-top:26px">
-<div class="t">New in v2.1 &mdash; every artifact is something you can actually send</div>
+<div class="t">New in v2.2 &mdash; every artifact is something you can actually send</div>
 <ul style="margin-bottom:0">
 <li><b>The business case opens on screen</b> with a benefit bridge, discounted benefit by year,
 your cumulative position against breakeven, and NPV by scenario &mdash; and every arithmetic step
@@ -584,8 +584,8 @@ printed out, so the number can be traced rather than taken on trust.</li>
 <li><b>One button copies it into an email</b> with formatting intact. Another saves it as a web page.</li>
 <li><b>Download it as Excel</b> and every figure is a live formula with native charts bound to the
 cells &mdash; change an assumption and the whole case moves. Finance can audit it, not just read it.</li>
-<li><b>Every template downloads as Word, a web page or Markdown</b>, and has an email version with
-each calculated cell showing its formula.</li>
+<li><b>Every template downloads as Word or a web page</b> &mdash; Word for the documents you fill in
+and sign &mdash; and has an email version with each calculated cell showing its formula.</li>
 <li><b>Corrected calculators.</b> The QA agreement verdict was reading chance agreement instead of
 kappa, and the SLA verdict was reading an empty cell &mdash; so it reported &ldquo;not capable&rdquo;
 for every input. Both are fixed, along with the value-stream, FMEA and ROI sheets.</li>
@@ -4942,10 +4942,8 @@ function dlTemplateAs(slug, fmt){
     dlBlob(base+'.xlsx', b64ToBlob(t.b64, MIME.xlsx));
   } else if(fmt === 'docx'){
     dlBlob(base+'.docx', new Blob([DOCX.build(t.title, tplEmailHTML(slug))], {type:MIME.docx}));
-  } else if(fmt === 'html'){
-    dl(base+'.html', htmlDoc(t.title, tplEmailHTML(slug)), 'text/html');
   } else {
-    dl(t.file, t.content, 'text/markdown');
+    dl(base+'.html', htmlDoc(t.title, tplEmailHTML(slug)), 'text/html');
   }
 }
 
@@ -4954,8 +4952,7 @@ var FMT_OPTS = {
         ['html','Web page','Opens anywhere, prints cleanly'],
         ['docx','Word document','For pasting into a report']],
   md:  [['docx','Word document','Fill it in, circulate it, sign it'],
-        ['html','Web page','Opens anywhere, prints cleanly'],
-        ['md','Markdown','For wikis, repos and note apps']]
+        ['html','Web page','Opens anywhere, prints cleanly']]
 };
 
 var fmtMenu = null;

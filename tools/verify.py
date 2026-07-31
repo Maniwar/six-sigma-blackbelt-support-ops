@@ -402,8 +402,11 @@ def test_export() -> None:
           "old markdown-by-default download path removed")
     check("dlTemplateAs(slug, t.ext==='xlsx' ? 'xlsx' : 'docx')" in src,
           "bulk download defaults to Excel for workbooks and Word for documents")
-    for fmt in ("'docx'", "'html'", "'md'"):
+    for fmt in ("'docx'", "'html'"):
         check(fmt in src, f"format menu offers {fmt}")
+    # Markdown is a developer format; this audience gets Word and HTML only.
+    check("'text/markdown'" not in src, "Markdown is no longer offered as a download")
+    check("['md','Markdown'" not in src, "Markdown removed from the format menu")
 
     if JS_START not in src or JS_END not in src:
         check(False, "export JS block markers found in the HTML")
