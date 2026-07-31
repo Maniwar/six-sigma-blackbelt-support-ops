@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="app-version" content="2.3">
+<meta name="app-version" content="2.4">
 <title>Six Sigma Black Belt Program — Customer Support Operations</title>
 <style>
 :root{
@@ -500,7 +500,7 @@ table.xgrid td{border:1px solid #dfe4ec;padding:5px 7px;vertical-align:top;line-
   <div class="brand">
     <div class="k">Operational Excellence</div>
     <h1>Six Sigma Black Belt Program</h1>
-    <p>Customer Support Operations &middot; v2.3</p>
+    <p>Customer Support Operations &middot; v2.4</p>
   </div>
   <div class="navsearch"><input id="q" type="search" placeholder="Filter curriculum modules&hellip;" autocomplete="off"></div>
 
@@ -588,7 +588,27 @@ table.xgrid td{border:1px solid #dfe4ec;padding:5px 7px;vertical-align:top;line-
   </div>
 
 <div class="box good" style="margin-top:26px">
-<div class="t">New in v2.3 &mdash; it now works everywhere, and from the keyboard</div>
+<div class="t">New in v2.4 &mdash; four more ways a support project makes money</div>
+<ul style="margin-bottom:0">
+<li><b>Deflect to self-service or a cheaper channel.</b> The contact still happens, it just does not
+need a person. The benefit is the cost <i>difference</i>, never the whole contact cost &mdash; a
+distinction the old &ldquo;eliminate a contact driver&rdquo; model could not express.</li>
+<li><b>Reduce agent attrition.</b> Recruiting, onboarding, training and the ramp you pay for twice.
+At 30&ndash;45% annual attrition this is often the largest number in a support P&amp;L, and it is the
+only model here priced per person rather than per contact.</li>
+<li><b>Cut the cost of poor quality.</b> Credits, refunds, goodwill and SLA penalties. Priced per
+incident, so a small defect-rate move can dwarf a big handle-time project &mdash; and the money is
+already in Finance's ledger, so you are not asking them to believe a model.</li>
+<li><b>Protect revenue at risk.</b> The only revenue model rather than cost. Priced per customer, not
+per contact, because one customer raises several tickets &mdash; and the wizard now asks for customers
+so you cannot accidentally multiply the benefit by your contacts-per-customer ratio.</li>
+</ul>
+<p style="margin:10px 0 0">Ten problem types now, across eight distinct calculations. Every one runs
+the full path: the same seven guided steps, the four charts, and an Excel workbook where each figure is
+a live formula bound to the Inputs sheet.</p></div>
+
+<div class="box good" style="margin-top:18px">
+<div class="t">In v2.3 &mdash; it now works everywhere, and from the keyboard</div>
 <ul style="margin-bottom:0">
 <li><b>Fixed: the page did not work at all on Safari before 16.4</b> (and iOS before 16.4). The glossary
 used a regular-expression lookbehind, which those versions reject outright &mdash; and the failure took
@@ -3459,12 +3479,30 @@ function renderMD(text){
     backlog:{n:'Reduce backlog and lead time',
       d:'Customers wait too long. The work sits in queues far longer than anyone touches it.',
       metric:'Reopen/rework rate driven by delay', kind:'rate',
-      ex:'Tickets sit 19 hours awaiting a Tier 2 pickup, which drives chase contacts.'}
+      ex:'Tickets sit 19 hours awaiting a Tier 2 pickup, which drives chase contacts.'},
+    deflect:{n:'Deflect to self-service or a cheaper channel',
+      d:'The contact still happens, but it does not need a person. Or not an expensive one.',
+      metric:'Share deflected', kind:'deflect',
+      ex:'A password reset costs $7.10 with an agent and $0.35 in the help centre.'},
+    attrition:{n:'Reduce agent attrition',
+      d:'People leave and you pay to recruit, train and ramp their replacement. Often the biggest number in the building.',
+      metric:'Annual attrition', kind:'attrition',
+      ex:'38% annual attrition across 120 agents is 46 replacements a year.'},
+    copq:{n:'Cut the cost of poor quality',
+      d:'Credits, refunds, goodwill and SLA penalties. Money that has already left, and Finance can see it.',
+      metric:'Incident rate', kind:'copq',
+      ex:'2.4% of billing tickets end in a goodwill credit averaging $85.'},
+    churn:{n:'Protect revenue at risk',
+      d:'Customers who have a bad support experience leave. This is the only model here that is revenue, not cost.',
+      metric:'Churn rate after contact', kind:'churn',
+      ex:'Customers who reopen a ticket twice churn at 9.1% against a 5.4% base.'}
   };
 
   var S = {arch:null};
   var DEF = {vol:480000, cpc:6.8, rate:8.0, hr:38, occ:82, aht:420, ahtsave:14,
     agents:120, shrink:32, shrinktgt:28, target:0, harvest:'', realz:80,
+    deflrate:35, cpcnew:0.35, attr:38, attrtgt:30, replcost:9500,
+    incidentcost:85, ltv:1400,
     bbmonths:9, bbcost:120000, training:35000, eng:60000, tooling:8000, years:3, disc:10};
   var V = Object.assign({}, DEF);
 
@@ -3507,16 +3545,20 @@ function renderMD(text){
         ARCH[S.arch].ex+'</p></div>';
     }
     if(step===1){
-      h += q('Annual contacts in scope','vol','Only the queue or contact type this project covers.',
-        {step:1000, help:'<b>Where:</b> your ticketing or phone platform, filtered to the queue in your project scope. Use a full 12 months if you have it, so seasonality is included. <b>Trap:</b> do not use total contact-centre volume — scope it to what you can actually affect.'});
+      if(a.kind==='churn')
+        h += q('Customers in scope per year','vol','Distinct customers, not contacts.',
+          {step:1000, help:'<b>Where:</b> the count of distinct customers who contact support in a year, from your CRM joined to your ticket data. <b>This is the trap:</b> one customer may raise five tickets, so contact volume is not customer volume. Using contacts here would multiply your churn benefit several times over, and it is the first thing anyone will check.'});
+      else
+        h += q('Annual contacts in scope','vol','Only the queue or contact type this project covers.',
+          {step:1000, help:'<b>Where:</b> your ticketing or phone platform, filtered to the queue in your project scope. Use a full 12 months if you have it, so seasonality is included. <b>Trap:</b> do not use total contact-centre volume — scope it to what you can actually affect.'});
       h += q('Fully-loaded cost per contact','cpc','What it really costs to handle one contact.',
         {step:0.1, suffix:'$', help:'<b>Where:</b> ask Finance. Total support cost ÷ total contacts. <b>Agree what is in it:</b> agent salary only, or plus benefits, supervision, tooling, facilities, QA and training? A 2× difference between definitions is completely normal, so pin it down in writing before you build the case.'});
       h += q('Loaded cost per agent-hour','hr','Used for any time-based saving.',
         {step:1, suffix:'$', help:'<b>Where:</b> Finance. Annual fully-loaded cost of an agent ÷ annual paid hours (commonly 1,700–1,900 after leave). Must use the same "what is included" definition as your cost per contact.'});
       h += q('Occupancy','occ','Share of available time actually spent on contacts.',
         {step:1, suffix:'%', help:'<b>Where:</b> workforce management. Handle time ÷ (handle + idle). You divide by this when converting handle time into paid time, because saving an hour of handle frees more than an hour of payroll. Sustained levels above the mid-80s drive burnout and attrition.'});
-      if(S.arch==='shrinkage')
-        h += q('Agents in scope','agents','Headcount this shrinkage applies to.',
+      if(S.arch==='shrinkage' || a.kind==='attrition')
+        h += q('Agents in scope','agents','Headcount this applies to.',
           {step:1, help:'<b>Where:</b> workforce management or HR. The number of agents whose schedules would change if shrinkage fell.'});
     }
     if(step===2){
@@ -3532,6 +3574,27 @@ function renderMD(text){
       if(a.kind==='shrink')
         h += q('Current shrinkage','shrink','Paid time not available for contacts.',
           {step:0.5, suffix:'%', help:'<b>Where:</b> workforce management. (Paid − available) ÷ paid. <b>Split planned from unplanned</b> — breaks and training versus absence and outages. They have completely different causes and owners, and only one of them is usually reducible.'});
+      if(a.kind==='deflect')
+        h += q('Cost per contact in the cheaper channel','cpcnew','Self-service, chat, async — whatever you are moving to.',
+          {step:0.05, suffix:'$', help:'<b>Where:</b> Finance, using the same cost definition as your assisted cost per contact. <b>For true self-service</b> this is the platform and content cost divided by sessions — small, but not zero. <b>Trap:</b> if the deflected contact often fails and comes back to an agent, you are paying both costs. Measure the failed-deflection rate before you claim the difference.'});
+      if(a.kind==='attrition'){
+        h += q('Annual attrition today','attr','Share of the team who leave in a year.',
+          {step:0.5, suffix:'%', help:'<b>Where:</b> HR. Leavers in 12 months ÷ average headcount. <b>Separate regretted from unregretted</b> and voluntary from involuntary — only some of it is yours to fix, and claiming all of it will not survive review.'});
+        h += q('Cost to replace one agent','replcost','Recruit, train, and the ramp you pay for twice.',
+          {step:250, suffix:'$', help:'<b>Where:</b> build it with HR and Finance: advertising and recruiter time, onboarding and training days, the trainer, equipment and licences, plus the productivity gap while the new hire ramps — usually 8–12 weeks at partial output. <b>Trap:</b> most organisations quote only the recruiting fee, which is a fraction of the real number.'});
+      }
+      if(a.kind==='copq'){
+        h += q('Current incident rate','rate','Share of contacts that end in a credit, refund or penalty.',
+          {step:0.1, suffix:'%', help:'<b>Where:</b> your billing or adjustments ledger, not the contact centre. <b>This is the strongest evidence you can bring</b> — the money has already left the business and Finance can see it in their own system, so you are not asking them to believe a model.'});
+        h += q('Average cost per incident','incidentcost','What one of them actually costs you.',
+          {step:5, suffix:'$', help:'<b>Where:</b> Finance. The average credit, refund or goodwill payment, plus any contractual SLA penalty. <b>Include the handling cost too</b> if the incident also generates contacts — but say so, and do not also count those contacts in another project.'});
+      }
+      if(a.kind==='churn'){
+        h += q('Churn rate after a bad experience','rate','Among the customers in scope.',
+          {step:0.1, suffix:'%', help:'<b>Where:</b> join your ticket data to the subscription or account table and measure churn in the 90 days after contact. <b>Critical:</b> compare against a matched control, not the whole base. Customers who contact support are already different from those who do not, and that difference is not caused by you.'});
+        h += q('Customer lifetime value','ltv','What one retained customer is worth.',
+          {step:50, suffix:'$', help:'<b>Where:</b> Finance or RevOps, and use their number rather than one you build. <b>Agree whether it is gross margin or revenue</b> before you present — the difference is usually 60–80% and it is the first thing a CFO will ask.'});
+      }
     }
     if(step===3){
       if(a.kind==='rate')
@@ -3543,6 +3606,18 @@ function renderMD(text){
       if(a.kind==='aht')
         h += q('Seconds saved per contact','ahtsave','From your pilot, treatment minus control.',
           {step:0.5, suffix:'seconds', help:'<b>Where:</b> the pilot result — treatment group minus concurrent control group. <b>Not</b> before minus after, which is contaminated by seasonality, contact-mix shift and staffing changes. If you do not have a pilot yet, estimate from your value stream map: how many seconds does the step you are removing actually take?'});
+      if(a.kind==='deflect')
+        h += q('Share of these contacts you can deflect','deflrate','What actually moves, not what could.',
+          {step:1, suffix:'%', help:'<b>How to set it:</b> from a pilot, or from how many of the tickets you read could genuinely have been resolved by the content you are going to build. <b>Trap:</b> published deflection rates are measured as "visited the article and did not contact" — which counts everyone who gave up. Measure resolution, not abandonment.'});
+      if(a.kind==='attrition')
+        h += q('Target attrition','attrtgt','After the improvement.',
+          {step:0.5, suffix:'%', help:'<b>How to set it:</b> against the specific driver you are addressing, from exit interviews and stay interviews. Schedule inflexibility, first-90-day experience and occupancy are the three that usually move. <b>Do not</b> target the whole gap to a benchmark — you cannot fix pay with a Six Sigma project.'});
+      if(a.kind==='copq')
+        h += q('Target incident rate','target','Justified by your verified causes.',
+          {step:0.1, suffix:'%', help:'<b>How to set it:</b> add up the share of incidents each verified root cause explains. <b>Then check the ledger</b> — if the credits do not fall by the amount you predicted within a quarter, your cause analysis was wrong and it will be obvious to Finance before it is obvious to you.'});
+      if(a.kind==='churn')
+        h += q('Target churn rate','target','What the fix can actually recover.',
+          {step:0.1, suffix:'%', help:'<b>How to set it:</b> the gap between your contacted cohort and a matched control is the most you can claim, and you will not close all of it. <b>Be conservative here</b> — churn attribution is the most challenged number in any support business case, and an aggressive one discredits the rest of your work.'});
       if(a.kind==='shrink')
         h += q('Target shrinkage','shrinktgt','After the improvement.',
           {step:0.5, suffix:'%', help:'<b>How to set it:</b> only against the specific unplanned component you can address. Planned shrinkage — breaks, training, coaching — is mostly not reducible without harming the operation.'});
@@ -3619,6 +3694,35 @@ function renderMD(text){
       detail.push(['Paid hours in scope', fm(V.agents,0)+' agents × 1,760', fm(paidHrs,0)+' hrs']);
       detail.push(['Hours freed', fm(paidHrs,0)+' × '+fm(pts,3), fm(freed,0)+' hrs']);
       detail.push(['Gross value', fm(freed,0)+' × $'+fm(V.hr,0), '$'+fm(gross,0)]);
+    } else if(a.kind==='deflect'){
+      // The contact does not disappear, it moves somewhere cheaper — so the
+      // benefit is the cost *difference*, never the whole contact cost.
+      var moved = V.vol*(V.deflrate/100), diff = V.cpc - V.cpcnew;
+      avoided = moved; gross = moved*diff;
+      detail.push(['Contacts deflected', fm(V.vol)+' × '+fm(V.deflrate,1)+'%', fm(moved,0)]);
+      detail.push(['Cost avoided per contact', '$'+fm(V.cpc,2)+' − $'+fm(V.cpcnew,2), '$'+fm(diff,2)]);
+      detail.push(['Gross value', fm(moved,0)+' × $'+fm(diff,2), '$'+fm(gross,0)]);
+      fte = V.cpc>0 ? moved*(V.aht/3600)/(V.occ/100)/1760*(1-V.cpcnew/V.cpc) : 0;
+    } else if(a.kind==='attrition'){
+      var apts=(V.attr-V.attrtgt)/100, leavers=V.agents*apts;
+      gross = leavers*V.replcost; fte = leavers;
+      detail.push(['Attrition reduction', fm(V.attr,1)+'% → '+fm(V.attrtgt,1)+'%', fm(V.attr-V.attrtgt,1)+' pts']);
+      detail.push(['Replacements avoided', fm(V.agents,0)+' agents × '+fm(apts,3), fm(leavers,1)+' people']);
+      detail.push(['Gross value', fm(leavers,1)+' × $'+fm(V.replcost,0), '$'+fm(gross,0)]);
+    } else if(a.kind==='copq'){
+      var cd=(V.rate-V.target)/100, inc=V.vol*cd;
+      avoided = inc; gross = inc*V.incidentcost;
+      detail.push(['Improvement', fm(V.rate,1)+'% → '+fm(V.target,1)+'%', fm(V.rate-V.target,1)+' pts']);
+      detail.push(['Incidents avoided per year', fm(V.vol)+' × '+fm(cd,4), fm(inc,0)]);
+      detail.push(['Gross value', fm(inc,0)+' × $'+fm(V.incidentcost,0), '$'+fm(gross,0)]);
+      fte = inc*(V.aht/3600)/(V.occ/100)/1760;
+    } else if(a.kind==='churn'){
+      var chd=(V.rate-V.target)/100, kept=V.vol*chd;
+      avoided = kept; gross = kept*V.ltv;
+      detail.push(['Churn reduction', fm(V.rate,1)+'% → '+fm(V.target,1)+'%', fm(V.rate-V.target,1)+' pts']);
+      detail.push(['Customers retained per year', fm(V.vol)+' × '+fm(chd,4), fm(kept,0)]);
+      detail.push(['Revenue protected', fm(kept,0)+' × $'+fm(V.ltv,0), '$'+fm(gross,0)]);
+      fte = 0;                       // revenue, not capacity — there is no FTE equivalent
     }
     var realz = V.harvest==='soft' ? 0 : V.realz/100;
     var real = gross*realz;
@@ -3653,7 +3757,7 @@ function renderMD(text){
       '<div class="c"><div class="l">Investment</div><div class="v">$'+fm(m.inv,0)+'</div></div>'+
       '<div class="c"><div class="l">Payback</div><div class="v">'+(isFinite(m.pb)?fm(m.pb*12,0)+' mo':'—')+'</div></div>'+
       '<div class="c"><div class="l">'+V.years+'-year NPV</div><div class="v">$'+fm(m.npv,0)+'</div></div>'+
-      '<div class="c"><div class="l">FTE equivalent</div><div class="v">'+fm(m.fte,1)+'</div></div>'+
+      (m.fte>0 ? '<div class="c"><div class="l">FTE equivalent</div><div class="v">'+fm(m.fte,1)+'</div></div>' : '')+
       '</div>'+
       '<h4 style="margin-top:22px">How the benefit was calculated</h4>'+
       '<div class="work">'+m.detail.map(function(d){
@@ -3675,6 +3779,11 @@ function renderMD(text){
       if(k==='rate'){ V.rate=DEF.rate*1.75; V.target=DEF.rate; }
       if(k==='volume'){ V.rate=40000; V.target=8000; }
       if(k==='shrink'){ V.rate=DEF.shrink; }
+      if(k==='copq'){ V.rate=2.4; V.target=1.2; }
+      // Churn is per *customer*, not per contact — one customer may contact
+      // several times, so reusing the contact volume would inflate it badly.
+      if(k==='churn'){ V.rate=9.1; V.target=5.4; }
+      V.vol = (k==='churn') ? 120000 : DEF.vol;
       render(); return; }
     var hh=e.target.closest('[data-harv]');
     if(hh){ V.harvest=hh.dataset.harv; render(); return; }
@@ -3998,8 +4107,11 @@ function sheetXml(sh, hasDrawing){
         cells += '<c r="'+ref+'"'+sa+'><f>'+esc(c.f)+'</f></c>';
       } else if(c.v===null||c.v===undefined||c.v===''){
         if(s) cells += '<c r="'+ref+'"'+sa+'/>';
-      } else if(typeof c.v==='number' && isFinite(c.v)){
-        cells += '<c r="'+ref+'"'+sa+'><v>'+c.v+'</v></c>';
+      } else if(typeof c.v==='number'){
+        // A NaN or Infinity would otherwise fall through and be written as the
+        // literal text "NaN", which then poisons every formula pointing at it.
+        if(isFinite(c.v)) cells += '<c r="'+ref+'"'+sa+'><v>'+c.v+'</v></c>';
+        else if(s) cells += '<c r="'+ref+'"'+sa+'/>';
       } else {
         cells += '<c r="'+ref+'"'+sa+' t="inlineStr"><is><t xml:space="preserve">'+esc(c.v)+'</t></is></c>';
       }
@@ -4390,9 +4502,11 @@ var HARVEST = {reduce:'Headcount reduction', avoid:'Hiring avoidance against an 
 /* Fixed row numbers on the Inputs sheet, so every other sheet can point here. */
 var IN = {vol:3, cpc:4, hr:5, occ:6, aht:7, agents:8,
           cur:11, tgt:12, ahtsave:13, shrink:14, shrinktgt:15,
-          realz:18, harvest:19,
-          bbcost:22, bbmonths:23, training:24, eng:25, tooling:26,
-          years:29, disc:30};
+          deflrate:16, cpcnew:17, attr:18, attrtgt:19, replcost:20,
+          incidentcost:21, ltv:22,
+          realz:25, harvest:26,
+          bbcost:29, bbmonths:30, training:31, eng:32, tooling:33,
+          years:36, disc:37};
 
 function bizCash(m, V){
   // Cumulative discounted position by year, year 0 = the investment.
@@ -4595,7 +4709,11 @@ function bizXlsx(ctx){
   var inRows = [];
   inRows[0]  = [{v:'Inputs — change any yellow cell',s:'title'},{s:'title'},{s:'title'}];
   inRows[1]  = [{v:'SCOPE',s:'band'},{s:'band'},{s:'band'}];
-  inRows[2]  = [{v:'Annual contacts in scope',s:'b'},{v:V.vol,s:'in'},{v:'Ticketing or phone platform, filtered to the queue in scope.',s:'note'}];
+  inRows[2]  = (a.kind==='churn')
+    ? [{v:'Customers in scope per year',s:'b'},{v:V.vol,s:'in'},
+       {v:'Distinct customers, not contacts. One customer may raise several tickets.',s:'note'}]
+    : [{v:'Annual contacts in scope',s:'b'},{v:V.vol,s:'in'},
+       {v:'Ticketing or phone platform, filtered to the queue in scope.',s:'note'}];
   inRows[3]  = [{v:'Fully-loaded cost per contact',s:'b'},{v:V.cpc,s:'money'},{v:'Finance. Total support cost ÷ total contacts, with the definition agreed in writing.',s:'note'}];
   inRows[4]  = [{v:'Loaded cost per agent-hour',s:'b'},{v:V.hr,s:'money'},{v:'Finance. Must use the same "what is included" definition as cost per contact.',s:'note'}];
   inRows[5]  = [{v:'Occupancy',s:'b'},{v:pct(V.occ),s:'in'},{v:'Workforce management. Handle ÷ (handle + idle).',s:'note'}];
@@ -4603,7 +4721,9 @@ function bizXlsx(ctx){
   inRows[7]  = [{v:'Agents in scope',s:'b'},{v:V.agents,s:'in'},{v:'Headcount whose schedules would change.',s:'note'}];
   inRows[8]  = [];
   inRows[9]  = [{v:'BASELINE AND TARGET',s:'band'},{s:'band'},{s:'band'}];
-  var rateKind = (a.kind==='rate');
+  // Which models express their current/target as a percentage? Those get
+  // written to the sheet as a fraction so the formulas below are right.
+  var rateKind = (a.kind==='rate' || a.kind==='copq' || a.kind==='churn');
   inRows[10] = [{v:'Current '+a.metric.toLowerCase(),s:'b'},
                 {v: rateKind?pct(V.rate):V.rate, s: rateKind?'in':'in'},
                 {v:'Measured over at least 13 weeks, against a written operational definition.',s:'note'}];
@@ -4613,23 +4733,37 @@ function bizXlsx(ctx){
   inRows[12] = [{v:'Seconds saved per contact',s:'b'},{v:V.ahtsave,s:'in'},{v:'From the pilot: treatment minus concurrent control.',s:'note'}];
   inRows[13] = [{v:'Shrinkage today',s:'b'},{v:pct(V.shrink),s:'in'},{v:'Share of paid time unavailable for contacts.',s:'note'}];
   inRows[14] = [{v:'Shrinkage target',s:'b'},{v:pct(V.shrinktgt),s:'in'},{v:'What you can defend, not what you wish for.',s:'note'}];
-  inRows[15] = [];
-  inRows[16] = [{v:'REALISATION',s:'band'},{s:'band'},{s:'band'}];
-  inRows[17] = [{v:'Realisation factor',s:'b'},{v:realzVal,s:'in'},
+  inRows[15] = [{v:'Share deflected',s:'b'},{v:pct(V.deflrate),s:'in'},
+                {v:'What actually moves to the cheaper channel, measured as resolution rather than abandonment.',s:'note'}];
+  inRows[16] = [{v:'Cost per contact, cheaper channel',s:'b'},{v:V.cpcnew,s:'money'},
+                {v:'Same cost definition as the assisted figure above. Rarely zero.',s:'note'}];
+  inRows[17] = [{v:'Attrition today',s:'b'},{v:pct(V.attr),s:'in'},
+                {v:'Leavers in 12 months over average headcount. Separate regretted from unregretted.',s:'note'}];
+  inRows[18] = [{v:'Attrition target',s:'b'},{v:pct(V.attrtgt),s:'in'},
+                {v:'Against the specific driver you are addressing, not a benchmark.',s:'note'}];
+  inRows[19] = [{v:'Cost to replace one agent',s:'b'},{v:V.replcost,s:'money'},
+                {v:'Recruiting, onboarding, training, equipment and the ramp you pay for twice.',s:'note'}];
+  inRows[20] = [{v:'Cost per quality incident',s:'b'},{v:V.incidentcost,s:'money'},
+                {v:'Average credit, refund or goodwill payment plus any contractual penalty.',s:'note'}];
+  inRows[21] = [{v:'Customer lifetime value',s:'b'},{v:V.ltv,s:'money'},
+                {v:"Finance's number, not one you build. Agree gross margin versus revenue first.",s:'note'}];
+  inRows[22] = [];
+  inRows[23] = [{v:'REALISATION',s:'band'},{s:'band'},{s:'band'}];
+  inRows[24] = [{v:'Realisation factor',s:'b'},{v:realzVal,s:'in'},
                 {v:'Share that survives full rollout. Zero when the harvest mechanism is soft savings.',s:'note'}];
-  inRows[18] = [{v:'Harvest mechanism',s:'b'},{v:HARVEST[V.harvest]||'NOT YET NAMED',s:'in'},
+  inRows[25] = [{v:'Harvest mechanism',s:'b'},{v:HARVEST[V.harvest]||'NOT YET NAMED',s:'in'},
                 {v:'How freed capacity becomes money. Finance will not sign without this.',s:'note'}];
-  inRows[19] = [];
-  inRows[20] = [{v:'INVESTMENT',s:'band'},{s:'band'},{s:'band'}];
-  inRows[21] = [{v:'Black Belt loaded cost per year',s:'b'},{v:V.bbcost,s:'money'},{v:'Fully loaded.',s:'note'}];
-  inRows[22] = [{v:'Months dedicated to this project',s:'b'},{v:V.bbmonths,s:'in'},{v:'',s:'note'}];
-  inRows[23] = [{v:'Training and materials',s:'b'},{v:V.training,s:'money'},{v:'',s:'note'}];
-  inRows[24] = [{v:'Engineering / implementation',s:'b'},{v:V.eng,s:'money'},{v:'System-enforced controls.',s:'note'}];
-  inRows[25] = [{v:'Tooling',s:'b'},{v:V.tooling,s:'money'},{v:'Statistical software, data access.',s:'note'}];
   inRows[26] = [];
-  inRows[27] = [{v:'FINANCE',s:'band'},{s:'band'},{s:'band'}];
-  inRows[28] = [{v:'Years to model',s:'b'},{v:V.years,s:'in'},{v:'Three for a programme. Do not claim benefit in perpetuity.',s:'note'}];
-  inRows[29] = [{v:'Discount rate',s:'b'},{v:V.disc/100,s:'in'},{v:'Ask Finance for the rate they use, usually WACC.',s:'note'}];
+  inRows[27] = [{v:'INVESTMENT',s:'band'},{s:'band'},{s:'band'}];
+  inRows[28] = [{v:'Black Belt loaded cost per year',s:'b'},{v:V.bbcost,s:'money'},{v:'Fully loaded.',s:'note'}];
+  inRows[29] = [{v:'Months dedicated to this project',s:'b'},{v:V.bbmonths,s:'in'},{v:'',s:'note'}];
+  inRows[30] = [{v:'Training and materials',s:'b'},{v:V.training,s:'money'},{v:'',s:'note'}];
+  inRows[31] = [{v:'Engineering / implementation',s:'b'},{v:V.eng,s:'money'},{v:'System-enforced controls.',s:'note'}];
+  inRows[32] = [{v:'Tooling',s:'b'},{v:V.tooling,s:'money'},{v:'Statistical software, data access.',s:'note'}];
+  inRows[33] = [];
+  inRows[34] = [{v:'FINANCE',s:'band'},{s:'band'},{s:'band'}];
+  inRows[35] = [{v:'Years to model',s:'b'},{v:V.years,s:'in'},{v:'Three for a programme. Do not claim benefit in perpetuity.',s:'note'}];
+  inRows[36] = [{v:'Discount rate',s:'b'},{v:V.disc/100,s:'in'},{v:'Ask Finance for the rate they use, usually WACC.',s:'note'}];
 
   /* ---- Benefit model: archetype-specific arithmetic, all live ---- */
   var mr = [];
@@ -4650,6 +4784,29 @@ function bizXlsx(ctx){
     mr.push([{v:'Paid hours freed',s:'b'},{f:'B3/'+B(IN.occ),s:'num'},{v:'÷ occupancy — an hour of handle frees more than an hour of payroll',s:'note'}]);
     mr.push([{v:'Gross annual value',s:'b'},{f:'B4*'+B(IN.hr),s:'moneyCalc'},{v:'paid hours × loaded cost per agent-hour',s:'note'}]);
     grossRow = 5;
+  } else if(a.kind==='deflect'){
+    mr.push([{v:'Contacts deflected',s:'b'},{f:B(IN.vol)+'*'+B(IN.deflrate),s:'intCalc'},{v:'volume × share deflected',s:'note'}]);
+    mr.push([{v:'Cost avoided per contact',s:'b'},{f:B(IN.cpc)+'-'+B(IN.cpcnew),s:'moneyCalc'},
+             {v:'assisted cost − cheaper-channel cost. The contact moves, it does not vanish.',s:'note'}]);
+    mr.push([{v:'Gross annual value',s:'b'},{f:'B3*B4',s:'moneyCalc'},{v:'deflected × cost difference',s:'note'}]);
+    grossRow = 5;
+  } else if(a.kind==='attrition'){
+    mr.push([{v:'Attrition reduction (points)',s:'b'},{f:B(IN.attr)+'-'+B(IN.attrtgt),s:'pct'},{v:'today − target',s:'note'}]);
+    mr.push([{v:'Replacements avoided',s:'b'},{f:B(IN.agents)+'*B3',s:'num'},{v:'agents × reduction',s:'note'}]);
+    mr.push([{v:'Gross annual value',s:'b'},{f:'B4*'+B(IN.replcost),s:'moneyCalc'},{v:'people × cost to replace one',s:'note'}]);
+    grossRow = 5;
+  } else if(a.kind==='copq'){
+    mr.push([{v:'Improvement (percentage points)',s:'b'},{f:B(IN.cur)+'-'+B(IN.tgt),s:'pct'},{v:'current − target',s:'note'}]);
+    mr.push([{v:'Incidents avoided per year',s:'b'},{f:B(IN.vol)+'*B3',s:'intCalc'},{v:'volume × improvement',s:'note'}]);
+    mr.push([{v:'Gross annual value',s:'b'},{f:'B4*'+B(IN.incidentcost),s:'moneyCalc'},
+             {v:'incidents × cost per incident. This money already left the business.',s:'note'}]);
+    grossRow = 5;
+  } else if(a.kind==='churn'){
+    mr.push([{v:'Churn reduction (points)',s:'b'},{f:B(IN.cur)+'-'+B(IN.tgt),s:'pct'},{v:'current − target',s:'note'}]);
+    mr.push([{v:'Customers retained per year',s:'b'},{f:B(IN.vol)+'*B3',s:'intCalc'},{v:'volume × reduction',s:'note'}]);
+    mr.push([{v:'Revenue protected',s:'b'},{f:'B4*'+B(IN.ltv),s:'moneyCalc'},
+             {v:'customers × lifetime value. Revenue, not cost — say so when you present it.',s:'note'}]);
+    grossRow = 5;
   } else {
     mr.push([{v:'Shrinkage reduction (points)',s:'b'},{f:B(IN.shrink)+'-'+B(IN.shrinktgt),s:'pct'},{v:'today − target',s:'note'}]);
     mr.push([{v:'Paid hours in scope',s:'b'},{f:B(IN.agents)+'*1760',s:'num'},{v:'agents × 1,760 paid hours',s:'note'}]);
@@ -4664,6 +4821,9 @@ function bizXlsx(ctx){
   var fteRow = realRow+1;
   var fteF = (a.kind==='aht') ? 'B4/1760'
            : (a.kind==='shrink') ? 'B5/1760'
+           : (a.kind==='attrition') ? 'B4'
+           : (a.kind==='churn') ? '0'
+           : (a.kind==='deflect') ? 'B3*('+B(IN.aht)+'/3600)/'+B(IN.occ)+'/1760*(1-'+B(IN.cpcnew)+'/'+B(IN.cpc)+')'
            : 'B'+(grossRow-1)+'*('+B(IN.aht)+'/3600)/'+B(IN.occ)+'/1760';
   mr.push([{v:'FTE equivalent',s:'b'},{f:fteF,s:'num'},{v:'capacity released, expressed as people',s:'note'}]);
   mr.push([]);

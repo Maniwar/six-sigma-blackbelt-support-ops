@@ -345,7 +345,8 @@ JS_END = "/* ============================================================ docx w
 
 # Each problem archetype emits a different benefit model, so the row the gross
 # value lands on shifts. Every branch gets generated and recalculated.
-GROSS_ROW = {"rate": 5, "volume": 4, "aht": 5, "shrink": 6}
+GROSS_ROW = {"rate": 5, "volume": 4, "aht": 5, "shrink": 6,
+             "deflect": 5, "attrition": 5, "copq": 5, "churn": 5}
 
 HARNESS = r"""
 const fs=require('fs');
@@ -355,14 +356,23 @@ global.fm=function(n,d){ if(n===undefined||n===null||!isFinite(n)) return '—';
 eval(fs.readFileSync(process.argv[2],'utf8'));
 const outDir=process.argv[3];
 const base={vol:480000,cpc:6.8,rate:14.0,hr:38,occ:82,aht:420,ahtsave:14,agents:120,shrink:32,
-  shrinktgt:28,target:8.0,harvest:'reduce',realz:80,bbmonths:9,bbcost:120000,training:35000,
-  eng:60000,tooling:8000,years:3,disc:10};
+  shrinktgt:28,target:8.0,harvest:'reduce',realz:80,
+  deflrate:35,cpcnew:0.35,attr:38,attrtgt:30,replcost:9500,incidentcost:85,ltv:1400,
+  bbmonths:9,bbcost:120000,training:35000,eng:60000,tooling:8000,years:3,disc:10};
 const kinds=[
  {kind:'rate',   n:'Reduce rework and reopens',  metric:'Reopen rate',        gross:480000*0.06*6.8},
  {kind:'volume', n:'Eliminate a contact driver', metric:'Contacts per year',
   V:{rate:40000,target:8000},                                                 gross:(40000-8000)*6.8},
  {kind:'aht',    n:'Reduce handle time',         metric:'Average handle time',gross:480000*14/3600/0.82*38},
- {kind:'shrink', n:'Recover shrinkage capacity', metric:'Shrinkage %',        gross:120*1760*0.04*38}
+ {kind:'shrink', n:'Recover shrinkage capacity', metric:'Shrinkage %',        gross:120*1760*0.04*38},
+ {kind:'deflect',  n:'Deflect to self-service',  metric:'Share deflected',
+  gross:480000*0.35*(6.8-0.35)},
+ {kind:'attrition',n:'Reduce agent attrition',   metric:'Annual attrition',
+  gross:120*0.08*9500},
+ {kind:'copq',     n:'Cut the cost of poor quality', metric:'Incident rate',
+  gross:480000*0.06*85},
+ {kind:'churn',    n:'Protect revenue at risk',  metric:'Churn rate',
+  gross:480000*0.06*1400}
 ];
 const meta={};
 for(const k of kinds){
@@ -512,6 +522,15 @@ def test_a11y() -> None:
     check("behavior:'smooth'" not in src,
           "scripted scrolls go through SCROLL_BEHAVIOR rather than hardcoding smooth")
     check(":focus-visible" in src, "a visible focus ring is defined")
+
+    # Finance is told they can check the maths in the workbook, so every chart
+    # drawn in the HTML case must have a counterpart bound to cells in the Excel.
+    html_charts = re.findall(r"emBar\(\{title:'([^']*)'", src)
+    xl_charts = re.findall(r"type:'(?:col|bar|line)', title:'([^']*)'", src)
+    check(len(html_charts) == len(xl_charts) and len(html_charts) == 4,
+          f"every on-screen chart has an Excel counterpart "
+          f"({len(html_charts)} in HTML, {len(xl_charts)} in Excel)",
+          f"HTML={html_charts} XL={xl_charts}")
 
 
 # --------------------------------------------------------------------- main
