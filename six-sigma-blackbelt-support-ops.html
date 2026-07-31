@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="app-version" content="2.8">
+<meta name="app-version" content="2.9">
 <title>Six Sigma Black Belt Program — Customer Support Operations</title>
 <style>
 :root{
@@ -620,7 +620,7 @@ mark.thit{background:#fde68a;color:inherit;padding:0 1px;border-radius:2px}
   <div class="brand">
     <div class="k">Operational Excellence</div>
     <h1>Six Sigma Black Belt Program</h1>
-    <p>Customer Support Operations &middot; v2.8</p>
+    <p>Customer Support Operations &middot; v2.9</p>
   </div>
   <div class="navsearch"><input id="q" type="search" placeholder="Filter curriculum modules&hellip;" autocomplete="off"></div>
 
@@ -708,7 +708,7 @@ mark.thit{background:#fde68a;color:inherit;padding:0 1px;border-radius:2px}
   </div>
 
 <div class="box good" style="margin-top:26px">
-<div class="t">New in v2.8 &mdash; the jargon is actually explained</div>
+<div class="t">New in v2.9 &mdash; the jargon is actually explained</div>
 <ul style="margin-bottom:0">
 <li><b>The glossary went from 97 entries to 253.</b> Six Sigma itself, Lean, non-parametric,
 transformation, ASQ, IASSC, QA, SOP, KPI, ROI, DOE, I-MR, rational subgrouping, Cohen&rsquo;s and
@@ -720,6 +720,14 @@ text there. Fixed &mdash; a template preview now carries 30&ndash;40 explainers.
 <li><b>Every one of the 28 statistical test results was a dead end.</b> Each named a test and linked to
 nothing. They now link to the tool that explains how to run it and the template you record it in.</li>
 <li><b>Plurals resolve.</b> SLAs, CTQs, KPIs and SOPs used to match nothing at all.</li>
+<li><b>Fixed: 21 terms were defined but never clickable.</b> A suppression list dating from the
+original build was hiding t-test, ANOVA, Chi-square, kappa, regression, Gemba, A3, tollgate,
+stratification and p90 from the prose entirely &mdash; they sat in the index and nowhere else. In a
+Six Sigma document none of those has an everyday meaning. <b>P&amp;L</b> is now defined too, after
+appearing nine times without an explainer.</li>
+<li><b>Fixed: the verb &ldquo;push&rdquo; was linking to the Lean pull system.</b> &ldquo;Pull&rdquo;
+and &ldquo;Push&rdquo; had been registered as synonyms, so ordinary sentences matched. Common verbs
+are no longer synonyms for anything.</li>
 <li><b>Fixed: a stray capital <i>Z</i> was clickable.</b> &ldquo;Z&rdquo; had been added as a
 short name for Z-score, and a one-character alias matches every isolated capital letter in the page.
 Aliases shorter than two characters are now rejected outright.</li>
@@ -3181,7 +3189,7 @@ Object.assign(GLOSS, {
 "Bonferroni":{full:"Bonferroni correction",plain:"Divide your alpha by the number of comparisons you are making.",why:"The simplest guard against finding a false positive by running lots of tests. It is conservative — Benjamini-Hochberg is a less blunt alternative when you have many comparisons.",how:"Testing 10 things at overall 5%? Use 0.005 for each.",aka:["Benjamini-Hochberg","Multiple comparison correction"]},
 "Independence":{full:"Independence",plain:"Each observation carries its own information rather than being tied to another.",why:"The assumption support data breaks most often and most invisibly. Contacts handled by the same agent are correlated, and days within a week are correlated — treating 8,000 contacts from 40 agents as 8,000 independent points makes your confidence interval far too narrow and your p-value far too small.",how:"Aggregate to the independent unit — agent-week rather than contact — or use a model that accounts for the clustering.",aka:["Independent"]},
 "Clustering":{full:"Clustering",plain:"Observations arrive in groups that resemble each other — contacts within an agent, tickets within a customer.",why:"Ignoring it is the most common reason a support analysis reports a difference that does not replicate. The effective sample size is closer to the number of clusters than the number of rows.",how:"Aggregate to the cluster, or use a mixed-effects or clustered-error model.",aka:["Clustered"]},
-"Paired":{full:"Paired design",plain:"The same units measured twice, rather than two separate groups.",why:"Much more powerful, because each unit is its own control and unit-to-unit variation drops out. Watch for regression to the mean if the units were selected for being extreme — 'our 20 worst agents' will improve without you doing anything.",how:"Paired t-test or Wilcoxon signed-rank. McNemar for paired yes/no data.",aka:["Paired data","Matched"]},
+"Paired":{full:"Paired design",plain:"The same units measured twice, rather than two separate groups.",why:"Much more powerful, because each unit is its own control and unit-to-unit variation drops out. Watch for regression to the mean if the units were selected for being extreme — 'our 20 worst agents' will improve without you doing anything.",how:"Paired t-test or Wilcoxon signed-rank. McNemar for paired yes/no data.",aka:["Paired data"]},
 "Fisher's exact":{full:"Fisher's exact test",plain:"An exact alternative to chi-square when the counts are small.",why:"Chi-square relies on an approximation that breaks down with sparse tables. Below about five expected in a cell, use the exact test rather than trusting the approximation.",how:"Minitab offers it alongside chi-square for 2×2 tables.",aka:[]},
 "McNemar":{full:"McNemar's test",plain:"The test for paired yes/no data — the same tickets or agents before and after.",why:"Using a two-proportion test here throws away the pairing and loses a lot of power. It only looks at the cases that changed, which is the actual evidence.",how:"Minitab: <i>Stat → Tables → Cross Tabulation</i> with the paired option.",aka:[]},
 "Poisson":{full:"Poisson distribution",plain:"The distribution of counts of rare-ish events in a fixed window — escalations per week, outages per quarter.",why:"Its defining property is that the variance equals the mean. Support count data usually violates this — the variance is larger — which is overdispersion, and it is why a plain Poisson model or a u-chart signals far too often.",how:"Check whether variance exceeds the mean before using it. If it does, use negative binomial.",aka:[]},
@@ -3234,7 +3242,7 @@ Object.assign(GLOSS, {
 });
 Object.assign(GLOSS, {
 "Changeover":{full:"Changeover",plain:"The time lost switching from one kind of work to another.",why:"Real in support and almost never measured. An agent moving between a billing queue and a technical queue pays a mental changeover cost every time, which is why blended queues often have worse handle time than dedicated ones despite better utilisation on paper.",how:"Compare handle time for the first few contacts after a queue switch against the steady state.",aka:[]},
-"Pull system":{full:"Pull system",plain:"Work is taken by whoever is ready for it, instead of being pushed to them.",why:"Pushing work into a queue that is already full creates the backlog and hides it. A pull system with a WIP limit makes the constraint visible immediately, which is uncomfortable and correct.",how:"Agents take the next item when they finish, rather than tickets being assigned in advance. Pair it with a WIP limit.",aka:["Pull","Push"]},
+"Pull system":{full:"Pull system",plain:"Work is taken by whoever is ready for it, instead of being pushed to them.",why:"Pushing work into a queue that is already full creates the backlog and hides it. A pull system with a WIP limit makes the constraint visible immediately, which is uncomfortable and correct.",how:"Agents take the next item when they finish, rather than tickets being assigned in advance. Pair it with a WIP limit.",aka:[]},
 "Async":{full:"Asynchronous support",plain:"Channels where nobody waits for a reply in real time — email, messaging, in-app threads.",why:"The economics are different enough that comparing async handle time with voice handle time is meaningless. Async is also the natural home for deferrable work, which is what lets you level an intraday peak.",how:"Your ticketing platform. Measure it with lead time and touch time, not with a call-style handle time.",aka:["Asynchronous"]},
 "Forecast accuracy":{full:"Forecast accuracy",plain:"How close the predicted contact volume was to what actually arrived.",why:"Upstream of everything staffing-related. A schedule built on a poor forecast produces service-level misses that look like an execution problem and are not — which is why you check the forecast before you blame the floor.",how:"Workforce management. Look at it by interval, not by day; a day that is accurate in total can be badly wrong at 10am.",aka:[]},
 "Queue discipline":{full:"Queue discipline",plain:"The rule deciding which waiting item gets worked next.",why:"Frequently different from what everyone believes. Ad-hoc cherry-picking produces wildly variable waits and makes any lead-time promise impossible to keep, even when average performance looks fine.",how:"Read the actual routing rules, then check them against what agents do. The two often disagree.",aka:[]}
@@ -3248,6 +3256,11 @@ Object.assign(GLOSS, {
 "R-squared":{full:"R-squared",plain:"The share of the variation in your outcome that the model accounts for.",why:"Easy to over-trust. A high R-squared with patterned residuals means the model is wrong in a way this number hides, and adding variables always raises it — which is why adjusted R-squared exists and why a holdout matters more than either.",how:"Reported with every regression. Read it next to the residual plots, never alone.",aka:["R²","Adjusted R-squared"]},
 "Regression to the mean":{full:"Regression to the mean",plain:"Extreme results tend to be less extreme next time, all on their own.",why:"The single most common false success in support. Coach your twenty worst agents and they will improve whether or not the coaching worked, because they were partly having a bad month. Without a control group you cannot tell the difference.",how:"Use a concurrent control group selected the same way. Never judge an intervention on a group chosen for being extreme.",aka:[]},
 "Western Electric":{full:"Western Electric rules",plain:"The original set of control-chart patterns that count as a signal.",why:"Same purpose as the Nelson rules and largely overlapping. Switching on every rule at once multiplies false alarms, which is how teams learn to ignore the chart.",how:"Available in most SPC software. Pick a small number deliberately.",aka:["Western Electric rules"]}
+});
+Object.assign(GLOSS, {
+"P&L":{full:"Profit and Loss statement",plain:"The financial statement showing revenue, costs and what is left.",why:"The test every benefit claim here has to pass. Freed capacity, shorter handling and happier customers are all real, and none of them appear on the P&L until something actually changes — a role removed, a hire cancelled, an invoice renegotiated. That is what the harvest mechanism is for.",how:"Finance owns it. Ask which line your saving lands on and in which month; if nobody can answer, you have soft savings.",aka:["Profit and loss","P&amp;L"]},
+"Champion":{full:"Champion",plain:"The senior sponsor who owns the problem, clears the obstacles and signs the benefit.",why:"The single strongest predictor of whether a project lands. A Champion who cannot remove a blocker or commit a budget line is a spectator, and the project will stall at the first real obstacle.",how:"Named in the charter, with the tollgate dates in their calendar before the project starts.",aka:[]},
+"Power":{full:"Statistical power",plain:"The chance your test detects a real difference if there is one.",why:"The reason so many support experiments report 'no significant difference' and get abandoned. At 80% power you miss a real effect one time in five; below that you are mostly measuring your own sample size.",how:"Set it before collecting data — 0.80 minimum, 0.90 for anything you will spend real money on. It drives the sample size calculation.",aka:[]}
 });
 /* ---- abbreviations and alternate names for entries that already exist ---- */
 [["Kappa",["Cohen's kappa","Fleiss' kappa","Cohen’s kappa","Fleiss’ kappa"]],
@@ -3500,9 +3513,18 @@ function dl(name, text, mime){
 
 /* ================================================================ glossary */
 // Terms too common as ordinary English to auto-underline; still in the index.
-var NOAUTO = {'Power':1,'Median':1,'Alpha':1,'Beta':1,'Regression':1,'Kappa':1,'Cp':1,
-  'Attrition':1,'Containment':1,'Gemba':1,'Kaizen':1,'A3':1,'Confounding':1,'Stratification':1,
-  'Effect size':1,'Champion':1,'Tollgate':1,'p90':1,'t-test':1,'ANOVA':1,'Chi-square':1};
+// This list used to suppress 21 terms as "too common as ordinary English",
+// which quietly meant t-test, ANOVA, Chi-square, Kappa, Gemba, A3, Tollgate and
+// the rest were in the index but never clickable anywhere in the prose. In a
+// Six Sigma document none of those carry an everyday meaning. Only words whose
+// ordinary sense genuinely dominates stay suppressed, and the three-links-per-
+// section cap keeps the density sane.
+// Words whose everyday sense is common enough that an inline link would land on
+// the wrong meaning. They stay in the A-Z index and stay clickable there — this
+// only stops them being auto-underlined mid-sentence. Keep this list short:
+// suppressing a term is how t-test ended up defined but never clickable.
+var NOAUTO = {'Power':1,'Champion':1,'Trial':1,'Exposure':1,'Independent':1,
+  'Constraint':1,'Opportunity':1};
 
 var glTerms = [];
 Object.keys(GLOSS).forEach(function(k){

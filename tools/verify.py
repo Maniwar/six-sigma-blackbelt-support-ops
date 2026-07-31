@@ -577,6 +577,21 @@ def test_glossary() -> None:
           "single-character glossary aliases are rejected at runtime")
     check("seen[a.toLowerCase()]=1" in src, "duplicate aliases are collapsed")
 
+    # NOAUTO suppresses a term from being linked inline. It had grown to 21
+    # entries and was quietly hiding t-test, ANOVA, Chi-square, Kappa, Gemba, A3
+    # and Tollgate from the prose entirely. Keep it small and deliberate.
+    noauto = re.search(r"var NOAUTO = \{([^}]*)\}", src)
+    check(bool(noauto), "NOAUTO list is present")
+    if noauto:
+        n = len(re.findall(r"'[^']+':1", noauto.group(1)))
+        check(n <= 10, f"NOAUTO stays short ({n} terms) so technical terms remain clickable")
+        for t in ("'t-test'", "'ANOVA'", "'Chi-square'", "'Kappa'", "'Tollgate'", "'Gemba'"):
+            check(t not in noauto.group(1), f"{t} is not suppressed from the prose")
+    # Ordinary verbs must not be registered as synonyms for Lean vocabulary.
+    for bad in ('"Pull","Push"', '"Paired data","Matched"'):
+        check(bad not in src, f"no common-verb alias: {bad}")
+    check('"P&L":{' in src, "P&L is defined")
+
 
 def test_toollib() -> None:
     """The tool library's navigation aids, and that nothing dangles."""
