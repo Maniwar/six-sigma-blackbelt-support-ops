@@ -38,7 +38,6 @@ FILL_CALC = "FFF2F7FF"
 # a RACI grid are structures, not distributions. Everything else must chart.
 NO_CHART_OK = {
     "20-five-whys-tree.xlsx": "a causal chain is a structure, not a distribution",
-    "22-stakeholder-and-raci.xlsx": "handled by the influence/interest grid on its own tab",
 }
 
 ERR_VALUES = ("#REF!", "#VALUE!", "#DIV/0!", "#NAME?", "#N/A", "#NULL!", "#NUM!")

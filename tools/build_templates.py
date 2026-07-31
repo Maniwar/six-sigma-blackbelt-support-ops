@@ -472,6 +472,11 @@ def fishbone():
 
 
 # ------------------------------------------------------ 22 stakeholder / RACI
+STAKEHOLDERS = [('A. Okafor', 'Billing Ops Manager', 5, -1, 'Proof this will not add work to her team', 'Black Belt'), ('R. Mehta', 'Support Director', 5, 2, 'A monthly number she can take to the exec review', 'Champion'), ('J. Lindqvist', 'Finance Business Partner', 4, 0, 'The benefit accounting policy agreed before baseline', 'Black Belt'), ('S. Duarte', 'WFM Lead', 4, -2, 'Assurance the harvest is scheduled, not assumed', 'Champion'), ('P. Nwosu', 'Platform Engineering Manager', 3, 1, 'A scoped ticket, not a standing request', 'Black Belt'), ('K. Tanaka', 'QA Lead', 3, 2, 'Involvement in the operational definition', 'Black Belt'), ('M. Alvarez', 'Tier 1 Team Lead', 2, 1, 'Her agents consulted before the process changes', 'Process owner'), ('D. Byrne', 'Compliance', 2, 0, 'Sight of anything touching retention or consent', 'Champion')]
+
+RACI_ROWS = [('Sign the benefit and harvest mechanism', 'C', 'A', 'C', 'C', 'R'), ('Agree the operational definition of a defect', 'R', 'I', 'A', 'I', 'C'), ('Approve the pilot design and stopping rule', 'R', 'A', 'C', 'C', 'I'), ('Change the routing rules in production', 'C', 'I', 'A', 'C', 'I'), ('Own the control chart and its reaction plan', 'C', 'I', 'A', 'R', 'I'), ('Release the headcount the project frees', 'I', 'C', 'C', 'R', 'A')]
+
+
 def stakeholder():
     wb = Workbook(); wb.remove(wb.active)
     ws = wb.create_sheet("Stakeholders")
@@ -480,31 +485,63 @@ def stakeholder():
     widths(ws, [26, 26, 14, 14, 16, 30, 30])
     header(ws, 4, ["Name", "Role", "Influence 1-5", "Support -2..+2", "Action needed",
                    "What they need from you", "Owner"])
-    ex = ["A. Okafor", "Billing Ops Manager", 5, -1, None,
-          "Proof this will not add work to her team", "Black Belt"]
-    for i, v in enumerate(ex, start=1):
-        if v is None: continue
-        c = ws.cell(row=5, column=i, value=v); c.fill = EX; c.border = THIN
-        c.alignment = Alignment(wrap_text=True, vertical="top")
-    c = mark(ws, 5, 5, "calc"); c.fill = EX
-    c.value = '=IF(COUNT(C5:D5)<2,"",IF(AND(C5>=4,D5<0),"ENGAGE NOW",IF(C5>=4,"KEEP CLOSE",IF(D5<0,"MONITOR","INFORM"))))'
-    SHOWN[("Stakeholders", "E5")] = "ENGAGE NOW"
-    for r in range(6, 24):
+    # One stakeholder is not a stakeholder map, and it left every quadrant of
+    # the grid empty but one.
+    for k, (nm, role, inf, sup, need, owner) in enumerate(STAKEHOLDERS):
+        r = 5 + k
+        for i, v in enumerate((nm, role, inf, sup), start=1):
+            c = ws.cell(row=r, column=i, value=v); c.fill = EX; c.border = THIN
+            c.alignment = Alignment(wrap_text=True, vertical="top")
+        for i, v in ((6, need), (7, owner)):
+            c = ws.cell(row=r, column=i, value=v); c.fill = EX; c.border = THIN
+            c.alignment = Alignment(wrap_text=True, vertical="top")
+        c = mark(ws, r, 5, "calc"); c.fill = EX
+        c.value = (f'=IF(COUNT(C{r}:D{r})<2,"",IF(AND(C{r}>=4,D{r}<0),"ENGAGE NOW",'
+                   f'IF(C{r}>=4,"KEEP CLOSE",IF(D{r}<0,"MONITOR","INFORM"))))')
+        SHOWN[("Stakeholders", f"E{r}")] = (
+            "ENGAGE NOW" if inf >= 4 and sup < 0 else
+            "KEEP CLOSE" if inf >= 4 else "MONITOR" if sup < 0 else "INFORM")
+        ws.row_dimensions[r].height = 26
+    for r in range(5 + len(STAKEHOLDERS), 24):
         for cc in [1, 2, 3, 4, 6, 7]:
             mark(ws, r, cc, "in").alignment = Alignment(wrap_text=True, vertical="top")
         c = mark(ws, r, 5, "calc")
         c.value = (f'=IF(COUNT(C{r}:D{r})<2,"",IF(AND(C{r}>=4,D{r}<0),"ENGAGE NOW",'
                    f'IF(C{r}>=4,"KEEP CLOSE",IF(D{r}<0,"MONITOR","INFORM"))))')
         SHOWN[("Stakeholders", f"E{r}")] = ""
+    # The stakeholder map itself: influence against support, so the quadrant a
+    # name lands in is visible rather than inferred from two columns of digits.
+    sc = ScatterChart()
+    sc.title = "Stakeholder map — influence against support"
+    sc.style = 13
+    sc.height, sc.width = 10, 15
+    sc.x_axis.title = "Support:  -2 opposed  \u2192  +2 advocate"
+    sc.y_axis.title = "Influence over the outcome"
+    sc.x_axis.delete = False
+    sc.y_axis.delete = False
+    sc.x_axis.scaling.min, sc.x_axis.scaling.max = -2.5, 2.5
+    sc.y_axis.scaling.min, sc.y_axis.scaling.max = 0, 6
+    sc.legend = None
+    pts = Series(Reference(ws, min_col=3, min_row=5, max_row=4 + len(STAKEHOLDERS)),
+                 xvalues=Reference(ws, min_col=4, min_row=5, max_row=4 + len(STAKEHOLDERS)),
+                 title="Stakeholders")
+    pts.marker = Marker(symbol="circle", size=9)
+    pts.marker.graphicalProperties.solidFill = "1F4E79"
+    pts.graphicalProperties.line.noFill = True      # points only, no joining line
+    sc.series.append(pts)
+    ws.add_chart(sc, "I4")
+
     dvi = DataValidation(type="whole", operator="between", formula1=1, formula2=5, allow_blank=True)
     ws.add_data_validation(dvi); dvi.add("C5:C23")
     dvs = DataValidation(type="whole", operator="between", formula1=-2, formula2=2, allow_blank=True)
     ws.add_data_validation(dvs); dvs.add("D5:D23")
     band(ws, 25, "SUMMARY", 7)
     for i, (label, f, shown) in enumerate([
-            ("Stakeholders mapped", '=COUNTA(A5:A23)', "1"),
-            ("High influence and opposed — deal with these first", '=COUNTIF(E5:E23,"ENGAGE NOW")', "1"),
-            ("High influence and supportive — your sponsors", '=COUNTIF(E5:E23,"KEEP CLOSE")', "0")], start=26):
+            ("Stakeholders mapped", '=COUNTA(A5:A23)', str(len(STAKEHOLDERS))),
+            ("High influence and opposed — deal with these first", '=COUNTIF(E5:E23,"ENGAGE NOW")',
+             str(sum(1 for x in STAKEHOLDERS if x[2] >= 4 and x[3] < 0))),
+            ("High influence and supportive — your sponsors", '=COUNTIF(E5:E23,"KEEP CLOSE")',
+             str(sum(1 for x in STAKEHOLDERS if x[2] >= 4 and x[3] >= 0)))], start=26):
         ws.cell(row=i, column=1, value=label).font = F_B
         ws.merge_cells(start_row=i, start_column=1, end_row=i, end_column=4)
         mark(ws, i, 5, "calc").value = f
@@ -517,14 +554,16 @@ def stakeholder():
     widths(ws2, [40, 16, 16, 16, 16, 16, 26])
     header(ws2, 4, ["Activity / decision", "Black Belt", "Champion", "Process owner",
                     "WFM", "Finance", "Accountable count"])
-    ex2 = ["Sign the benefit and harvest mechanism", "C", "A", "C", "C", "R", None]
-    for i, v in enumerate(ex2, start=1):
-        if v is None: continue
-        c = ws2.cell(row=5, column=i, value=v); c.fill = EX; c.border = THIN
-    c = mark(ws2, 5, 7, "calc"); c.fill = EX
-    c.value = '=IF(COUNTIF(B5:F5,"A")=1,"OK",IF(COUNTIF(B5:F5,"A")=0,"NO OWNER","MORE THAN ONE"))'
-    SHOWN[("RACI", "G5")] = "OK"
-    for r in range(6, 22):
+    for k, row in enumerate(RACI_ROWS):
+        r = 5 + k
+        for i, v in enumerate(row, start=1):
+            c = ws2.cell(row=r, column=i, value=v); c.fill = EX; c.border = THIN
+            c.alignment = Alignment(wrap_text=True, vertical="center")
+        c = mark(ws2, r, 7, "calc"); c.fill = EX
+        c.value = (f'=IF(COUNTIF(B{r}:F{r},"A")=1,"OK",IF(COUNTIF(B{r}:F{r},"A")=0,'
+                   f'"NO OWNER","MORE THAN ONE"))')
+        SHOWN[("RACI", f"G{r}")] = "OK"
+    for r in range(5 + len(RACI_ROWS), 22):
         for cc in range(1, 7):
             mark(ws2, r, cc, "in")
         c = mark(ws2, r, 7, "calc")
