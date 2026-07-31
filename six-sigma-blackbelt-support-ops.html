@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="app-version" content="2.4">
+<meta name="app-version" content="2.5">
 <title>Six Sigma Black Belt Program — Customer Support Operations</title>
 <style>
 :root{
@@ -491,6 +491,95 @@ table.xgrid td{border:1px solid #dfe4ec;padding:5px 7px;vertical-align:top;line-
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
     transition-duration:.001ms!important;scroll-behavior:auto!important}
 }
+
+/* ---- tool library: navigation, grouping and affordances ---- */
+.tgroup{display:flex;align-items:baseline;gap:10px;margin:26px 0 8px;padding-bottom:6px;
+  border-bottom:2px solid currentColor;font-size:13px;font-weight:750;letter-spacing:.07em;
+  text-transform:uppercase}
+.tgroup span{color:inherit}
+.tgroup i{font-style:normal;font-size:11.5px;font-weight:600;letter-spacing:.03em;
+  text-transform:none;color:var(--faint);margin-left:auto}
+.tgroup.p-d{color:var(--d)} .tgroup.p-m{color:var(--m)} .tgroup.p-a{color:var(--a)}
+.tgroup.p-i{color:var(--i)} .tgroup.p-c{color:var(--c)} .tgroup.p-x{color:var(--muted)}
+
+.tool{border-left-width:3px;border-left-style:solid;transition:box-shadow .15s,border-color .15s}
+.tool[data-ph="D"]{border-left-color:var(--d)} .tool[data-ph="M"]{border-left-color:var(--m)}
+.tool[data-ph="A"]{border-left-color:var(--a)} .tool[data-ph="I"]{border-left-color:var(--i)}
+.tool[data-ph="C"]{border-left-color:var(--c)} .tool[data-ph="X"]{border-left-color:var(--faint)}
+.tool:hover{box-shadow:0 2px 10px rgba(15,21,32,.07)}
+.tool[open]{box-shadow:0 3px 16px rgba(15,21,32,.09)}
+.tool.flash{animation:toolflash 1.8s ease-out}
+@keyframes toolflash{0%{background:var(--accBg);box-shadow:0 0 0 3px var(--acc)}100%{background:#fff}}
+
+.tbadges{display:inline-flex;gap:5px;flex-wrap:wrap;margin-left:auto;align-items:center}
+.tb{font-style:normal;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  padding:2px 7px;border-radius:20px;white-space:nowrap;border:1px solid transparent}
+.tb-calc{background:var(--accBg);color:var(--acc);border-color:currentColor}
+.tb-tpl{background:var(--cBg);color:var(--c)}
+.tb-sw{background:var(--bg3);color:var(--muted)}
+
+.tlink{background:none;border:0;padding:3px;margin-left:2px;cursor:pointer;color:var(--faint);
+  border-radius:5px;display:inline-flex;align-items:center}
+.tlink:hover{color:var(--acc);background:var(--accBg)}
+.tlink.ok{color:var(--c)}
+.tlink.ok::after{content:"Link copied";font-size:11px;font-weight:650;margin-left:5px}
+
+.tool .tcalc{background:var(--accBg);border:1px solid var(--acc);border-radius:8px;
+  padding:10px 13px;margin:10px 0;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.tool .tcalc b{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--acc)}
+.tool .tcalc a{font-weight:650;font-size:13.6px;border:1px solid var(--acc);border-radius:6px;
+  padding:4px 10px;background:#fff;text-decoration:none}
+.tool .tcalc a:hover{background:var(--acc);color:#fff}
+.tool .tcalc span{font-size:12.4px;color:var(--muted);flex-basis:100%}
+
+.tbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 2px}
+.tactive{font-size:12.5px;color:var(--acc);font-weight:650}
+.tfilter.catrow{display:none}
+.tfilter.catrow.open{display:flex}
+.tempty{border:1px dashed var(--line);border-radius:10px;padding:26px 20px;text-align:center;
+  margin:14px 0;background:var(--bg2)}
+.tempty b{display:block;font-size:15px;margin-bottom:4px}
+.tempty p{font-size:13.5px;color:var(--muted);margin:0 0 12px}
+mark.thit{background:#fde68a;color:inherit;padding:0 1px;border-radius:2px}
+
+@media print{
+  .tfilter,.tbar,.tlink,.tempty{display:none!important}
+  .tool{break-inside:avoid;box-shadow:none}
+  .tool .body{display:block!important}
+}
+@media(max-width:640px){
+  .tbadges{width:100%;margin:6px 0 0}
+  .tool>summary{flex-wrap:wrap}
+}
+
+/* ---- "which tool do I need?" picker ---- */
+.tpick{border:1px solid var(--acc);background:var(--accBg);border-radius:10px;margin:16px 0 4px}
+.tpick>summary{padding:11px 16px;cursor:pointer;font-size:14.2px;list-style:none;color:var(--acc)}
+.tpick>summary::-webkit-details-marker{display:none}
+.tpick>summary::after{content:"▾";float:right}
+.tpick[open]>summary::after{content:"▴"}
+.tpick[open]>summary{border-bottom:1px solid var(--acc)}
+#toolPick{padding:15px 16px}
+.tpq{font-size:15px;font-weight:700;margin:0 0 10px;color:var(--ink)}
+.tpopts{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.tpbtn{text-align:left;background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 13px;
+  cursor:pointer;font:inherit;display:block;border-left-width:3px}
+.tpbtn:hover{border-color:var(--acc);box-shadow:0 2px 10px rgba(15,21,32,.08)}
+.tpbtn strong{display:block;font-size:13.8px;font-weight:650}
+.tpbtn span{display:block;font-size:12.4px;color:var(--muted);margin-top:2px}
+.tpbtn.p-d{border-left-color:var(--d)} .tpbtn.p-m{border-left-color:var(--m)}
+.tpbtn.p-a{border-left-color:var(--a)} .tpbtn.p-i{border-left-color:var(--i)}
+.tpbtn.p-c{border-left-color:var(--c)}
+.tphead{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+.tpres{display:grid;gap:8px}
+.tpres-i{display:block;background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 13px;
+  text-decoration:none;color:inherit}
+.tpres-i:hover{border-color:var(--acc);box-shadow:0 2px 10px rgba(15,21,32,.08)}
+.tpres-i strong{display:block;font-size:14px;font-weight:680;color:var(--acc)}
+.tpres-i span{display:block;font-size:12.6px;color:var(--muted);margin-top:2px}
+.tpres-i .tpb{margin-top:6px;display:flex;gap:5px}
+.tpfoot{font-size:12.4px;color:var(--muted);margin:10px 0 0}
+@media print{.tpick{display:none!important}}
 </style>
 </head>
 <body>
@@ -500,7 +589,7 @@ table.xgrid td{border:1px solid #dfe4ec;padding:5px 7px;vertical-align:top;line-
   <div class="brand">
     <div class="k">Operational Excellence</div>
     <h1>Six Sigma Black Belt Program</h1>
-    <p>Customer Support Operations &middot; v2.4</p>
+    <p>Customer Support Operations &middot; v2.5</p>
   </div>
   <div class="navsearch"><input id="q" type="search" placeholder="Filter curriculum modules&hellip;" autocomplete="off"></div>
 
@@ -588,7 +677,25 @@ table.xgrid td{border:1px solid #dfe4ec;padding:5px 7px;vertical-align:top;line-
   </div>
 
 <div class="box good" style="margin-top:26px">
-<div class="t">New in v2.4 &mdash; four more ways a support project makes money</div>
+<div class="t">New in v2.5 &mdash; the tool library is navigable</div>
+<ul style="margin-bottom:0">
+<li><b>&ldquo;Not sure which tool you need?&rdquo;</b> Two questions &mdash; where you are, and what you
+are actually trying to do &mdash; and you land on two or three tools. Every one of the 52 is reachable
+this way.</li>
+<li><b>Thirteen tools now link to the calculator that runs them.</b> The kappa tool hands you a working
+kappa calculator; capability hands you Ppu and the breach rate; Laney, sample size, I-MR and Little's
+Law all do the same. Before this, a tool explained the arithmetic while a live calculator sat two
+sections away with nothing joining them.</li>
+<li><b>Every tool has a link you can send.</b> Copy the link from any tool and it opens straight to it.
+Tools are grouped under DMAIC headings, badged with whether they come with a template, a calculator or
+Minitab steps, and there is an expand-all for reading or printing.</li>
+<li><b>The filters got out of the way.</b> Twenty-two category chips are now behind one control and can
+be combined, search highlights what it matched, and a dead-end filter offers a way back instead of a
+blank page. Press <b>/</b> to jump to search.</li>
+</ul></div>
+
+<div class="box good" style="margin-top:18px">
+<div class="t">In v2.4 &mdash; four more ways a support project makes money</div>
 <ul style="margin-bottom:0">
 <li><b>Deflect to self-service or a cheaper channel.</b> The contact still happens, it just does not
 need a person. The benefit is the cost <i>difference</i>, never the whole contact cost &mdash; a
@@ -2009,6 +2116,8 @@ Known limitations:  Bulk auto-close job at 02:00 sets resolution timestamps
   <p class="lede">Every tool in the program, with how to actually run it — the steps, the software
   commands, what output to read, the decision rule, and the support-specific trap. Open any tool to
   work from it.</p>
+  <details class="tpick"><summary>Not sure which tool you need? <b>Answer two questions</b></summary>
+    <div id="toolPick"></div></details>
   <div class="tfilter">
     <input id="tq" type="search" placeholder="Search tools…" autocomplete="off">
     <button class="chip on" data-ph="">All phases</button>
@@ -3201,6 +3310,7 @@ window.addEventListener('scroll', hidePop, {passive:true});
 /* ================================================================ live formulas */
 function renderFormula(f, host){
   var card = el('div','lf');
+  card.id = 'fml-'+f.id;   // tools link straight to the calculator that runs them
   card.innerHTML =
     '<div class="hd"><h4>'+f.name+'</h4><p>'+f.plain+'</p></div>'+
     '<div class="bd"><div class="sym">'+f.symbolic+'</div>'+
@@ -3275,36 +3385,417 @@ if(fh){
   });
 }
 
-/* ================================================================ tool library */
+/* ================================================================ tool library
+   52 tools is a lot to hand someone as a flat list of accordions. This turns it
+   into something you can navigate: every tool has a stable anchor so it can be
+   linked, they group under DMAIC headings, the ones that have a working
+   calculator say so and link to it, and the filters collapse instead of
+   presenting a wall of chips.
+============================================================================ */
 (function(){
   var list=document.getElementById('toolList'); if(!list) return;
   var tools=[].slice.call(list.querySelectorAll('.tool'));
   var q=document.getElementById('tq'), cnt=document.getElementById('toolCount');
-  var fPh='', fCat='';
+  var fPh='', fCats=[];
+
+  var PHASE={D:'Define',M:'Measure',A:'Analyze',I:'Improve',C:'Control',X:'Cross-cutting'};
+  var PHKEY={D:'d',M:'m',A:'a',I:'i',C:'c',X:'x'};
+
+  // Tools whose arithmetic is already implemented as a live formula card, so
+  // "how to run it" can hand you something that actually runs it.
+  var TOOL_CALC={
+    attributeagreementanalysis:['kappa'],
+    processcapabilityanalysis:['ppu'],
+    dpmoandsigmalevel:['dpmo','dpu'],
+    rolledthroughputyield:['rty'],
+    samplesizecalculation:['ssprop'],
+    oneandtwoproportiontests:['ssprop'],
+    imrchart:['imr'],
+    laneypanducharts:['laney'],
+    littleslaw:['littles'],
+    erlangcastaffingmodels:['staffing'],
+    valuestreammap:['pce'],
+    costofpoorquality:['volben'],
+    projectcharter:['roi']
+  };
+  var CALC_NAME={dpu:'Defects per unit',dpmo:'DPMO and sigma level',rty:'Rolled throughput yield',
+    ppu:'Capability and breach rate',littles:"Little's Law",pce:'Process cycle efficiency',
+    staffing:'Staffing and occupancy',kappa:"Cohen's kappa",imr:'I-MR control limits',
+    laney:'Laney p′ limits',ssprop:'Sample size',ahtben:'AHT benefit',volben:'Avoided-contact benefit',
+    roi:'Payback, ROI and NPV'};
+
+  function norm(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,''); }
+  function slugify(s){ return 'tool-'+(s||'').toLowerCase()
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+
+  /* ---------- one-time enrichment of every card ---------- */
+  var byPhase={};
+  tools.forEach(function(t){
+    var name=((t.querySelector('.tn')||{}).textContent||'').trim();
+    t.id=slugify(name);
+    t.dataset.name=name;
+    (byPhase[t.dataset.ph] = byPhase[t.dataset.ph] || []).push(t);
+
+    var sum=t.querySelector('summary');
+    var hasTpl=!!t.querySelector('[data-tpl]'), hasSw=!!t.querySelector('.sw2');
+    var calcs=TOOL_CALC[norm(name)]||null;
+
+    // badges say what comes with the tool before you open it
+    var badges=document.createElement('span'); badges.className='tbadges';
+    var b='';
+    if(calcs) b+='<i class="tb tb-calc">Calculator</i>';
+    if(hasTpl) b+='<i class="tb tb-tpl">Template</i>';
+    if(hasSw)  b+='<i class="tb tb-sw">Minitab</i>';
+    badges.innerHTML=b;
+    sum.appendChild(badges);
+
+    // a link you can actually send someone
+    var lk=document.createElement('button');
+    lk.className='tlink'; lk.type='button';
+    lk.setAttribute('aria-label','Copy a link to '+name);
+    lk.title='Copy link to this tool';
+    lk.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>';
+    sum.appendChild(lk);
+
+    // link into the calculator that runs this tool
+    if(calcs){
+      var body=t.querySelector('.body');
+      if(body){
+        var d=document.createElement('div'); d.className='tcalc';
+        d.innerHTML='<b>Run it here</b>'+calcs.map(function(id){
+          return '<a href="#fml-'+id+'" data-calc="'+id+'">'+(CALC_NAME[id]||id)+'</a>'; }).join('')+
+          '<span>Live calculator — change any input and the arithmetic redoes itself.</span>';
+        var firstRule=body.querySelector('.rule');
+        firstRule ? body.insertBefore(d, firstRule) : body.appendChild(d);
+      }
+    }
+  });
+
+  /* ---------- DMAIC group headings ---------- */
+  var heads={};
+  Object.keys(byPhase).forEach(function(ph){
+    if(!PHASE[ph]) return;
+    var h=document.createElement('h3');
+    h.className='tgroup p-'+PHKEY[ph];
+    h.innerHTML='<span>'+PHASE[ph]+'</span><i>'+byPhase[ph].length+' tools</i>';
+    byPhase[ph][0].parentNode.insertBefore(h, byPhase[ph][0]);
+    heads[ph]=h;
+  });
+
+  /* ---------- toolbar: count, expand/collapse, category disclosure ---------- */
+  var catRow=document.querySelectorAll('.tfilter')[1];
+  var catToggle=document.createElement('button');
+  catToggle.className='chip catToggle'; catToggle.type='button';
+  catToggle.setAttribute('aria-expanded','false');
+  catToggle.textContent='Filter by category ▾';
+  if(catRow){
+    catRow.classList.add('catrow');
+    catRow.parentNode.insertBefore(catToggle, catRow);
+    catToggle.addEventListener('click', function(){
+      var open=catRow.classList.toggle('open');
+      catToggle.setAttribute('aria-expanded', open?'true':'false');
+      catToggle.textContent='Filter by category '+(open?'▴':'▾');
+    });
+  }
+
+  var bar=document.createElement('div'); bar.className='tbar';
+  bar.innerHTML='<button class="chip" type="button" id="tExpand">Expand all</button>'+
+                '<button class="chip" type="button" id="tReset">Clear filters</button>'+
+                '<span class="tactive" id="tActive"></span>';
+  cnt.parentNode.insertBefore(bar, cnt.nextSibling);
+
+  var empty=document.createElement('div'); empty.className='tempty'; empty.hidden=true;
+  empty.innerHTML='<b>No tool matches that.</b><p>Try a different phase, or clear the filters to see all 52.</p>'+
+    '<button class="btnp" type="button" id="tReset2">Clear filters</button>';
+  list.parentNode.insertBefore(empty, list.nextSibling);
+
+  /* ---------- search-term highlighting ---------- */
+  function clearMarks(t){
+    var marks=t.querySelectorAll('mark.thit');
+    for(var i=marks.length-1;i>=0;i--){
+      var m=marks[i], p=m.parentNode;
+      p.replaceChild(document.createTextNode(m.textContent), m);
+      p.normalize();
+    }
+  }
+  function mark(t, term){
+    if(!term || term.length<2) return;
+    var re=new RegExp('('+term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig');
+    var w=document.createTreeWalker(t, NodeFilter.SHOW_TEXT, {acceptNode:function(n){
+      if(!n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+      var p=n.parentNode;
+      if(p.closest('mark,.tbadges,.tlink,.tcalc')) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT; }});
+    var nodes=[],n; while((n=w.nextNode())) nodes.push(n);
+    nodes.forEach(function(node){
+      if(!re.test(node.nodeValue)) return;
+      re.lastIndex=0;
+      var frag=document.createDocumentFragment(), last=0, m2;
+      while((m2=re.exec(node.nodeValue))){
+        frag.appendChild(document.createTextNode(node.nodeValue.slice(last,m2.index)));
+        var el2=document.createElement('mark'); el2.className='thit'; el2.textContent=m2[1];
+        frag.appendChild(el2); last=m2.index+m2[1].length;
+      }
+      frag.appendChild(document.createTextNode(node.nodeValue.slice(last)));
+      node.parentNode.replaceChild(frag,node);
+    });
+  }
+
+  /* ---------- filtering ---------- */
   function apply(){
     var v=(q.value||'').trim().toLowerCase(), n=0;
     tools.forEach(function(t){
-      var ok = (!fPh || t.dataset.ph===fPh) && (!fCat || t.dataset.cat===fCat) &&
+      clearMarks(t);
+      var ok = (!fPh || t.dataset.ph===fPh) &&
+               (!fCats.length || fCats.indexOf(t.dataset.cat)>-1) &&
                (!v || t.textContent.toLowerCase().indexOf(v)>-1);
-      t.style.display = ok ? '' : 'none';
-      if(ok){ n++; if(v && v.length>2) t.open=true; }
+      t.hidden = !ok;
+      if(ok){ n++; if(v && v.length>2){ t.open=true; mark(t,v); } }
+    });
+    // a heading only earns its place if something under it survived
+    Object.keys(heads).forEach(function(ph){
+      var any=(byPhase[ph]||[]).some(function(t){ return !t.hidden; });
+      heads[ph].hidden = !any || !!v;
     });
     cnt.textContent = n + ' of ' + tools.length + ' tools shown';
+    empty.hidden = n>0;
+    var act=[];
+    if(fPh) act.push(PHASE[fPh]);
+    if(fCats.length) act.push(fCats.join(', '));
+    if(v) act.push('“'+v+'”');
+    document.getElementById('tActive').textContent = act.length ? act.join(' · ') : '';
   }
+
   q.addEventListener('input', apply);
   [].slice.call(document.querySelectorAll('.tfilter .chip')).forEach(function(c){
+    if(c===catToggle) return;
     c.addEventListener('click', function(){
       if(c.hasAttribute('data-ph')){
         fPh=c.dataset.ph;
-        [].slice.call(document.querySelectorAll('.chip[data-ph]')).forEach(function(x){x.classList.toggle('on',x===c);});
+        [].slice.call(document.querySelectorAll('.chip[data-ph]')).forEach(function(x){
+          x.classList.toggle('on',x===c); });
       } else if(c.hasAttribute('data-cat')){
-        fCat=c.dataset.cat;
-        [].slice.call(document.querySelectorAll('.chip[data-cat]')).forEach(function(x){x.classList.toggle('on',x===c);});
+        var val=c.dataset.cat;
+        if(!val){ fCats=[]; }
+        else {
+          var i=fCats.indexOf(val);
+          if(i>-1) fCats.splice(i,1); else fCats.push(val);   // multi-select
+        }
+        [].slice.call(document.querySelectorAll('.chip[data-cat]')).forEach(function(x){
+          x.classList.toggle('on', x.dataset.cat ? fCats.indexOf(x.dataset.cat)>-1 : !fCats.length); });
       }
       apply();
     });
   });
+
+  function reset(){
+    fPh=''; fCats=[]; q.value='';
+    [].slice.call(document.querySelectorAll('.chip[data-ph]')).forEach(function(x){
+      x.classList.toggle('on', x.dataset.ph===''); });
+    [].slice.call(document.querySelectorAll('.chip[data-cat]')).forEach(function(x){
+      x.classList.toggle('on', x.dataset.cat===''); });
+    apply();
+  }
+  document.getElementById('tReset').addEventListener('click', reset);
+  document.getElementById('tReset2').addEventListener('click', reset);
+
+  var expanded=false;
+  document.getElementById('tExpand').addEventListener('click', function(){
+    expanded=!expanded;
+    tools.forEach(function(t){ if(!t.hidden) t.open=expanded; });
+    this.textContent = expanded ? 'Collapse all' : 'Expand all';
+  });
+
+  /* ---------- copy a link to one tool ---------- */
+  list.addEventListener('click', function(e){
+    var b=e.target.closest('.tlink'); if(!b) return;
+    e.preventDefault(); e.stopPropagation();          // do not toggle the <details>
+    var t=b.closest('.tool');
+    var url=location.href.split('#')[0]+'#'+t.id;
+    var done=function(){ b.classList.add('ok'); setTimeout(function(){ b.classList.remove('ok'); },1600); };
+    if(navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(url).then(done, done);
+    else done();
+    if(history.replaceState) history.replaceState(null,'','#'+t.id);
+  });
+
+  /* ---------- deep links ---------- */
+  function openFromHash(){
+    var id=(location.hash||'').slice(1); if(!id) return;
+    var t=document.getElementById(id);
+    if(!t || !t.classList.contains('tool')) return;
+    reset();
+    t.open=true;
+    t.scrollIntoView({behavior:SCROLL_BEHAVIOR, block:'start'});
+    t.classList.add('flash');
+    setTimeout(function(){ t.classList.remove('flash'); },1800);
+  }
+  window.addEventListener('hashchange', openFromHash);
+
+  /* ---------- keyboard: "/" focuses search ---------- */
+  document.addEventListener('keydown', function(e){
+    if(e.key!=='/' || e.metaKey || e.ctrlKey || e.altKey) return;
+    var a=document.activeElement, tag=a&&a.tagName;
+    if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||(a&&a.isContentEditable)) return;
+    e.preventDefault(); q.focus(); q.select();
+  });
+  q.placeholder='Search 52 tools…  (press / )';
+
   apply();
+  setTimeout(openFromHash, 60);
+})();
+
+/* ============================================================ tool picker
+   Fifty-two tools is only useful if you can find the right one. This is the
+   same shape as the statistical test selector: two questions about where you
+   are and what you are actually trying to do, ending on two or three tools.
+   Tools are referenced by name and resolved to their anchor at render time, so
+   a renamed tool shows up as a missing entry in the tests rather than a dead
+   link on the page.
+=========================================================================== */
+(function(){
+  var host=document.getElementById('toolPick'); if(!host) return;
+
+  var PICK=[
+    {ph:'D', t:'Define', q:'What are you trying to do?', o:[
+      {t:'Agree what this project actually covers',
+       d:'Before anyone argues about scope', tools:['SIPOC','Project charter']},
+      {t:'Find out what the customer actually cares about',
+       d:'Turn opinions into measurable requirements',
+       tools:['CTQ tree','Kano model','Verbatim / topic mining','QFD / House of Quality']},
+      {t:'Put a number on the problem',
+       d:'So it survives a conversation with Finance',
+       tools:['Cost of Poor Quality','Project charter']},
+      {t:'Get the people around it on board',
+       d:'The reason most projects stall', tools:['Stakeholder analysis','RACI']}
+    ]},
+    {ph:'M', t:'Measure', q:'What do you need?', o:[
+      {t:'See how the work actually flows',
+       d:'Not how the process document says it does',
+       tools:['Swimlane process map','Value stream map','System-hop / spaghetti diagram']},
+      {t:'Decide what data to collect',
+       d:'Before you touch a query',
+       tools:['Data collection plan','Sample size calculation','Data lineage trace']},
+      {t:'Check whether my measurement can be trusted',
+       d:'Do this before anything downstream of it',
+       tools:['Attribute Agreement Analysis','Gage R&R (ANOVA method)']},
+      {t:'Establish a baseline everyone accepts',
+       d:'The number the whole project is judged against',
+       tools:['Process capability analysis','DPMO and sigma level','Rolled throughput yield',
+              'Histogram, boxplot and run chart','Pareto chart','Normality assessment']}
+    ]},
+    {ph:'A', t:'Analyze', q:'What is the question?', o:[
+      {t:'Generate and narrow candidate causes',
+       d:'From everything anyone suspects, down to a few worth testing',
+       tools:['Cause & effect (Ishikawa) diagram','5 Whys (as a tree)','X-Y matrix']},
+      {t:'Prove a difference between two groups is real',
+       d:'Not just noise you happened to see',
+       tools:['Two-sample t-test','Mann–Whitney U test','One- and two-proportion tests',
+              'Paired t-test / Wilcoxon signed-rank']},
+      {t:'Compare three or more groups, or a mix of categories',
+       d:'Sites, teams, contact reasons, channels',
+       tools:['One-way ANOVA / Kruskal–Wallis','Chi-square test of independence']},
+      {t:'Find what actually drives the outcome',
+       d:'Which x moves the Y, and by how much',
+       tools:['Linear and multiple regression','Logistic regression','Multi-vari study']},
+      {t:'Compare consistency, not averages',
+       d:'Often the real goal, and routinely never tested',
+       tools:["Levene's test (variance comparison)",'Multi-vari study']}
+    ]},
+    {ph:'I', t:'Improve', q:'Where are you?', o:[
+      {t:'Choose between competing solutions',
+       d:'On criteria agreed before you scored anything',
+       tools:['Solution selection matrix (Pugh / weighted criteria)','FMEA']},
+      {t:'Find the best settings for something with several inputs',
+       d:'Rather than changing one thing at a time',
+       tools:['Design of Experiments — 2ᵏ full factorial',
+              'Fractional factorial and screening designs','EVOP (evolutionary operation)']},
+      {t:'Prove it works before you roll it out',
+       d:'With a control group, so the result means something',
+       tools:['Pilot protocol','One- and two-proportion tests']}
+    ]},
+    {ph:'C', t:'Control', q:'What are you protecting?', o:[
+      {t:'Make the gain survive attrition and turnover',
+       d:'The difference between a project and a permanent change',
+       tools:['Poka-yoke (mistake proofing)','Control plan and response plan','Layered process audit']},
+      {t:'Monitor a metric over time and know when to react',
+       d:'Without chasing every wobble',
+       tools:['I-MR chart','Laney p′ and u′ charts','EWMA and CUSUM charts',
+              't-chart and g-chart (rare events)']},
+      {t:'Keep the queue and the wait under control',
+       d:'Backlog, lead time and staffing',
+       tools:['Kanban / WIP limits',"Little's Law",'Erlang C / A staffing models']}
+    ]}
+  ];
+
+  var PHKEY={D:'d',M:'m',A:'a',I:'i',C:'c',X:'x'};
+  var byName={};
+  [].slice.call(document.querySelectorAll('.tool')).forEach(function(t){
+    if(t.dataset.name) byName[t.dataset.name]=t;
+  });
+
+  var state={phase:null, opt:null};
+
+  function render(){
+    var h='';
+    if(state.phase===null){
+      h+='<div class="tpq">Where are you in the project?</div><div class="tpopts">'+
+        PICK.map(function(p,i){
+          return '<button class="tpbtn p-'+PHKEY[p.ph]+'" data-ph="'+i+'">'+
+            '<strong>'+p.t+'</strong></button>'; }).join('')+'</div>';
+    } else {
+      var p=PICK[state.phase];
+      h+='<div class="tphead"><button class="chip" data-back="1">← Start over</button>'+
+         '<span class="pill p-'+PHKEY[p.ph]+'">'+p.t+'</span></div>';
+      if(state.opt===null){
+        h+='<div class="tpq">'+p.q+'</div><div class="tpopts">'+
+          p.o.map(function(o,i){
+            return '<button class="tpbtn" data-opt="'+i+'"><strong>'+o.t+'</strong>'+
+              '<span>'+o.d+'</span></button>'; }).join('')+'</div>';
+      } else {
+        var o=p.o[state.opt];
+        h+='<div class="tpq">'+o.t+'</div><div class="tpres">'+
+          o.tools.map(function(n){
+            var el=byName[n];
+            if(!el) return '';                       // renamed tool: fail quiet on the page, loud in tests
+            var badge='';
+            if(el.querySelector('.tb-calc')) badge+='<i class="tb tb-calc">Calculator</i>';
+            if(el.querySelector('.tb-tpl'))  badge+='<i class="tb tb-tpl">Template</i>';
+            var why=(el.querySelector('.tw2')||{}).textContent||'';
+            return '<a class="tpres-i" href="#'+el.id+'" data-goto="'+el.id+'">'+
+              '<strong>'+n+'</strong><span>'+why+'</span>'+
+              (badge?'<span class="tpb">'+badge+'</span>':'')+'</a>'; }).join('')+
+          '</div><p class="tpfoot">Opens the tool below with the steps, the software commands, '+
+          'the decision rule and the trap it sets in a support context.</p>';
+      }
+    }
+    host.innerHTML=h;
+  }
+
+  host.addEventListener('click', function(e){
+    var b=e.target.closest('[data-ph]');
+    if(b){ state.phase=+b.dataset.ph; state.opt=null; render(); return; }
+    var o=e.target.closest('[data-opt]');
+    if(o){ state.opt=+o.dataset.opt; render(); return; }
+    if(e.target.closest('[data-back]')){ state.phase=null; state.opt=null; render(); return; }
+    var g=e.target.closest('[data-goto]');
+    if(g){
+      e.preventDefault();
+      var t=document.getElementById(g.dataset.goto);
+      if(!t) return;
+      t.hidden=false; t.open=true;
+      t.scrollIntoView({behavior:SCROLL_BEHAVIOR, block:'start'});
+      t.classList.add('flash');
+      setTimeout(function(){ t.classList.remove('flash'); },1800);
+      if(history.replaceState) history.replaceState(null,'','#'+t.id);
+    }
+  });
+
+  // expose the mapping so the test suite can prove every name resolves
+  window.__toolPickNames = PICK.reduce(function(acc,p){
+    p.o.forEach(function(o){ o.tools.forEach(function(n){ acc.push(n); }); }); return acc; },[]);
+
+  render();
 })();
 
 /* ================================================================ glossary index filter */

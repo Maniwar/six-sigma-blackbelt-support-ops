@@ -523,6 +523,48 @@ def test_a11y() -> None:
           "scripted scrolls go through SCROLL_BEHAVIOR rather than hardcoding smooth")
     check(":focus-visible" in src, "a visible focus ring is defined")
 
+
+def test_toollib() -> None:
+    """The tool library's navigation aids, and that nothing dangles."""
+    src = HTML.read_text(encoding="utf-8")
+
+    names = re.findall(r'<span class="tn">([^<]*)</span>', src)
+    check(len(names) == 52, f"52 tools present (found {len(names)})")
+
+    # Every tool the picker recommends must exist under exactly that name, or the
+    # picker renders a gap and the user hits a dead end.
+    # PHKEY exists in both tool modules, so anchor the end of the block *after*
+    # PICK starts or the slice runs backwards and silently matches nothing.
+    p0 = src.index("var PICK=[")
+    p1 = src.index("var PHKEY=", p0)
+    block = src[p0:p1]
+    # Scan both quote styles in one left-to-right pass. A single-quote-only regex
+    # desynchronises on "Levene's test (...)" - the apostrophe inside a
+    # double-quoted string reads as an opening quote and shifts every match after it.
+    picked = set()
+    for arr in re.findall(r"tools:\[(.*?)\]", block, re.S):
+        for a, b in re.findall(r"'([^']*)'|\"([^\"]*)\"", arr):
+            picked.add(a or b)
+    missing = [n for n in names if n not in picked]
+    check(not missing, f"every tool is reachable from the picker",
+          "unreachable: " + ", ".join(missing[:5]))
+
+    # Tool -> calculator links must point at formula cards that exist.
+    calc_ids = set(re.findall(r'\{id:"([a-z]+)",group:', src))
+    linked = set(re.findall(r"^\s*([a-z]+):\['([a-z',]+)'\],?$", src, re.M))
+    referenced = set()
+    blk = src[src.index("var TOOL_CALC={"):src.index("var CALC_NAME=")]
+    for grp in re.findall(r"\[([^\]]+)\]", blk):
+        referenced |= {x.strip().strip("'") for x in grp.split(",")}
+    check(referenced and referenced <= calc_ids,
+          "every tool->calculator link points at a real formula card",
+          f"dangling: {sorted(referenced - calc_ids)}")
+    check("card.id = 'fml-'+f.id" in src, "formula cards carry anchors for those links")
+
+    for needed in ("function slugify(", "'tgroup p-'", "id=\"tExpand\"", "id=\"tReset\"",
+                   "'tempty'", "mark.thit", "id=\"toolPick\"", "openFromHash"):
+        check(needed in src, f"tool library affordance present: {needed}")
+
     # Finance is told they can check the maths in the workbook, so every chart
     # drawn in the HTML case must have a counterpart bound to cells in the Excel.
     html_charts = re.findall(r"emBar\(\{title:'([^']*)'", src)
@@ -542,6 +584,8 @@ def main() -> int:
     test_sync()
     print("A11Y       keyboard, dialogs and browser compatibility")
     test_a11y()
+    print("TOOLS      library navigation, picker and calculator links")
+    test_toollib()
     print("EXPORT     business case HTML + live-formula workbook")
     test_export()
     if fast:
