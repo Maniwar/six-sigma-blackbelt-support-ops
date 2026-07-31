@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="app-version" content="2.7">
+<meta name="app-version" content="2.8">
 <title>Six Sigma Black Belt Program — Customer Support Operations</title>
 <style>
 :root{
@@ -620,7 +620,7 @@ mark.thit{background:#fde68a;color:inherit;padding:0 1px;border-radius:2px}
   <div class="brand">
     <div class="k">Operational Excellence</div>
     <h1>Six Sigma Black Belt Program</h1>
-    <p>Customer Support Operations &middot; v2.7</p>
+    <p>Customer Support Operations &middot; v2.8</p>
   </div>
   <div class="navsearch"><input id="q" type="search" placeholder="Filter curriculum modules&hellip;" autocomplete="off"></div>
 
@@ -708,7 +708,7 @@ mark.thit{background:#fde68a;color:inherit;padding:0 1px;border-radius:2px}
   </div>
 
 <div class="box good" style="margin-top:26px">
-<div class="t">New in v2.7 &mdash; the jargon is actually explained</div>
+<div class="t">New in v2.8 &mdash; the jargon is actually explained</div>
 <ul style="margin-bottom:0">
 <li><b>The glossary went from 97 entries to 253.</b> Six Sigma itself, Lean, non-parametric,
 transformation, ASQ, IASSC, QA, SOP, KPI, ROI, DOE, I-MR, rational subgrouping, Cohen&rsquo;s and
@@ -720,6 +720,9 @@ text there. Fixed &mdash; a template preview now carries 30&ndash;40 explainers.
 <li><b>Every one of the 28 statistical test results was a dead end.</b> Each named a test and linked to
 nothing. They now link to the tool that explains how to run it and the template you record it in.</li>
 <li><b>Plurals resolve.</b> SLAs, CTQs, KPIs and SOPs used to match nothing at all.</li>
+<li><b>Fixed: a stray capital <i>Z</i> was clickable.</b> &ldquo;Z&rdquo; had been added as a
+short name for Z-score, and a one-character alias matches every isolated capital letter in the page.
+Aliases shorter than two characters are now rejected outright.</li>
 <li><b>The A&ndash;Z index is generated from the data</b> rather than hand-maintained, so it can never
 drift from the glossary again. 775 explainer links on the page, up from 388.</li>
 </ul></div>
@@ -3164,7 +3167,7 @@ Object.assign(GLOSS, {
 "Pp":{full:"Pp",plain:"Overall capability using the total spread of the data, ignoring where the average sits.",why:"Pp asks whether the process could fit inside the spec if it were centred; Ppk asks whether it does. A comfortable Pp with a poor Ppk means your problem is aim, not spread — usually a much easier fix.",how:"Spec width ÷ (6 × overall standard deviation).",aka:[]},
 "USL":{full:"Upper Specification Limit",plain:"The highest value the customer or contract will accept.",why:"In support this is normally your SLA — a promise, unrelated to what your process actually does. That gap is exactly what capability analysis measures.",how:"From the contract or published policy, never from your own performance data.",aka:["Upper spec limit"]},
 "LSL":{full:"Lower Specification Limit",plain:"The lowest value the customer or contract will accept.",why:"Less common in support than the upper limit, but it applies to satisfaction and quality floors: time has an upper limit, satisfaction has a lower one. Never confuse a spec limit with a control limit — one comes from the customer, the other from the process.",how:"From the contract or the quality standard.",aka:["Lower spec limit"]},
-"Z-score":{full:"Z-score",plain:"How many standard deviations a value sits from the average.",why:"The common currency between capability, sigma level and defect rates — they are all the same picture expressed differently. It also assumes a normal distribution, which is why a Z-based breach rate on skewed duration data understates the truth.",how:"(Value − mean) ÷ standard deviation.",aka:["Z score","Z"]}
+"Z-score":{full:"Z-score",plain:"How many standard deviations a value sits from the average.",why:"The common currency between capability, sigma level and defect rates — they are all the same picture expressed differently. It also assumes a normal distribution, which is why a Z-based breach rate on skewed duration data understates the truth.",how:"(Value − mean) ÷ standard deviation.",aka:["Z score"]}
 });
 
 /* ---- inference detail, support operations, money and governance ---- */
@@ -3271,6 +3274,21 @@ Object.assign(GLOSS, {
   if(!GLOSS[p[0]]) return;
   GLOSS[p[0]].aka = (GLOSS[p[0]].aka||[]).concat(p[1]);
 });
+/* One-character aliases would link every stray capital letter, and the same
+   alias added from two batches would sit in the list twice. Clean both up once,
+   after every entry has been merged. */
+Object.keys(GLOSS).forEach(function(k){
+  var seen={}, out=[];
+  (GLOSS[k].aka||[]).forEach(function(a){
+    a=String(a);
+    if(a.length<2) return;                 // "Z" is not a term, it is a letter
+    if(a.toLowerCase()===k.toLowerCase()) return;
+    if(seen[a.toLowerCase()]) return;
+    seen[a.toLowerCase()]=1; out.push(a);
+  });
+  GLOSS[k].aka=out;
+});
+
 
 /* Takt time reads oddly without this: the seconds are pooled across every agent
    available in the interval, so the result is the handling budget per contact. */

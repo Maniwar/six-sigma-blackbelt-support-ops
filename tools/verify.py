@@ -570,6 +570,13 @@ def test_glossary() -> None:
     check("function resultLinks(" in src and "var R_TOOL={" in src,
           "statistical test results link to a tool and a template")
 
+    # A one-character alias links every stray capital letter on the page; "Z"
+    # for Z-score did exactly that. The runtime guard drops anything shorter
+    # than two characters and de-duplicates aliases added by separate batches.
+    check("if(a.length<2) return;" in src,
+          "single-character glossary aliases are rejected at runtime")
+    check("seen[a.toLowerCase()]=1" in src, "duplicate aliases are collapsed")
+
 
 def test_toollib() -> None:
     """The tool library's navigation aids, and that nothing dangles."""
