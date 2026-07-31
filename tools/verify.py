@@ -233,6 +233,10 @@ def test_numeric_other() -> None:
         shutil.copyfile(src, tmp)
         wb = load_workbook(tmp)
         ws = wb["Control plan"]
+        # the sheet now ships with worked example rows; this fixture is about
+        # the formula, so clear the data region before planting it
+        for r in range(10, 28):
+            ws[f"A{r}"], ws[f"P{r}"] = None, None
         for i, (name, lvl) in enumerate([("m1", "2 Design it out"), ("m2", "3 Guide it"),
                                          ("m3", "5 Standardise it"), ("m4", "garbage")], start=10):
             ws[f"A{i}"], ws[f"P{i}"] = name, lvl
@@ -252,6 +256,11 @@ def test_numeric_other() -> None:
         shutil.copyfile(src, tmp)
         wb = load_workbook(tmp)
         ws = wb["Value stream"]
+        # same here: wipe the shipped example so the arithmetic is the only
+        # thing under test
+        for r in range(10, 29):
+            for col in "ABCDEFGHIJ":
+                ws[f"{col}{r}"] = None
         ws["E10"], ws["F10"] = 10, 90       # touch 10, wait 90 -> lead 100
         ws["B44"], ws["B45"] = 60, 30
         wb.save(tmp)

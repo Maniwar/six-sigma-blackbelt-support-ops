@@ -178,7 +178,7 @@ def data_collection_plan(wb) -> int:
 def value_stream_map(wb) -> int:
     """The whole point of a VSM: touch time is a rounding error next to the wait."""
     ws = wb["Value stream"]
-    LAST = 29                    # row 30 is the merged note banner
+    LAST = 28                    # the sheet's own totals sum E10:E28
     cats = Reference(ws, min_col=2, min_row=10, max_row=LAST)
     ch = BarChart()
     ch.type = "col"
