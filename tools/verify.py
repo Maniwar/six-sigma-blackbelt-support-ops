@@ -317,6 +317,139 @@ def _check_preview(entry: dict, path: Path) -> None:
     check(not bad, f"{path.name}: all {seen} preview tooltips match the workbook", "\n      ".join(bad[:4]))
 
 
+# ------------------------------------------------------------------- EXPORT
+# The business case is generated in the browser: an email-safe HTML rendering
+# and a real .xlsx with live formulas and native charts. These tests pull the
+# shipped JavaScript straight out of the HTML, run it under node, and check the
+# workbook it produces actually recalculates to the numbers the page showed.
+
+JS_START = "/* ============================================================ xlsx writer"
+JS_END = "/* ============================================ template -> email-safe HTML"
+
+# Each problem archetype emits a different benefit model, so the row the gross
+# value lands on shifts. Every branch gets generated and recalculated.
+GROSS_ROW = {"rate": 5, "volume": 4, "aht": 5, "shrink": 6}
+
+HARNESS = r"""
+const fs=require('fs');
+global.fm=function(n,d){ if(n===undefined||n===null||!isFinite(n)) return '—';
+  d=(d===undefined)?0:d;
+  return Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}); };
+eval(fs.readFileSync(process.argv[2],'utf8'));
+const outDir=process.argv[3];
+const base={vol:480000,cpc:6.8,rate:14.0,hr:38,occ:82,aht:420,ahtsave:14,agents:120,shrink:32,
+  shrinktgt:28,target:8.0,harvest:'reduce',realz:80,bbmonths:9,bbcost:120000,training:35000,
+  eng:60000,tooling:8000,years:3,disc:10};
+const kinds=[
+ {kind:'rate',   n:'Reduce rework and reopens',  metric:'Reopen rate',        gross:480000*0.06*6.8},
+ {kind:'volume', n:'Eliminate a contact driver', metric:'Contacts per year',
+  V:{rate:40000,target:8000},                                                 gross:(40000-8000)*6.8},
+ {kind:'aht',    n:'Reduce handle time',         metric:'Average handle time',gross:480000*14/3600/0.82*38},
+ {kind:'shrink', n:'Recover shrinkage capacity', metric:'Shrinkage %',        gross:120*1760*0.04*38}
+];
+const meta={};
+for(const k of kinds){
+  const V=Object.assign({},base,k.V||{});
+  const gross=k.gross, real=gross*0.8, inv=120000*0.75+35000+60000+8000;
+  let npv=-inv; for(let y=1;y<=3;y++) npv+=real/Math.pow(1.1,y);
+  const m={gross,real,inv,npv,pb:inv/real,roi:(real*3-inv)/inv,fte:1,realz:0.8,
+    detail:[['Improvement','a → b','6.0 pts']]};
+  const a={n:k.n,d:'desc',metric:k.metric,kind:k.kind};
+  const ctx={m,V,S:{arch:k.kind},a};
+  fs.writeFileSync(outDir+'/'+k.kind+'.xlsx', Buffer.from(bizXlsx(ctx)));
+  meta[k.kind]={gross,real,inv,npv,html:bizHTML(ctx).length};
+}
+fs.writeFileSync(outDir+'/meta.json', JSON.stringify(meta));
+"""
+
+
+def test_export() -> None:
+    import subprocess
+
+    src = HTML.read_text(encoding="utf-8")
+    check("business-case.md" not in src, "markdown business case replaced by HTML/Excel")
+    check("  function doc(){" not in src, "old markdown generator removed")
+    for needed in ("var XLSX = (function(){", "function bizXlsx(", "function bizHTML(",
+                   "function openExport(", "function tplEmailHTML(", 'id="expCopy"',
+                   # the template modal's button is created at runtime, not in the markup
+                   "b.id = 'tplEmail'", "fullCalcOnLoad"):
+        check(needed in src, f"export code present: {needed}")
+
+    if JS_START not in src or JS_END not in src:
+        check(False, "export JS block markers found in the HTML")
+        return
+    js = src[src.index(JS_START):src.index(JS_END)]
+
+    if not shutil.which("node"):
+        print("           node not found - skipping the generated-workbook test")
+        return
+
+    with tempfile.TemporaryDirectory() as td:
+        d = Path(td)
+        (d / "bundle.js").write_text(js, encoding="utf-8")
+        (d / "run.js").write_text(HARNESS, encoding="utf-8")
+        r = subprocess.run(["node", str(d / "run.js"), str(d / "bundle.js"), str(d)],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            check(False, "business case workbook generates without error", r.stderr.strip()[:400])
+            return
+        check(True, "business case workbook generates under node for every archetype")
+        meta = json.loads((d / "meta.json").read_text())
+
+        import zipfile
+        import xml.etree.ElementTree as ET
+
+        try:
+            import formulas  # noqa: F401
+            can_calc = True
+        except ImportError:
+            can_calc = False
+            print("           formulas not installed - skipping workbook recalculation")
+
+        for kind, e in meta.items():
+            path = d / (kind + ".xlsx")
+            check(e["html"] > 8000, f"{kind}: business case HTML renders ({e['html']} chars)")
+
+            z = zipfile.ZipFile(path)
+            names = set(z.namelist())
+            broken = []
+            for n in names:
+                if n.endswith((".xml", ".rels")):
+                    try:
+                        ET.fromstring(z.read(n))
+                    except Exception as ex:
+                        broken.append(f"{n}: {ex}")
+            check(not broken, f"{kind}: every xlsx part is well-formed XML", "; ".join(broken[:2]))
+            charts = [n for n in names if "/charts/chart" in n]
+            check(len(charts) == 4, f"{kind}: workbook carries all 4 charts (found {len(charts)})")
+            ct = ET.fromstring(z.read("[Content_Types].xml"))
+            ovr = {o.get("PartName") for o in ct if o.tag.endswith("Override")}
+            missing = [n for n in names if not n.endswith(".rels")
+                       and n != "[Content_Types].xml" and "/" + n not in ovr]
+            check(not missing, f"{kind}: every xlsx part has a content type", ", ".join(missing[:3]))
+
+            wb = load_workbook(path)
+            check(wb.sheetnames == ["Business case", "Inputs", "Benefit model",
+                                    "Financials", "Sensitivity"],
+                  f"{kind}: workbook sheet layout", str(wb.sheetnames))
+
+            if not can_calc:
+                continue
+            sol = _engine(path).calculate()
+            gr = GROSS_ROW[kind]
+            for label, sheet, cell, want in [
+                ("gross annual value", "Benefit model", f"B{gr}", e["gross"]),
+                ("realised annual benefit", "Benefit model", f"B{gr + 2}", e["real"]),
+                ("total investment", "Financials", "B7", e["inv"]),
+                ("net present value", "Financials", "B13", e["npv"]),
+                ("cover sheet cross-reference", "Business case", "B9", e["real"]),
+                ("base-case sensitivity NPV", "Sensitivity", "D5", e["npv"]),
+            ]:
+                got = _read(sol, path.name, sheet, cell)
+                check(approx(got, want, 1e-6), f"{kind}: workbook recalculates the {label}",
+                      f"got {got!r} want {want}")
+
+
 # --------------------------------------------------------------------- main
 def main() -> int:
     fast = "--fast" in sys.argv
@@ -324,6 +457,8 @@ def main() -> int:
     test_structure()
     print("SYNC       four-way template consistency")
     test_sync()
+    print("EXPORT     business case HTML + live-formula workbook")
+    test_export()
     if fast:
         print("NUMERIC    skipped (--fast)")
     else:

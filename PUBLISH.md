@@ -62,6 +62,30 @@ CDN has not caught up yet.
 | `README.md` | Repo front page |
 | `LICENSE` | CC BY 4.0 |
 
+## The generated business case
+
+The wizard's final step builds a business case three ways from one model:
+email-safe HTML (inline styles only, so it survives Outlook and Gmail), a
+standalone `.html` file, and an `.xlsx` where every figure is a live formula
+pointing at an Inputs sheet, with four native Excel charts bound to those cells.
+
+The workbook is written in the browser by a small OOXML/ZIP writer near the
+bottom of the `<script>` block — no library, no network call. Two things about
+it are load-bearing:
+
+- Charts are **inline-styled HTML tables**, not SVG, in the HTML rendering.
+  Gmail and Outlook strip `<svg>`, which would defeat the point of a business
+  case you can paste into an email.
+- `workbook.xml` sets `fullCalcOnLoad="1"`. The writer cannot compute cached
+  results, so Excel is told to recalculate everything the moment it opens.
+  Remove that and every cell shows as blank until the user presses F9.
+
+`tools/verify.py` extracts that JavaScript from the shipped HTML, runs it under
+node for all four problem archetypes, and recalculates each workbook to confirm
+it produces the same numbers the page displayed. If you change the benefit
+model, that test is what tells you whether the Excel still agrees with the
+screen.
+
 ## Editing templates or formulas
 
 Every workbook exists in **four** places: `templates/*.xlsx`, the base64 blob

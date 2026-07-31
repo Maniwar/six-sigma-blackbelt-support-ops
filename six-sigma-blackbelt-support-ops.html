@@ -447,6 +447,26 @@ table.xgrid td{border:1px solid #dfe4ec;padding:5px 7px;vertical-align:top;line-
 .glc .hw b{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--acc);display:block;
   margin-bottom:2px}
 
+
+/* ---- export modal: email preview with copy / html / xlsx ---- */
+.expwrap{position:fixed;inset:0;background:rgba(10,14,20,.6);z-index:10001;display:none;
+  align-items:center;justify-content:center;padding:22px}
+.expwrap.on{display:flex}
+.expbox{background:#fff;border-radius:12px;max-width:960px;width:100%;max-height:100%;
+  display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 70px rgba(6,10,16,.4)}
+.exphd{padding:13px 20px;border-bottom:1px solid #e3e8f0;display:flex;align-items:flex-start;
+  gap:14px;flex-wrap:wrap;background:#fbfcfe}
+.expt{font-size:16px;font-weight:700;color:#12181f;line-height:1.3}
+.exps{font-size:12.4px;color:#5b6675;margin-top:2px;max-width:56ch}
+.expbtns{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.expwrap .chip{background:#eef1f6;color:#28303c;border:1px solid #d7dee9;border-radius:7px;
+  padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.expwrap .chip:hover{background:#e2e8f2}
+.expwrap .btnp{background:#2f6feb;color:#fff;border:1px solid #2f6feb;border-radius:7px;
+  padding:7px 15px;font-size:13px;font-weight:660;cursor:pointer;font-family:inherit}
+.expwrap .btnp:hover{background:#2560d4}
+.expscroll{overflow:auto;flex:1;padding:22px 26px;background:#fff}
+@media(max-width:640px){ .exphd{padding:11px 14px} .expscroll{padding:14px} .expt{font-size:15px} }
 </style>
 </head>
 <body>
@@ -3287,7 +3307,7 @@ function renderMD(text){
     }
   }
   function open(slug){
-    cur=slug; raw=false; var t=TPLS[slug];
+    cur=slug; raw=false; window.__curTpl=slug; var t=TPLS[slug];
     title.textContent=t.title+'  ·  '+t.file;
     paint(); body.scrollTop=0; modal.classList.add('on');
   }
@@ -3478,7 +3498,7 @@ function renderMD(text){
 
     body.innerHTML = h;
     bBack.style.visibility = step===0 ? 'hidden':'visible';
-    bNext.textContent = step===STEPS.length-1 ? 'Download business case' : 'Next →';
+    bNext.textContent = step===STEPS.length-1 ? 'Build the business case' : 'Next →';
     bNext.disabled = (step===0 && !S.arch);
     body.querySelectorAll('input[data-k]').forEach(function(i){
       i.addEventListener('input', function(){ V[i.dataset.k] = parseFloat(i.value)||0; });
@@ -3560,116 +3580,6 @@ function renderMD(text){
       '<th>'+V.years+'-year NPV</th></tr></thead><tbody>'+sens+'</tbody></table></div>';
   }
 
-  function doc(){
-    var m=model(), a=ARCH[S.arch], H={reduce:'Headcount reduction',avoid:'Hiring avoidance against an approved plan',
-      vendor:'Outsourcer volume or rate renegotiation',growth:'Absorbed growth without hiring',
-      soft:'NONE — soft savings, reported separately'};
-    var L=[];
-    L.push('# Business Case — '+a.n);
-    L.push('');
-    L.push('Generated from the Six Sigma Black Belt program hub for customer support operations.');
-    L.push('Replace the bracketed fields, review every assumption with Finance, and attach this to your project charter.');
-    L.push('');
-    L.push('## 1. The problem');
-    L.push('');
-    L.push('**Project type:** '+a.n+'  ');
-    L.push('**What is wrong:** '+a.d+'  ');
-    L.push('**Scope:** [queue / contact type / site]  ');
-    L.push('**Owner (Champion):** [name]  ');
-    L.push('**Black Belt:** [name]  ');
-    L.push('');
-    L.push('> Between [start date] and [end date], '+a.metric.toLowerCase()+' in [process] was '+
-      (a.kind==='aht'?fm(V.aht,0)+' seconds':a.kind==='volume'?fm(V.rate,0)+' contacts':
-       a.kind==='shrink'?fm(V.shrink,1)+'%':fm(V.rate,1)+'%')+
-      ' against a target of '+
-      (a.kind==='aht'?fm(V.aht-V.ahtsave,0)+' seconds':a.kind==='volume'?fm(V.target,0)+' contacts':
-       a.kind==='shrink'?fm(V.shrinktgt,1)+'%':fm(V.target,1)+'%')+
-      ', representing an estimated $'+fm(m.real,0)+' annualised. The cause is not yet known.');
-    L.push('');
-    L.push('## 2. Operation in scope');
-    L.push('');
-    L.push('| Item | Value | Source |');
-    L.push('|---|---|---|');
-    L.push('| Annual contacts in scope | '+fm(V.vol)+' | Ticketing / phone platform |');
-    L.push('| Fully-loaded cost per contact | $'+fm(V.cpc,2)+' | Finance — definition agreed |');
-    L.push('| Loaded cost per agent-hour | $'+fm(V.hr,0)+' | Finance |');
-    L.push('| Occupancy | '+fm(V.occ,0)+'% | Workforce management |');
-    L.push('');
-    L.push('## 3. Benefit calculation');
-    L.push('');
-    L.push('| Step | Working | Result |');
-    L.push('|---|---|---|');
-    m.detail.forEach(function(d){ L.push('| '+d[0]+' | '+d[1].replace(/\|/g,'/')+' | '+d[2]+' |'); });
-    L.push('');
-    L.push('**Gross annual benefit: $'+fm(m.gross,0)+'**  ');
-    L.push('**Realised annual benefit: $'+fm(m.real,0)+'**  ');
-    L.push('**FTE equivalent: '+fm(m.fte,1)+'**');
-    L.push('');
-    L.push('## 4. Harvest mechanism');
-    L.push('');
-    L.push('**'+(H[V.harvest]||'[NOT YET NAMED — this must be completed before Finance will sign]')+'**');
-    L.push('');
-    L.push('> Freed capacity is not a saving until something actually changes. Describe here exactly which');
-    L.push('> line falls, in which budget, in which month, and who has agreed to it.');
-    L.push('');
-    L.push('Signed by Finance: ____________________  Date: __________  ');
-    L.push('Signed by WFM:     ____________________  Date: __________');
-    L.push('');
-    L.push('## 5. Investment');
-    L.push('');
-    L.push('| Line | Amount | Basis |');
-    L.push('|---|---|---|');
-    L.push('| Black Belt time | $'+fm(V.bbcost*(V.bbmonths/12),0)+' | '+V.bbmonths+' months at $'+fm(V.bbcost,0)+'/yr loaded |');
-    L.push('| Training and materials | $'+fm(V.training,0)+' | |');
-    L.push('| Engineering / implementation | $'+fm(V.eng,0)+' | System-enforced controls |');
-    L.push('| Tooling | $'+fm(V.tooling,0)+' | Statistical software, data access |');
-    L.push('| **Total** | **$'+fm(m.inv,0)+'** | |');
-    L.push('');
-    L.push('## 6. Financial summary');
-    L.push('');
-    L.push('| Measure | Value |');
-    L.push('|---|---|');
-    L.push('| Realised annual benefit | $'+fm(m.real,0)+' |');
-    L.push('| Total investment | $'+fm(m.inv,0)+' |');
-    L.push('| Payback period | '+(isFinite(m.pb)?fm(m.pb*12,0)+' months':'—')+' |');
-    L.push('| '+V.years+'-year NPV at '+fm(V.disc,0)+'% | $'+fm(m.npv,0)+' |');
-    L.push('| Simple ROI over '+V.years+' years | '+fm(m.roi*100,0)+'% |');
-    L.push('');
-    L.push('## 7. Sensitivity');
-    L.push('');
-    L.push('| Scenario | Annual benefit | Payback | '+V.years+'-year NPV |');
-    L.push('|---|---|---|---|');
-    [0.5,0.75,1,1.25].forEach(function(f){ var r=m.real*f;
-      var snpv=-m.inv; for(var y=1;y<=V.years;y++) snpv += r/Math.pow(1+V.disc/100,y);
-      L.push('| '+(f===1?'Base case':fm(f*100,0)+'% of estimate')+' | $'+fm(r,0)+' | '+
-        (r>0?fm(m.inv/r*12,0)+' months':'never')+' | '+
-        (snpv>=0?'$'+fm(snpv,0):'−$'+fm(-snpv,0))+' |'); });
-    L.push('');
-    L.push('## 8. Assumptions and risks');
-    L.push('');
-    L.push('- [ ] Cost per contact definition agreed in writing with Finance');
-    L.push('- [ ] Baseline measured over at least 13 weeks and signed by Finance');
-    L.push('- [ ] Measurement system validated (attribute agreement study if the metric involves human judgement)');
-    L.push('- [ ] Target justified by verified root causes, not by aspiration');
-    L.push('- [ ] Harvest mechanism named and signed by WFM and Finance');
-    L.push('- [ ] Realisation factor of '+fm(V.realz,0)+'% agreed with Finance');
-    L.push('- [ ] Metric-impact disclosure complete — whose scorecard does this move, and who adjusted their target?');
-    L.push('- [ ] Counter-balancing metrics identified and will be tracked from day one');
-    L.push('');
-    L.push('### Key risks');
-    L.push('');
-    L.push('| Risk | Mitigation |');
-    L.push('|---|---|');
-    L.push('| Black Belt pulled back to the floor during peak | Written dedication commitment countersigned by the ops director |');
-    L.push('| Benefit challenged by Finance | Finance partner in the tollgates from day one; realised not gross reporting |');
-    L.push('| Improvement decays after handover | At least one system-enforced control per root cause; mandatory 180-day re-audit |');
-    L.push('| Pilot result does not replicate at rollout | Concurrent control group; realisation factor applied up front |');
-    L.push('');
-    L.push('---');
-    L.push('');
-    L.push('*Figures are a model, not a measurement. Every input should be traced to a named source before this goes to a steering committee.*');
-    return L.join('\n');
-  }
 
   bar.parentNode.addEventListener('click', function(e){
     var a=e.target.closest('[data-arch]');
@@ -3683,7 +3593,13 @@ function renderMD(text){
     if(hh){ V.harvest=hh.dataset.harv; render(); return; }
   });
   bNext.addEventListener('click', function(){
-    if(step===STEPS.length-1){ dl('business-case.md', doc(), 'text/markdown'); return; }
+    if(step===STEPS.length-1){
+      var ctx={m:model(), V:V, S:S, a:ARCH[S.arch]};
+      openExport({title:'Business Case \u2014 '+ctx.a.n,
+        subtitle:'Copy it into an email, save it as a page, or take the Excel \u2014 live formulas and charts',
+        html:bizHTML(ctx), filename:'business-case',
+        xlsx:function(){ return bizXlsx(ctx); }});
+      return; }
     step++; render(); document.getElementById('wizard').scrollIntoView({behavior:'smooth',block:'start'});
   });
   bBack.addEventListener('click', function(){ if(step>0){ step--; render(); } });
@@ -3829,6 +3745,1064 @@ treeEl.addEventListener('click', function(e){
 });
 render();
 })();
+
+
+/* ============================================================ xlsx writer
+   Builds a real .xlsx in the browser with live formulas and native Excel
+   charts, with no library and no network call. Charts are bound to cell
+   ranges, so when someone changes an input the formulas recalculate and the
+   charts follow - which is the whole point of handing this to Finance.
+
+   Entries are stored uncompressed (ZIP method 0). That costs a little size and
+   saves shipping an inflate implementation.
+
+   XLSX.build({sheets:[{name, cols, rows, merges, charts}]}) -> Uint8Array
+   Cell: {v:value, t:'s'|'n', f:'FORMULA without =', s:'styleToken'}
+============================================================================ */
+var XLSX = (function(){
+"use strict";
+
+/* ---------- crc32 ---------- */
+var CRC = (function(){ var t=new Uint32Array(256);
+  for(var n=0;n<256;n++){ var c=n; for(var k=0;k<8;k++) c = c&1 ? 0xEDB88320^(c>>>1) : c>>>1; t[n]=c>>>0; }
+  return t; })();
+function crc32(u8){ var c=0xFFFFFFFF; for(var i=0;i<u8.length;i++) c=CRC[(c^u8[i])&0xFF]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+
+/* ---------- utf8 ---------- */
+function utf8(str){
+  if(typeof TextEncoder!=='undefined') return new TextEncoder().encode(str);
+  var out=[],i,c;
+  for(i=0;i<str.length;i++){ c=str.charCodeAt(i);
+    if(c<128) out.push(c);
+    else if(c<2048){ out.push(192|c>>6,128|c&63); }
+    else { out.push(224|c>>12,128|(c>>6)&63,128|c&63); } }
+  return new Uint8Array(out);
+}
+
+/* ---------- zip (store) ---------- */
+function zip(files){
+  var chunks=[], central=[], offset=0;
+  files.forEach(function(f){
+    var data = utf8(f.data), crc = crc32(data), n = utf8(f.name);
+    var lf = new Uint8Array(30 + n.length);
+    var dv = new DataView(lf.buffer);
+    dv.setUint32(0, 0x04034b50, true); dv.setUint16(4, 20, true); dv.setUint16(6, 0, true);
+    dv.setUint16(8, 0, true);            // stored
+    dv.setUint16(10, 0, true); dv.setUint16(12, 0x21, true);   // time/date: 1980-01-01
+    dv.setUint32(14, crc, true); dv.setUint32(18, data.length, true); dv.setUint32(22, data.length, true);
+    dv.setUint16(26, n.length, true); dv.setUint16(28, 0, true);
+    lf.set(n, 30);
+    chunks.push(lf, data);
+    var cd = new Uint8Array(46 + n.length), cv = new DataView(cd.buffer);
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0, true); cv.setUint16(10, 0, true);
+    cv.setUint16(12, 0, true); cv.setUint16(14, 0x21, true);
+    cv.setUint32(16, crc, true); cv.setUint32(20, data.length, true); cv.setUint32(24, data.length, true);
+    cv.setUint16(28, n.length, true); cv.setUint16(30, 0, true); cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true); cv.setUint16(36, 0, true); cv.setUint32(38, 0, true);
+    cv.setUint32(42, offset, true);
+    cd.set(n, 46);
+    central.push(cd);
+    offset += lf.length + data.length;
+  });
+  var cdSize = central.reduce(function(a,b){ return a+b.length; },0);
+  var end = new Uint8Array(22), ev = new DataView(end.buffer);
+  ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, files.length, true);
+  ev.setUint16(10, files.length, true); ev.setUint32(12, cdSize, true); ev.setUint32(16, offset, true);
+  var total = offset + cdSize + 22, out = new Uint8Array(total), p = 0;
+  chunks.forEach(function(c){ out.set(c, p); p += c.length; });
+  central.forEach(function(c){ out.set(c, p); p += c.length; });
+  out.set(end, p);
+  return out;
+}
+
+/* ---------- xml helpers ---------- */
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;').replace(/'/g,'&apos;'); }
+function colName(n){ var s=''; while(n>0){ var m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=(n-m-1)/26; } return s; }
+
+/* ---------- styles ----------
+   Index order below IS the cellXfs order; STYLE maps a token to its index. */
+var FMT = { gen:0, int:164, money:165, money0:166, pct1:167, num2:168, date:169 };
+var STYLE = { def:0, title:1, band:2, hdr:3, b:4, in:5, calc:6, note:7,
+              money:8, moneyCalc:9, pct:10, num:11, intCalc:12, wrap:13, big:14, moneyBig:15 };
+
+function stylesXml(){
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
+  '<numFmts count="6">'+
+    '<numFmt numFmtId="164" formatCode="#,##0"/>'+
+    '<numFmt numFmtId="165" formatCode="&quot;$&quot;#,##0.00"/>'+
+    '<numFmt numFmtId="166" formatCode="&quot;$&quot;#,##0"/>'+
+    '<numFmt numFmtId="167" formatCode="0.0%"/>'+
+    '<numFmt numFmtId="168" formatCode="#,##0.00"/>'+
+    '<numFmt numFmtId="169" formatCode="yyyy\\-mm\\-dd"/>'+
+  '</numFmts>'+
+  '<fonts count="7">'+
+    '<font><sz val="11"/><name val="Calibri"/></font>'+                                    /*0 body*/
+    '<font><b/><sz val="15"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>'+          /*1 title*/
+    '<font><b/><sz val="11"/><name val="Calibri"/></font>'+                                 /*2 bold*/
+    '<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>'+          /*3 header*/
+    '<font><i/><sz val="9"/><color rgb="FF6B7280"/><name val="Calibri"/></font>'+           /*4 note*/
+    '<font><b/><sz val="13"/><name val="Calibri"/></font>'+                                 /*5 big*/
+    '<font><sz val="11"/><color rgb="FF1D4ED8"/><name val="Calibri"/></font>'+              /*6 calc blue*/
+  '</fonts>'+
+  '<fills count="7">'+
+    '<fill><patternFill patternType="none"/></fill>'+
+    '<fill><patternFill patternType="gray125"/></fill>'+
+    '<fill><patternFill patternType="solid"><fgColor rgb="FF151B24"/><bgColor indexed="64"/></patternFill></fill>'+ /*2 title*/
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFEEF1F6"/><bgColor indexed="64"/></patternFill></fill>'+ /*3 band*/
+    '<fill><patternFill patternType="solid"><fgColor rgb="FF333C49"/><bgColor indexed="64"/></patternFill></fill>'+ /*4 hdr*/
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFFFF9E3"/><bgColor indexed="64"/></patternFill></fill>'+ /*5 input*/
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFF2F7FF"/><bgColor indexed="64"/></patternFill></fill>'+ /*6 calc*/
+  '</fills>'+
+  '<borders count="2">'+
+    '<border><left/><right/><top/><bottom/><diagonal/></border>'+
+    '<border><left/><right/><top/><bottom style="thin"><color rgb="FFD8DEE7"/></bottom><diagonal/></border>'+
+  '</borders>'+
+  '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
+  '<cellXfs count="16">'+
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'+                                                        /*0 def*/
+    '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"><alignment vertical="center"/></xf>'+ /*1 title*/
+    '<xf numFmtId="0" fontId="2" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1"/>'+                            /*2 band*/
+    '<xf numFmtId="0" fontId="3" fillId="4" borderId="0" xfId="0" applyFont="1" applyFill="1"><alignment wrapText="1" vertical="center"/></xf>'+ /*3 hdr*/
+    '<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>'+                                          /*4 b*/
+    '<xf numFmtId="0" fontId="0" fillId="5" borderId="1" xfId="0" applyFill="1" applyBorder="1"/>'+                          /*5 in*/
+    '<xf numFmtId="0" fontId="6" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>'+            /*6 calc*/
+    '<xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1"><alignment wrapText="1" vertical="top"/></xf>'+ /*7 note*/
+    '<xf numFmtId="166" fontId="0" fillId="5" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"/>'+  /*8 money in*/
+    '<xf numFmtId="166" fontId="6" fillId="6" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>'+ /*9 money calc*/
+    '<xf numFmtId="167" fontId="6" fillId="6" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>'+ /*10 pct calc*/
+    '<xf numFmtId="168" fontId="6" fillId="6" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>'+ /*11 num calc*/
+    '<xf numFmtId="164" fontId="6" fillId="6" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>'+ /*12 int calc*/
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"><alignment wrapText="1" vertical="top"/></xf>'+            /*13 wrap*/
+    '<xf numFmtId="0" fontId="5" fillId="0" borderId="0" xfId="0" applyFont="1"/>'+                                          /*14 big*/
+    '<xf numFmtId="166" fontId="5" fillId="6" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>'+ /*15 money big*/
+  '</cellXfs>'+
+  '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'+
+  '</styleSheet>';
+}
+
+/* ---------- sheet ---------- */
+function sheetXml(sh, hasDrawing){
+  var x = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'+
+    ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">';
+  x += '<sheetViews><sheetView workbookViewId="0" showGridLines="0"'+
+       (sh.tabSelected?' tabSelected="1"':'')+'>';
+  if(sh.freeze) x += '<pane ySplit="'+sh.freeze+'" topLeftCell="A'+(sh.freeze+1)+'" activePane="bottomLeft" state="frozen"/>';
+  x += '</sheetView></sheetViews>';
+  x += '<sheetFormatPr defaultRowHeight="15"/>';
+  if(sh.cols && sh.cols.length){
+    x += '<cols>';
+    sh.cols.forEach(function(w,i){ x += '<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>'; });
+    x += '</cols>';
+  }
+  x += '<sheetData>';
+  (sh.rows||[]).forEach(function(row,ri){
+    if(!row || !row.length) return;
+    var r = ri+1, cells='';
+    row.forEach(function(c,ci){
+      if(c===null||c===undefined) return;
+      if(typeof c!=='object') c={v:c};
+      var ref = colName(ci+1)+r, s = c.s!==undefined ? (typeof c.s==='string'?STYLE[c.s]:c.s) : 0;
+      var sa = s ? ' s="'+s+'"' : '';
+      if(c.f!==undefined && c.f!==null){
+        cells += '<c r="'+ref+'"'+sa+'><f>'+esc(c.f)+'</f></c>';
+      } else if(c.v===null||c.v===undefined||c.v===''){
+        if(s) cells += '<c r="'+ref+'"'+sa+'/>';
+      } else if(typeof c.v==='number' && isFinite(c.v)){
+        cells += '<c r="'+ref+'"'+sa+'><v>'+c.v+'</v></c>';
+      } else {
+        cells += '<c r="'+ref+'"'+sa+' t="inlineStr"><is><t xml:space="preserve">'+esc(c.v)+'</t></is></c>';
+      }
+    });
+    if(cells) x += '<row r="'+r+'"'+(sh.rowH&&sh.rowH[r]?' ht="'+sh.rowH[r]+'" customHeight="1"':'')+'>'+cells+'</row>';
+  });
+  x += '</sheetData>';
+  if(sh.merges && sh.merges.length){
+    x += '<mergeCells count="'+sh.merges.length+'">';
+    sh.merges.forEach(function(m){ x += '<mergeCell ref="'+m+'"/>'; });
+    x += '</mergeCells>';
+  }
+  x += '<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>';
+  if(hasDrawing) x += '<drawing r:id="rId1"/>';
+  x += '</worksheet>';
+  return x;
+}
+
+/* ---------- chart ---------- */
+var PALETTE = ['2F6FEB','15A34A','E0A800','DC2626','7C3AED','0891B2'];
+
+function numCache(vals){
+  return '<c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="'+vals.length+'"/>'+
+    vals.map(function(v,i){ return '<c:pt idx="'+i+'"><c:v>'+(isFinite(v)?v:0)+'</c:v></c:pt>'; }).join('')+
+    '</c:numCache>';
+}
+function strCache(vals){
+  return '<c:strCache><c:ptCount val="'+vals.length+'"/>'+
+    vals.map(function(v,i){ return '<c:pt idx="'+i+'"><c:v>'+esc(v)+'</c:v></c:pt>'; }).join('')+
+    '</c:strCache>';
+}
+
+function chartXml(ch){
+  var isBar = ch.type==='bar' || ch.type==='col';
+  var barDir = ch.type==='bar' ? 'bar' : 'col';
+  var axId1 = 111111111, axId2 = 222222222;
+  var sers = ch.series.map(function(s,i){
+    var color = s.color || PALETTE[i%PALETTE.length];
+    var pts = '';
+    // per-point colours let the bridge chart show a negative step in red
+    if(s.pointColors && isBar){
+      pts = s.pointColors.map(function(pc,pi){
+        return '<c:dPt><c:idx val="'+pi+'"/><c:invertIfNegative val="0"/><c:bubble3D val="0"/>'+
+               '<c:spPr><a:solidFill><a:srgbClr val="'+pc+'"/></a:solidFill></c:spPr></c:dPt>';
+      }).join('');
+    }
+    return '<c:ser><c:idx val="'+i+'"/><c:order val="'+i+'"/>'+
+      '<c:tx><c:strRef><c:f>'+esc(s.nameRef||('"'+s.name+'"'))+'</c:f>'+strCache([s.name])+'</c:strRef></c:tx>'+
+      '<c:spPr><a:solidFill><a:srgbClr val="'+color+'"/></a:solidFill>'+
+        (isBar?'':'<a:ln w="28575"><a:solidFill><a:srgbClr val="'+color+'"/></a:solidFill></a:ln>')+
+      '</c:spPr>'+
+      pts +
+      (isBar?'<c:invertIfNegative val="0"/>':'<c:marker><c:symbol val="circle"/><c:size val="6"/></c:marker>')+
+      '<c:dLbls><c:numFmt formatCode="'+(ch.labelFmt||'#,##0')+'" sourceLinked="0"/>'+
+        '<c:spPr><a:noFill/></c:spPr><c:showLegendKey val="0"/><c:showVal val="'+(ch.dataLabels===false?0:1)+'"/>'+
+        '<c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="0"/><c:showBubbleSize val="0"/></c:dLbls>'+
+      '<c:cat><c:strRef><c:f>'+esc(ch.cats)+'</c:f>'+strCache(ch.catVals||[])+'</c:strRef></c:cat>'+
+      '<c:val><c:numRef><c:f>'+esc(s.values)+'</c:f>'+numCache(s.cache||[])+'</c:numRef></c:val>'+
+      (isBar?'':'<c:smooth val="0"/>')+
+      '</c:ser>';
+  }).join('');
+
+  var plot = isBar
+    ? '<c:barChart><c:barDir val="'+barDir+'"/><c:grouping val="clustered"/><c:varyColors val="0"/>'+
+      sers+'<c:gapWidth val="60"/><c:axId val="'+axId1+'"/><c:axId val="'+axId2+'"/></c:barChart>'
+    : '<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>'+
+      sers+'<c:marker val="1"/><c:axId val="'+axId1+'"/><c:axId val="'+axId2+'"/></c:lineChart>';
+
+  var catAx = '<c:catAx><c:axId val="'+axId1+'"/><c:scaling><c:orientation val="minMax"/></c:scaling>'+
+    '<c:delete val="0"/><c:axPos val="'+(ch.type==='bar'?'l':'b')+'"/>'+
+    '<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="900"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr>'+
+    '<c:crossAx val="'+axId2+'"/><c:crosses val="autoZero"/><c:auto val="1"/>'+
+    '<c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>';
+  var valAx = '<c:valAx><c:axId val="'+axId2+'"/><c:scaling><c:orientation val="minMax"/></c:scaling>'+
+    '<c:delete val="0"/><c:axPos val="'+(ch.type==='bar'?'b':'l')+'"/>'+
+    '<c:majorGridlines><c:spPr><a:ln w="9525"><a:solidFill><a:srgbClr val="E5E9F0"/></a:solidFill></a:ln></c:spPr></c:majorGridlines>'+
+    '<c:numFmt formatCode="'+(ch.axisFmt||'#,##0')+'" sourceLinked="0"/>'+
+    '<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="900"/></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr>'+
+    '<c:crossAx val="'+axId1+'"/><c:crosses val="autoZero"/><c:crossBetween val="between"/></c:valAx>';
+
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"'+
+    ' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'+
+    ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
+    '<c:chart>'+
+    '<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="1200" b="1"/></a:pPr>'+
+      '<a:r><a:rPr lang="en-US" sz="1200" b="1"/><a:t>'+esc(ch.title||'')+'</a:t></a:r></a:p></c:rich></c:tx>'+
+      '<c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/>'+
+    '<c:plotArea><c:layout/>'+plot+catAx+valAx+'</c:plotArea>'+
+    (ch.series.length>1?'<c:legend><c:legendPos val="b"/><c:overlay val="0"/></c:legend>':'')+
+    '<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/>'+
+    '</c:chart></c:chartSpace>';
+}
+
+function drawingXml(charts, baseId){
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"'+
+  ' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'+
+  charts.map(function(ch,i){
+    var a = ch.anchor || [0, 0, 8, 16];
+    return '<xdr:twoCellAnchor>'+
+      '<xdr:from><xdr:col>'+a[0]+'</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>'+a[1]+'</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>'+
+      '<xdr:to><xdr:col>'+a[2]+'</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>'+a[3]+'</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>'+
+      '<xdr:graphicFrame macro="">'+
+      '<xdr:nvGraphicFramePr><xdr:cNvPr id="'+(baseId+i)+'" name="Chart '+(i+1)+'"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr>'+
+      '<xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm>'+
+      '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart">'+
+      '<c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"'+
+      ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="rId'+(i+1)+'"/>'+
+      '</a:graphicData></a:graphic></xdr:graphicFrame><xdr:clientData/></xdr:twoCellAnchor>';
+  }).join('')+'</xdr:wsDr>';
+}
+
+/* ---------- build ---------- */
+function build(spec){
+  var sheets = spec.sheets, files = [];
+  var chartCount = 0, drawings = [];
+
+  sheets.forEach(function(sh, si){
+    var charts = sh.charts || [];
+    var hasD = charts.length > 0;
+    files.push({name:'xl/worksheets/sheet'+(si+1)+'.xml', data:sheetXml(sh, hasD)});
+    if(hasD){
+      var di = drawings.length + 1;
+      var ids = charts.map(function(){ return ++chartCount; });
+      drawings.push({sheet:si+1, index:di, charts:charts, ids:ids});
+      files.push({name:'xl/drawings/drawing'+di+'.xml', data:drawingXml(charts, 1024*di)});
+      files.push({name:'xl/drawings/_rels/drawing'+di+'.xml.rels',
+        data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+        charts.map(function(c,i){ return '<Relationship Id="rId'+(i+1)+'"'+
+          ' Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart"'+
+          ' Target="../charts/chart'+ids[i]+'.xml"/>'; }).join('')+'</Relationships>'});
+      files.push({name:'xl/worksheets/_rels/sheet'+(si+1)+'.xml.rels',
+        data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing"'+
+        ' Target="../drawings/drawing'+di+'.xml"/></Relationships>'});
+      charts.forEach(function(c,i){
+        files.push({name:'xl/charts/chart'+ids[i]+'.xml', data:chartXml(c)});
+      });
+    }
+  });
+
+  files.push({name:'xl/styles.xml', data:stylesXml()});
+  files.push({name:'xl/workbook.xml', data:
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'+
+    ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
+    '<sheets>'+ sheets.map(function(sh,i){
+      return '<sheet name="'+esc(sh.name)+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>'; }).join('') +'</sheets>'+
+    // Excel has no cached results for our formulas, so make it calculate on open.
+    '<calcPr calcId="0" fullCalcOnLoad="1"/>'+
+    '</workbook>'});
+  files.push({name:'xl/_rels/workbook.xml.rels', data:
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+    sheets.map(function(sh,i){ return '<Relationship Id="rId'+(i+1)+'"'+
+      ' Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"'+
+      ' Target="worksheets/sheet'+(i+1)+'.xml"/>'; }).join('')+
+    '<Relationship Id="rId'+(sheets.length+1)+'"'+
+    ' Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'+
+    '</Relationships>'});
+  files.push({name:'_rels/.rels', data:
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"'+
+    ' Target="xl/workbook.xml"/></Relationships>'});
+
+  var ct = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
+    '<Default Extension="xml" ContentType="application/xml"/>'+
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+
+    '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'+
+    sheets.map(function(sh,i){ return '<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml"'+
+      ' ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'; }).join('')+
+    drawings.map(function(d){ return '<Override PartName="/xl/drawings/drawing'+d.index+'.xml"'+
+      ' ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>'; }).join('')+
+    (function(){ var o=''; for(var i=1;i<=chartCount;i++) o += '<Override PartName="/xl/charts/chart'+i+'.xml"'+
+      ' ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>'; return o; })()+
+    '</Types>';
+  files.unshift({name:'[Content_Types].xml', data:ct});
+
+  return zip(files);
+}
+
+return {build:build, colName:colName, STYLE:STYLE};
+})();
+
+if(typeof module!=='undefined') module.exports = XLSX;
+
+/* ========================================================== export helpers
+   Everything the wizard and the template library hand to a human: an
+   email-pasteable HTML view, a standalone .html file, and for the business
+   case a real .xlsx with live formulas and native Excel charts.
+
+   Email clients strip <style> blocks and <svg>, so every rule here is an
+   inline style attribute and every chart is built from table cells with
+   background colours. That renders identically on screen, in Outlook, in
+   Gmail and on paper.
+=========================================================================== */
+
+/* ---------- email-safe primitives ---------- */
+var EM = {
+  page:  'font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:14px;'+
+         'line-height:1.55;color:#1a2029;max-width:820px;margin:0 auto;padding:8px 4px;',
+  h1:    'font-size:22px;line-height:1.25;font-weight:700;margin:0 0 4px;color:#0f1520;',
+  sub:   'font-size:13px;color:#5b6675;margin:0 0 20px;',
+  h2:    'font-size:15px;font-weight:700;margin:26px 0 8px;padding-bottom:5px;'+
+         'border-bottom:2px solid #151b24;color:#0f1520;text-transform:uppercase;letter-spacing:.04em;',
+  p:     'margin:0 0 11px;',
+  tbl:   'border-collapse:collapse;width:100%;margin:0 0 14px;font-size:13.5px;',
+  th:    'background:#333c49;color:#fff;font-weight:600;text-align:left;padding:7px 10px;'+
+         'border:1px solid #333c49;font-size:12.5px;',
+  td:    'padding:6px 10px;border:1px solid #dde3ec;vertical-align:top;',
+  tdr:   'padding:6px 10px;border:1px solid #dde3ec;text-align:right;white-space:nowrap;'+
+         'font-variant-numeric:tabular-nums;',
+  note:  'font-size:12.5px;color:#5b6675;margin:2px 0 14px;',
+  kpiw:  'border-collapse:collapse;width:100%;margin:0 0 18px;',
+  kpi:   'border:1px solid #dde3ec;background:#f7f9fc;padding:10px 12px;width:25%;vertical-align:top;',
+  kpil:  'font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#5b6675;margin-bottom:3px;',
+  kpiv:  'font-size:19px;font-weight:700;color:#0f1520;'
+};
+function eh(s){ return String(s==null?'':s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* A bar chart made of table cells. Survives every mail client. */
+function emBar(opts){
+  var rows = opts.rows, max = 0, min = 0;
+  rows.forEach(function(r){ if(r.v>max) max=r.v; if(r.v<min) min=r.v; });
+  var span = (max-min) || 1;
+  var out = '<div style="margin:0 0 18px">'+
+    '<div style="font-size:13px;font-weight:700;margin:0 0 8px;color:#0f1520">'+eh(opts.title)+'</div>'+
+    '<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:12.5px">';
+  rows.forEach(function(r){
+    var zero = min<0 ? Math.round(-min/span*100) : 0;
+    var w = Math.round(Math.abs(r.v)/span*100);
+    var bar;
+    if(min<0){
+      bar = '<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%">'+
+        '<tr><td style="width:'+zero+'%;padding:0">'+
+          (r.v<0 ? '<div style="height:16px;margin-left:'+Math.max(0,zero-w)+'%;width:'+w+'%;background:'+(r.c||'#dc2626')+'"></div>' : '')+
+        '</td><td style="width:'+(100-zero)+'%;padding:0">'+
+          (r.v>=0 ? '<div style="height:16px;width:'+w+'%;background:'+(r.c||'#2f6feb')+'"></div>' : '')+
+        '</td></tr></table>';
+    } else {
+      bar = '<div style="height:16px;width:'+Math.max(w,1)+'%;background:'+(r.c||'#2f6feb')+'"></div>';
+    }
+    out += '<tr>'+
+      '<td style="padding:3px 10px 3px 0;white-space:nowrap;color:#3b4657;width:1%">'+eh(r.l)+'</td>'+
+      '<td style="padding:3px 0">'+bar+'</td>'+
+      '<td style="padding:3px 0 3px 10px;text-align:right;white-space:nowrap;font-weight:600;width:1%">'+eh(r.d)+'</td>'+
+    '</tr>';
+  });
+  out += '</table>';
+  if(opts.foot) out += '<div style="'+EM.note+'margin-top:6px">'+opts.foot+'</div>';
+  return out + '</div>';
+}
+
+/* ---------- clipboard ---------- */
+function copyRich(html, text, btn){
+  function flash(ok){
+    if(!btn) return;
+    var old = btn.textContent;
+    btn.textContent = ok ? '✓ Copied — paste into your email' : 'Press ⌘C / Ctrl+C';
+    setTimeout(function(){ btn.textContent = old; }, 2600);
+  }
+  if(navigator.clipboard && window.ClipboardItem){
+    try{
+      navigator.clipboard.write([new ClipboardItem({
+        'text/html': new Blob([html], {type:'text/html'}),
+        'text/plain': new Blob([text], {type:'text/plain'})
+      })]).then(function(){ flash(true); }, function(){ legacy(); });
+      return;
+    }catch(e){ /* fall through */ }
+  }
+  legacy();
+  function legacy(){
+    // Select the rendered node so a manual copy still carries formatting.
+    var host = document.getElementById('expBody');
+    if(host && window.getSelection){
+      var sel = window.getSelection(), rg = document.createRange();
+      rg.selectNodeContents(host); sel.removeAllRanges(); sel.addRange(rg);
+      var ok=false; try{ ok = document.execCommand('copy'); }catch(e){}
+      flash(ok);
+      return;
+    }
+    flash(false);
+  }
+}
+
+function htmlDoc(title, body){
+  return '<!doctype html><html><head><meta charset="utf-8">'+
+    '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+    '<title>'+eh(title)+'</title></head>'+
+    '<body style="margin:0;padding:24px 16px;background:#fff"><div style="'+EM.page+'">'+
+    body+'</div></body></html>';
+}
+
+/* Rough plain-text rendering for the text/plain clipboard flavour. */
+function toPlain(html){
+  var d = document.createElement('div'); d.innerHTML = html;
+  d.querySelectorAll('tr').forEach(function(tr){
+    var cells=[].slice.call(tr.children).map(function(td){ return (td.innerText||'').trim(); });
+    tr.replaceWith(document.createTextNode(cells.filter(Boolean).join('\t')+'\n'));
+  });
+  return (d.innerText||d.textContent||'').replace(/\n{3,}/g,'\n\n').trim();
+}
+
+/* ---------- export modal ---------- */
+var expModal = null;
+function ensureExpModal(){
+  if(expModal) return expModal;
+  var m = document.createElement('div');
+  m.className = 'expwrap'; m.id = 'expWrap';
+  m.innerHTML =
+    '<div class="expbox">'+
+      '<div class="exphd">'+
+        '<div><div class="expt" id="expTitle"></div><div class="exps" id="expSub"></div></div>'+
+        '<div class="expbtns">'+
+          '<button class="btnp" id="expCopy">Copy for email</button>'+
+          '<button class="chip" id="expHtml">Download .html</button>'+
+          '<button class="chip" id="expXlsx">Download Excel</button>'+
+          '<button class="chip" id="expClose">Close</button>'+
+        '</div>'+
+      '</div>'+
+      '<div class="expscroll"><div id="expBody"></div></div>'+
+    '</div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e){
+    if(e.target === m || e.target.id === 'expClose'){ m.classList.remove('on'); }
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape') m.classList.remove('on');
+  });
+  expModal = m;
+  return m;
+}
+
+/* opts: {title, subtitle, html, filename, xlsx:function->Uint8Array|null} */
+function openExport(opts){
+  var m = ensureExpModal();
+  document.getElementById('expTitle').textContent = opts.title;
+  document.getElementById('expSub').textContent = opts.subtitle || '';
+  var body = document.getElementById('expBody');
+  body.innerHTML = '<div style="'+EM.page+'">'+opts.html+'</div>';
+  var cp = document.getElementById('expCopy'),
+      dh = document.getElementById('expHtml'),
+      dx = document.getElementById('expXlsx');
+  cp.onclick = function(){ copyRich(htmlDoc(opts.title, opts.html), toPlain(opts.html), cp); };
+  dh.onclick = function(){ dl(opts.filename+'.html', htmlDoc(opts.title, opts.html), 'text/html'); };
+  if(opts.xlsx){
+    dx.style.display = '';
+    dx.onclick = function(){
+      dlBlob(opts.filename+'.xlsx', new Blob([opts.xlsx()],
+        {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+    };
+  } else {
+    dx.style.display = 'none';
+  }
+  m.classList.add('on');
+  document.querySelector('.expscroll').scrollTop = 0;
+}
+
+/* ======================================================== business case
+   Two renderings of the same model:
+     bizHTML  - email-pasteable HTML, every calculation step visible
+     bizXlsx  - a real workbook where every number is a formula pointing at
+                the Inputs sheet, with native charts bound to cell ranges, so
+                Finance can change an assumption and watch the case move.
+   ctx = {m, V, S, a, H}
+======================================================================== */
+
+var HARVEST = {reduce:'Headcount reduction', avoid:'Hiring avoidance against an approved plan',
+  vendor:'Outsourcer volume or rate renegotiation', growth:'Absorbed growth without hiring',
+  soft:'NONE — soft savings, reported separately'};
+
+/* Fixed row numbers on the Inputs sheet, so every other sheet can point here. */
+var IN = {vol:3, cpc:4, hr:5, occ:6, aht:7, agents:8,
+          cur:11, tgt:12, ahtsave:13, shrink:14, shrinktgt:15,
+          realz:18, harvest:19,
+          bbcost:22, bbmonths:23, training:24, eng:25, tooling:26,
+          years:29, disc:30};
+
+function bizCash(m, V){
+  // Cumulative discounted position by year, year 0 = the investment.
+  var pts = [{y:0, disc:0, cum:-m.inv}], cum = -m.inv;
+  for(var y=1; y<=V.years; y++){
+    var d = m.real/Math.pow(1+V.disc/100, y);
+    cum += d;
+    pts.push({y:y, disc:d, cum:cum});
+  }
+  return pts;
+}
+function bizScenarios(m, V){
+  return [0.5,0.75,1,1.25].map(function(f){
+    var r = m.real*f, npv = -m.inv;
+    for(var y=1;y<=V.years;y++) npv += r/Math.pow(1+V.disc/100,y);
+    return {f:f, label:(f===1?'Base case':fm(f*100,0)+'% of estimate'),
+            benefit:r, pbMonths:(r>0? m.inv/r*12 : Infinity), npv:npv};
+  });
+}
+
+/* ------------------------------------------------------------------ HTML */
+function bizHTML(ctx){
+  var m=ctx.m, V=ctx.V, a=ctx.a;
+  var cash = bizCash(m,V), scen = bizScenarios(m,V);
+  var money = function(n){ return (n<0?'−$':'$')+fm(Math.abs(n),0); };
+  var H='';
+
+  H += '<div style="'+EM.h1+'">Business Case — '+eh(a.n)+'</div>'+
+       '<div style="'+EM.sub+'">Generated from the Six Sigma Black Belt program hub for customer support '+
+       'operations. Replace the bracketed fields, review every assumption with Finance, and attach this to '+
+       'your project charter.</div>';
+
+  /* headline numbers */
+  H += '<table role="presentation" cellpadding="0" cellspacing="0" style="'+EM.kpiw+'"><tr>'+
+    '<td style="'+EM.kpi+'"><div style="'+EM.kpil+'">Realised annual benefit</div><div style="'+EM.kpiv+'">'+money(m.real)+'</div></td>'+
+    '<td style="'+EM.kpi+'"><div style="'+EM.kpil+'">Investment</div><div style="'+EM.kpiv+'">'+money(m.inv)+'</div></td>'+
+    '<td style="'+EM.kpi+'"><div style="'+EM.kpil+'">Payback</div><div style="'+EM.kpiv+'">'+
+      (isFinite(m.pb)?fm(m.pb*12,0)+' mo':'—')+'</div></td>'+
+    '<td style="'+EM.kpi+'"><div style="'+EM.kpil+'">'+V.years+'-year NPV</div><div style="'+EM.kpiv+'">'+money(m.npv)+'</div></td>'+
+    '</tr></table>';
+
+  /* 1 problem */
+  var curTxt = a.kind==='aht' ? fm(V.aht,0)+' seconds' : a.kind==='volume' ? fm(V.rate,0)+' contacts'
+             : a.kind==='shrink' ? fm(V.shrink,1)+'%' : fm(V.rate,1)+'%';
+  var tgtTxt = a.kind==='aht' ? fm(V.aht-V.ahtsave,0)+' seconds' : a.kind==='volume' ? fm(V.target,0)+' contacts'
+             : a.kind==='shrink' ? fm(V.shrinktgt,1)+'%' : fm(V.target,1)+'%';
+  H += '<div style="'+EM.h2+'">1. The problem</div>'+
+    '<table style="'+EM.tbl+'">'+
+    '<tr><td style="'+EM.td+'width:32%"><b>Project type</b></td><td style="'+EM.td+'">'+eh(a.n)+'</td></tr>'+
+    '<tr><td style="'+EM.td+'"><b>What is wrong</b></td><td style="'+EM.td+'">'+eh(a.d)+'</td></tr>'+
+    '<tr><td style="'+EM.td+'"><b>Scope</b></td><td style="'+EM.td+'">[queue / contact type / site]</td></tr>'+
+    '<tr><td style="'+EM.td+'"><b>Owner (Champion)</b></td><td style="'+EM.td+'">[name]</td></tr>'+
+    '<tr><td style="'+EM.td+'"><b>Black Belt</b></td><td style="'+EM.td+'">[name]</td></tr>'+
+    '</table>'+
+    '<div style="border-left:3px solid #2f6feb;background:#f5f8ff;padding:10px 14px;margin:0 0 14px">'+
+    'Between [start date] and [end date], '+eh(a.metric.toLowerCase())+' in [process] was <b>'+curTxt+
+    '</b> against a target of <b>'+tgtTxt+'</b>, representing an estimated <b>'+money(m.real)+
+    '</b> annualised. The cause is not yet known.</div>';
+
+  /* 2 operation */
+  H += '<div style="'+EM.h2+'">2. Operation in scope</div>'+
+    '<table style="'+EM.tbl+'">'+
+    '<tr><th style="'+EM.th+'">Item</th><th style="'+EM.th+'">Value</th><th style="'+EM.th+'">Source</th></tr>'+
+    '<tr><td style="'+EM.td+'">Annual contacts in scope</td><td style="'+EM.tdr+'">'+fm(V.vol)+'</td><td style="'+EM.td+'">Ticketing / phone platform</td></tr>'+
+    '<tr><td style="'+EM.td+'">Fully-loaded cost per contact</td><td style="'+EM.tdr+'">$'+fm(V.cpc,2)+'</td><td style="'+EM.td+'">Finance — definition agreed</td></tr>'+
+    '<tr><td style="'+EM.td+'">Loaded cost per agent-hour</td><td style="'+EM.tdr+'">$'+fm(V.hr,0)+'</td><td style="'+EM.td+'">Finance</td></tr>'+
+    '<tr><td style="'+EM.td+'">Occupancy</td><td style="'+EM.tdr+'">'+fm(V.occ,0)+'%</td><td style="'+EM.td+'">Workforce management</td></tr>'+
+    '</table>';
+
+  /* 3 benefit calculation - the arithmetic, step by step */
+  H += '<div style="'+EM.h2+'">3. Benefit calculation</div>'+
+    '<div style="'+EM.note+'">Every step is shown so the number can be traced and challenged rather than taken on trust.</div>'+
+    '<table style="'+EM.tbl+'">'+
+    '<tr><th style="'+EM.th+'">Step</th><th style="'+EM.th+'">Working</th><th style="'+EM.th+'">Result</th></tr>'+
+    m.detail.map(function(d){
+      return '<tr><td style="'+EM.td+'">'+eh(d[0])+'</td><td style="'+EM.td+
+        'color:#5b6675;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px">'+
+        eh(d[1])+'</td><td style="'+EM.tdr+'"><b>'+eh(d[2])+'</b></td></tr>'; }).join('')+
+    '<tr><td style="'+EM.td+'background:#f7f9fc"><b>Gross annual benefit</b></td><td style="'+EM.td+'background:#f7f9fc"></td>'+
+      '<td style="'+EM.tdr+'background:#f7f9fc"><b>'+money(m.gross)+'</b></td></tr>'+
+    '<tr><td style="'+EM.td+'background:#f7f9fc"><b>Realised annual benefit</b></td><td style="'+EM.td+'background:#f7f9fc"></td>'+
+      '<td style="'+EM.tdr+'background:#f7f9fc"><b>'+money(m.real)+'</b></td></tr>'+
+    '<tr><td style="'+EM.td+'">FTE equivalent</td><td style="'+EM.td+'"></td><td style="'+EM.tdr+'">'+fm(m.fte,1)+'</td></tr>'+
+    '</table>';
+
+  /* charts */
+  H += '<div style="'+EM.h2+'">4. The picture</div>';
+  H += emBar({title:'Benefit bridge — gross to realised', rows:[
+      {l:'Gross annual benefit', v:m.gross, d:money(m.gross), c:'#2f6feb'},
+      {l:'Realisation haircut',  v:-(m.gross-m.real), d:'−$'+fm(m.gross-m.real,0), c:'#dc2626'},
+      {l:'Realised benefit',     v:m.real,  d:money(m.real),  c:'#15a34a'}],
+    foot:'The haircut is the share of the modelled benefit assumed not to survive full rollout ('+
+         (m.realz>0?fm(m.realz*100,0)+'%':'0% — soft savings')+' realisation).'});
+
+  H += emBar({title:'Discounted benefit by year (at '+fm(V.disc,0)+'%)',
+    rows:cash.filter(function(p){ return p.y>0; }).map(function(p){
+      return {l:'Year '+p.y, v:p.disc, d:money(p.disc), c:'#2f6feb'}; }),
+    foot:'Each year’s benefit expressed in today’s money. The later the year, the less it is worth.'});
+
+  H += emBar({title:'Cumulative position — where you cross into profit',
+    rows:cash.map(function(p){
+      return {l:'Year '+p.y, v:p.cum, d:money(p.cum), c:p.cum>=0?'#15a34a':'#dc2626'}; }),
+    foot:'Year 0 is the investment. The first green bar is the year the project has paid for itself'+
+         (isFinite(m.pb)?' — payback lands at '+fm(m.pb*12,0)+' months.':'.')});
+
+  H += emBar({title:'If the benefit estimate is wrong — '+V.years+'-year NPV by scenario',
+    rows:scen.map(function(s){
+      return {l:s.label, v:s.npv, d:money(s.npv), c:s.npv>=0?(s.f===1?'#2f6feb':'#15a34a'):'#dc2626'}; }),
+    foot:'Showing you have stress-tested your own number is what makes a Finance partner trust the rest of it.'});
+
+  /* 5 harvest */
+  H += '<div style="'+EM.h2+'">5. Harvest mechanism</div>'+
+    '<div style="padding:11px 14px;margin:0 0 12px;border:1px solid '+
+      (V.harvest==='soft'||!V.harvest?'#e0a800':'#c9d6ea')+';background:'+
+      (V.harvest==='soft'||!V.harvest?'#fffaf0':'#f5f8ff')+'"><b>'+
+      eh(HARVEST[V.harvest]||'[NOT YET NAMED — this must be completed before Finance will sign]')+'</b></div>'+
+    '<div style="'+EM.p+'">Freed capacity is not a saving until something actually changes. Describe here exactly '+
+    'which line falls, in which budget, in which month, and who has agreed to it.</div>'+
+    '<table style="'+EM.tbl+'">'+
+    '<tr><td style="'+EM.td+'width:50%">Signed by Finance: ______________________</td><td style="'+EM.td+'">Date: ____________</td></tr>'+
+    '<tr><td style="'+EM.td+'">Signed by WFM: __________________________</td><td style="'+EM.td+'">Date: ____________</td></tr>'+
+    '</table>';
+
+  /* 6 investment */
+  H += '<div style="'+EM.h2+'">6. Investment</div>'+
+    '<table style="'+EM.tbl+'">'+
+    '<tr><th style="'+EM.th+'">Line</th><th style="'+EM.th+'">Amount</th><th style="'+EM.th+'">Basis</th></tr>'+
+    '<tr><td style="'+EM.td+'">Black Belt time</td><td style="'+EM.tdr+'">$'+fm(V.bbcost*(V.bbmonths/12),0)+
+      '</td><td style="'+EM.td+'">'+V.bbmonths+' months at $'+fm(V.bbcost,0)+'/yr loaded</td></tr>'+
+    '<tr><td style="'+EM.td+'">Training and materials</td><td style="'+EM.tdr+'">$'+fm(V.training,0)+'</td><td style="'+EM.td+'"></td></tr>'+
+    '<tr><td style="'+EM.td+'">Engineering / implementation</td><td style="'+EM.tdr+'">$'+fm(V.eng,0)+
+      '</td><td style="'+EM.td+'">System-enforced controls</td></tr>'+
+    '<tr><td style="'+EM.td+'">Tooling</td><td style="'+EM.tdr+'">$'+fm(V.tooling,0)+
+      '</td><td style="'+EM.td+'">Statistical software, data access</td></tr>'+
+    '<tr><td style="'+EM.td+'background:#f7f9fc"><b>Total</b></td><td style="'+EM.tdr+'background:#f7f9fc"><b>$'+
+      fm(m.inv,0)+'</b></td><td style="'+EM.td+'background:#f7f9fc"></td></tr>'+
+    '</table>';
+
+  /* 7 financial summary */
+  H += '<div style="'+EM.h2+'">7. Financial summary</div>'+
+    '<table style="'+EM.tbl+'">'+
+    '<tr><th style="'+EM.th+'">Measure</th><th style="'+EM.th+'">Value</th></tr>'+
+    '<tr><td style="'+EM.td+'">Realised annual benefit</td><td style="'+EM.tdr+'">'+money(m.real)+'</td></tr>'+
+    '<tr><td style="'+EM.td+'">Total investment</td><td style="'+EM.tdr+'">'+money(m.inv)+'</td></tr>'+
+    '<tr><td style="'+EM.td+'">Payback period</td><td style="'+EM.tdr+'">'+(isFinite(m.pb)?fm(m.pb*12,0)+' months':'—')+'</td></tr>'+
+    '<tr><td style="'+EM.td+'">'+V.years+'-year NPV at '+fm(V.disc,0)+'%</td><td style="'+EM.tdr+'">'+money(m.npv)+'</td></tr>'+
+    '<tr><td style="'+EM.td+'">Simple ROI over '+V.years+' years</td><td style="'+EM.tdr+'">'+fm(m.roi*100,0)+'%</td></tr>'+
+    '</table>';
+
+  /* 8 sensitivity */
+  H += '<div style="'+EM.h2+'">8. Sensitivity</div>'+
+    '<table style="'+EM.tbl+'">'+
+    '<tr><th style="'+EM.th+'">Scenario</th><th style="'+EM.th+'">Annual benefit</th>'+
+    '<th style="'+EM.th+'">Payback</th><th style="'+EM.th+'">'+V.years+'-year NPV</th></tr>'+
+    scen.map(function(s){
+      return '<tr><td style="'+EM.td+'">'+(s.f===1?'<b>'+eh(s.label)+'</b>':eh(s.label))+'</td>'+
+        '<td style="'+EM.tdr+'">'+money(s.benefit)+'</td>'+
+        '<td style="'+EM.tdr+'">'+(isFinite(s.pbMonths)?fm(s.pbMonths,0)+' months':'never')+'</td>'+
+        '<td style="'+EM.tdr+'">'+money(s.npv)+'</td></tr>'; }).join('')+
+    '</table>';
+
+  /* 9 assumptions */
+  var checks = ['Cost per contact definition agreed in writing with Finance',
+    'Baseline measured over at least 13 weeks and signed by Finance',
+    'Measurement system validated (attribute agreement study if the metric involves human judgement)',
+    'Target justified by verified root causes, not by aspiration',
+    'Harvest mechanism named and signed by WFM and Finance',
+    'Realisation factor of '+fm(V.realz,0)+'% agreed with Finance',
+    'Metric-impact disclosure complete — whose scorecard does this move, and who adjusted their target?',
+    'Counter-balancing metrics identified and will be tracked from day one'];
+  H += '<div style="'+EM.h2+'">9. Assumptions and risks</div>'+
+    '<table style="'+EM.tbl+'">'+ checks.map(function(c){
+      return '<tr><td style="'+EM.td+'width:26px;text-align:center">☐</td><td style="'+EM.td+'">'+eh(c)+'</td></tr>';
+    }).join('') + '</table>'+
+    '<table style="'+EM.tbl+'">'+
+    '<tr><th style="'+EM.th+'">Risk</th><th style="'+EM.th+'">Mitigation</th></tr>'+
+    [['Black Belt pulled back to the floor during peak','Written dedication commitment countersigned by the ops director'],
+     ['Benefit challenged by Finance','Finance partner in the tollgates from day one; realised not gross reporting'],
+     ['Improvement decays after handover','At least one system-enforced control per root cause; mandatory 180-day re-audit'],
+     ['Pilot result does not replicate at rollout','Concurrent control group; realisation factor applied up front']]
+    .map(function(r){ return '<tr><td style="'+EM.td+'">'+eh(r[0])+'</td><td style="'+EM.td+'">'+eh(r[1])+'</td></tr>'; }).join('')+
+    '</table>';
+
+  H += '<div style="border-top:1px solid #dde3ec;margin-top:22px;padding-top:12px;'+EM.note+'">'+
+    'Figures are a model, not a measurement. Every input should be traced to a named source before this goes '+
+    'to a steering committee. The accompanying Excel workbook carries the same model as live formulas — change '+
+    'any yellow input and every number and chart recalculates.</div>';
+  return H;
+}
+
+/* ------------------------------------------------------------------ XLSX */
+function bizXlsx(ctx){
+  var m=ctx.m, V=ctx.V, a=ctx.a;
+  var cash = bizCash(m,V), scen = bizScenarios(m,V);
+  var realzVal = V.harvest==='soft' ? 0 : V.realz/100;
+  var pct = function(n){ return n/100; };
+  var B = function(r){ return 'Inputs!$B$'+r; };
+
+  /* ---- Inputs ---- */
+  var inRows = [];
+  inRows[0]  = [{v:'Inputs — change any yellow cell',s:'title'},{s:'title'},{s:'title'}];
+  inRows[1]  = [{v:'SCOPE',s:'band'},{s:'band'},{s:'band'}];
+  inRows[2]  = [{v:'Annual contacts in scope',s:'b'},{v:V.vol,s:'in'},{v:'Ticketing or phone platform, filtered to the queue in scope.',s:'note'}];
+  inRows[3]  = [{v:'Fully-loaded cost per contact',s:'b'},{v:V.cpc,s:'money'},{v:'Finance. Total support cost ÷ total contacts, with the definition agreed in writing.',s:'note'}];
+  inRows[4]  = [{v:'Loaded cost per agent-hour',s:'b'},{v:V.hr,s:'money'},{v:'Finance. Must use the same "what is included" definition as cost per contact.',s:'note'}];
+  inRows[5]  = [{v:'Occupancy',s:'b'},{v:pct(V.occ),s:'in'},{v:'Workforce management. Handle ÷ (handle + idle).',s:'note'}];
+  inRows[6]  = [{v:'Average handle time (seconds)',s:'b'},{v:V.aht,s:'in'},{v:'Talk plus hold plus after-call work.',s:'note'}];
+  inRows[7]  = [{v:'Agents in scope',s:'b'},{v:V.agents,s:'in'},{v:'Headcount whose schedules would change.',s:'note'}];
+  inRows[8]  = [];
+  inRows[9]  = [{v:'BASELINE AND TARGET',s:'band'},{s:'band'},{s:'band'}];
+  var rateKind = (a.kind==='rate');
+  inRows[10] = [{v:'Current '+a.metric.toLowerCase(),s:'b'},
+                {v: rateKind?pct(V.rate):V.rate, s: rateKind?'in':'in'},
+                {v:'Measured over at least 13 weeks, against a written operational definition.',s:'note'}];
+  inRows[11] = [{v:'Target',s:'b'},
+                {v: rateKind?pct(V.target):V.target, s:'in'},
+                {v:'Justified by what your verified root causes can actually explain.',s:'note'}];
+  inRows[12] = [{v:'Seconds saved per contact',s:'b'},{v:V.ahtsave,s:'in'},{v:'From the pilot: treatment minus concurrent control.',s:'note'}];
+  inRows[13] = [{v:'Shrinkage today',s:'b'},{v:pct(V.shrink),s:'in'},{v:'Share of paid time unavailable for contacts.',s:'note'}];
+  inRows[14] = [{v:'Shrinkage target',s:'b'},{v:pct(V.shrinktgt),s:'in'},{v:'What you can defend, not what you wish for.',s:'note'}];
+  inRows[15] = [];
+  inRows[16] = [{v:'REALISATION',s:'band'},{s:'band'},{s:'band'}];
+  inRows[17] = [{v:'Realisation factor',s:'b'},{v:realzVal,s:'in'},
+                {v:'Share that survives full rollout. Zero when the harvest mechanism is soft savings.',s:'note'}];
+  inRows[18] = [{v:'Harvest mechanism',s:'b'},{v:HARVEST[V.harvest]||'NOT YET NAMED',s:'in'},
+                {v:'How freed capacity becomes money. Finance will not sign without this.',s:'note'}];
+  inRows[19] = [];
+  inRows[20] = [{v:'INVESTMENT',s:'band'},{s:'band'},{s:'band'}];
+  inRows[21] = [{v:'Black Belt loaded cost per year',s:'b'},{v:V.bbcost,s:'money'},{v:'Fully loaded.',s:'note'}];
+  inRows[22] = [{v:'Months dedicated to this project',s:'b'},{v:V.bbmonths,s:'in'},{v:'',s:'note'}];
+  inRows[23] = [{v:'Training and materials',s:'b'},{v:V.training,s:'money'},{v:'',s:'note'}];
+  inRows[24] = [{v:'Engineering / implementation',s:'b'},{v:V.eng,s:'money'},{v:'System-enforced controls.',s:'note'}];
+  inRows[25] = [{v:'Tooling',s:'b'},{v:V.tooling,s:'money'},{v:'Statistical software, data access.',s:'note'}];
+  inRows[26] = [];
+  inRows[27] = [{v:'FINANCE',s:'band'},{s:'band'},{s:'band'}];
+  inRows[28] = [{v:'Years to model',s:'b'},{v:V.years,s:'in'},{v:'Three for a programme. Do not claim benefit in perpetuity.',s:'note'}];
+  inRows[29] = [{v:'Discount rate',s:'b'},{v:V.disc/100,s:'in'},{v:'Ask Finance for the rate they use, usually WACC.',s:'note'}];
+
+  /* ---- Benefit model: archetype-specific arithmetic, all live ---- */
+  var mr = [];
+  mr.push([{v:'Benefit model — '+a.n,s:'title'},{s:'title'},{s:'title'}]);
+  mr.push([{v:'STEP',s:'hdr'},{v:'VALUE',s:'hdr'},{v:'WORKING',s:'hdr'}]);
+  var grossRow;
+  if(a.kind==='rate'){
+    mr.push([{v:'Improvement (percentage points)',s:'b'},{f:B(IN.cur)+'-'+B(IN.tgt),s:'pct'},{v:'current − target',s:'note'}]);
+    mr.push([{v:'Contacts avoided per year',s:'b'},{f:B(IN.vol)+'*(' +B(IN.cur)+'-'+B(IN.tgt)+')',s:'intCalc'},{v:'volume × improvement',s:'note'}]);
+    mr.push([{v:'Gross annual value',s:'b'},{f:'B4*'+B(IN.cpc),s:'moneyCalc'},{v:'contacts avoided × cost per contact',s:'note'}]);
+    grossRow = 5;
+  } else if(a.kind==='volume'){
+    mr.push([{v:'Contacts eliminated per year',s:'b'},{f:B(IN.cur)+'-'+B(IN.tgt),s:'intCalc'},{v:'current − target',s:'note'}]);
+    mr.push([{v:'Gross annual value',s:'b'},{f:'B3*'+B(IN.cpc),s:'moneyCalc'},{v:'contacts eliminated × cost per contact',s:'note'}]);
+    grossRow = 4;
+  } else if(a.kind==='aht'){
+    mr.push([{v:'Handle-hours saved per year',s:'b'},{f:B(IN.vol)+'*'+B(IN.ahtsave)+'/3600',s:'num'},{v:'volume × seconds saved ÷ 3600',s:'note'}]);
+    mr.push([{v:'Paid hours freed',s:'b'},{f:'B3/'+B(IN.occ),s:'num'},{v:'÷ occupancy — an hour of handle frees more than an hour of payroll',s:'note'}]);
+    mr.push([{v:'Gross annual value',s:'b'},{f:'B4*'+B(IN.hr),s:'moneyCalc'},{v:'paid hours × loaded cost per agent-hour',s:'note'}]);
+    grossRow = 5;
+  } else {
+    mr.push([{v:'Shrinkage reduction (points)',s:'b'},{f:B(IN.shrink)+'-'+B(IN.shrinktgt),s:'pct'},{v:'today − target',s:'note'}]);
+    mr.push([{v:'Paid hours in scope',s:'b'},{f:B(IN.agents)+'*1760',s:'num'},{v:'agents × 1,760 paid hours',s:'note'}]);
+    mr.push([{v:'Hours freed',s:'b'},{f:'B4*B3',s:'num'},{v:'paid hours × reduction',s:'note'}]);
+    mr.push([{v:'Gross annual value',s:'b'},{f:'B5*'+B(IN.hr),s:'moneyCalc'},{v:'hours freed × loaded cost per agent-hour',s:'note'}]);
+    grossRow = 6;
+  }
+  var realRow = grossRow+2;
+  mr.push([{v:'Realisation factor',s:'b'},{f:B(IN.realz),s:'pct'},{v:'share surviving full rollout',s:'note'}]);
+  mr.push([{v:'REALISED ANNUAL BENEFIT',s:'big'},{f:'B'+grossRow+'*B'+(grossRow+1),s:'moneyBig'},
+           {v:'gross × realisation — this is the only number Finance will bank',s:'note'}]);
+  var fteRow = realRow+1;
+  var fteF = (a.kind==='aht') ? 'B4/1760'
+           : (a.kind==='shrink') ? 'B5/1760'
+           : 'B'+(grossRow-1)+'*('+B(IN.aht)+'/3600)/'+B(IN.occ)+'/1760';
+  mr.push([{v:'FTE equivalent',s:'b'},{f:fteF,s:'num'},{v:'capacity released, expressed as people',s:'note'}]);
+  mr.push([]);
+  var bridgeHdr = mr.length+1;
+  mr.push([{v:'BENEFIT BRIDGE',s:'band'},{s:'band'},{s:'band'}]);
+  mr.push([{v:'Step',s:'hdr'},{v:'Value',s:'hdr'},{s:'hdr'}]);
+  mr.push([{v:'Gross annual benefit'},{f:'B'+grossRow,s:'moneyCalc'}]);
+  mr.push([{v:'Realisation haircut'},{f:'-(B'+grossRow+'-B'+realRow+')',s:'moneyCalc'}]);
+  mr.push([{v:'Realised benefit'},{f:'B'+realRow,s:'moneyCalc'}]);
+  var bFirst = bridgeHdr+2, bLast = bridgeHdr+4;
+
+  /* ---- Financials ---- */
+  var fr = [];
+  fr.push([{v:'Financials',s:'title'},{s:'title'},{s:'title'},{s:'title'}]);
+  fr.push([{v:'INVESTMENT',s:'band'},{s:'band'},{s:'band'},{s:'band'}]);
+  fr.push([{v:'Black Belt time',s:'b'},{f:B(IN.bbcost)+'*('+B(IN.bbmonths)+'/12)',s:'moneyCalc'},
+           {v:'months dedicated ÷ 12 × loaded annual cost',s:'note'}]);
+  fr.push([{v:'Training and materials',s:'b'},{f:B(IN.training),s:'moneyCalc'}]);
+  fr.push([{v:'Engineering / implementation',s:'b'},{f:B(IN.eng),s:'moneyCalc'}]);
+  fr.push([{v:'Tooling',s:'b'},{f:B(IN.tooling),s:'moneyCalc'}]);
+  fr.push([{v:'TOTAL INVESTMENT',s:'big'},{f:'SUM(B3:B6)',s:'moneyBig'}]);
+  fr.push([]);
+  fr.push([{v:'RETURN',s:'band'},{s:'band'},{s:'band'},{s:'band'}]);
+  fr.push([{v:'Realised annual benefit',s:'b'},{f:"'Benefit model'!B"+realRow,s:'moneyCalc'}]);
+  fr.push([{v:'Payback period (months)',s:'b'},{f:'IFERROR(B7/B10*12,"")',s:'num'},
+           {v:'investment ÷ annual benefit × 12',s:'note'}]);
+  fr.push([{v:'Simple ROI over the period',s:'b'},{f:'IFERROR((B10*'+B(IN.years)+'-B7)/B7,"")',s:'pct'}]);
+  fr.push([{v:'NET PRESENT VALUE',s:'big'},
+           {f:'IFERROR(-B7+IF('+B(IN.disc)+'=0,B10*'+B(IN.years)+',B10*(1-(1+'+B(IN.disc)+')^-'+B(IN.years)+')/'+B(IN.disc)+'),"")',s:'moneyBig'},
+           {v:'discounted benefit across every year modelled, minus the investment',s:'note'}]);
+  fr.push([]);
+  var cfHdr = fr.length+1;
+  fr.push([{v:'CASH FLOW BY YEAR',s:'band'},{s:'band'},{s:'band'},{s:'band'}]);
+  fr.push([{v:'Year',s:'hdr'},{v:'Benefit',s:'hdr'},{v:'In today’s money',s:'hdr'},{v:'Cumulative',s:'hdr'}]);
+  var cf0 = cfHdr+2;                       // row of "Year 0"
+  fr.push([{v:0},{v:0,s:'money'},{v:0,s:'money'},{f:'-B7',s:'moneyCalc'}]);
+  for(var y=1; y<=V.years; y++){
+    var r = cf0+y;
+    fr.push([{v:y},
+      {f:'$B$10',s:'moneyCalc'},
+      {f:'$B$10/(1+'+B(IN.disc)+')^A'+r, s:'moneyCalc'},
+      {f:'D'+(r-1)+'+C'+r, s:'moneyCalc'}]);
+  }
+  var cfLast = cf0+V.years;
+
+  /* ---- Sensitivity ---- */
+  var sr = [];
+  sr.push([{v:'Sensitivity — if the benefit estimate is wrong',s:'title'},{s:'title'},{s:'title'},{s:'title'}]);
+  sr.push([{v:'Scenario',s:'hdr'},{v:'Annual benefit',s:'hdr'},{v:'Payback (months)',s:'hdr'},{v:'NPV',s:'hdr'}]);
+  scen.forEach(function(s,i){
+    var r = 3+i;
+    sr.push([{v:s.label},
+      {f:"Financials!$B$10*"+s.f, s:'moneyCalc'},
+      {f:'IFERROR(Financials!$B$7/B'+r+'*12,"")', s:'num'},
+      {f:'IFERROR(-Financials!$B$7+IF('+B(IN.disc)+'=0,B'+r+'*'+B(IN.years)+',B'+r+
+         '*(1-(1+'+B(IN.disc)+')^-'+B(IN.years)+')/'+B(IN.disc)+'),"")', s:'moneyCalc'}]);
+  });
+  sr.push([]);
+  sr.push([{v:'Every figure above is a formula driven by the Inputs sheet. Change an assumption there and '+
+            'this table and its chart move with it.',s:'note'}]);
+
+  /* ---- Business case cover ---- */
+  var cr = [];
+  cr.push([{v:'Business Case — '+a.n,s:'title'},{s:'title'},{s:'title'}]);
+  cr.push([]);
+  cr.push([{v:'What is wrong',s:'b'},{v:a.d,s:'wrap'}]);
+  cr.push([{v:'Scope',s:'b'},{v:'[queue / contact type / site]',s:'in'}]);
+  cr.push([{v:'Champion',s:'b'},{v:'[name]',s:'in'}]);
+  cr.push([{v:'Black Belt',s:'b'},{v:'[name]',s:'in'}]);
+  cr.push([]);
+  cr.push([{v:'HEADLINE',s:'band'},{s:'band'},{s:'band'}]);
+  cr.push([{v:'Realised annual benefit',s:'b'},{f:"'Benefit model'!B"+realRow,s:'moneyBig'}]);
+  cr.push([{v:'Total investment',s:'b'},{f:'Financials!B7',s:'moneyCalc'}]);
+  cr.push([{v:'Payback (months)',s:'b'},{f:'Financials!B11',s:'num'}]);
+  cr.push([{v:'Net present value',s:'b'},{f:'Financials!B13',s:'moneyCalc'}]);
+  cr.push([{v:'Harvest mechanism',s:'b'},{f:B(IN.harvest),s:'calc'}]);
+  cr.push([]);
+  cr.push([{v:'HOW TO USE THIS WORKBOOK',s:'band'},{s:'band'},{s:'band'}]);
+  cr.push([{v:'1. Every yellow cell on the Inputs sheet is yours to change.',s:'wrap'}]);
+  cr.push([{v:'2. Everything else is a formula. Blue cells calculate — do not type over them.',s:'wrap'}]);
+  cr.push([{v:'3. The charts are bound to these cells, so they move when the numbers do.',s:'wrap'}]);
+  cr.push([{v:'4. Figures are a model, not a measurement. Trace every input to a named source before this '+
+             'goes to a steering committee.',s:'wrap'}]);
+  cr.push([]);
+  cr.push([{v:'Signed by Finance',s:'b'},{v:'',s:'in'},{v:'Date',s:'b'}]);
+  cr.push([{v:'Signed by WFM',s:'b'},{v:'',s:'in'},{v:'Date',s:'b'}]);
+
+  var yrs = []; for(var i=1;i<=V.years;i++) yrs.push('Year '+i);
+  var allYrs = ['Year 0'].concat(yrs);
+
+  return XLSX.build({sheets:[
+    {name:'Business case', cols:[34,26,44], tabSelected:true, rows:cr,
+     merges:['A1:C1']},
+    {name:'Inputs', cols:[34,18,66], freeze:2, rows:inRows, merges:['A1:C1']},
+    {name:'Benefit model', cols:[36,20,58], rows:mr, merges:['A1:C1'],
+     charts:[{type:'col', title:'Benefit bridge — gross to realised',
+       cats:"'Benefit model'!$A$"+bFirst+":$A$"+bLast, catVals:['Gross annual benefit','Realisation haircut','Realised benefit'],
+       axisFmt:'$#,##0', labelFmt:'$#,##0',
+       series:[{name:'Value', values:"'Benefit model'!$B$"+bFirst+":$B$"+bLast,
+                cache:[m.gross, -(m.gross-m.real), m.real],
+                pointColors:['2F6FEB','DC2626','15A34A']}],
+       anchor:[3,1,11,19]}]},
+    {name:'Financials', cols:[34,20,52,20], rows:fr, merges:['A1:D1'],
+     charts:[
+      {type:'col', title:'Discounted benefit by year', cats:"Financials!$A$"+(cf0+1)+":$A$"+cfLast,
+       catVals:yrs, axisFmt:'$#,##0', labelFmt:'$#,##0',
+       series:[{name:'In today’s money', values:"Financials!$C$"+(cf0+1)+":$C$"+cfLast,
+                cache:cash.filter(function(p){return p.y>0;}).map(function(p){return Math.round(p.disc);})}],
+       anchor:[5,1,13,18]},
+      {type:'line', title:'Cumulative position — crossing into profit',
+       cats:"Financials!$A$"+cf0+":$A$"+cfLast, catVals:allYrs, axisFmt:'$#,##0', dataLabels:true, labelFmt:'$#,##0',
+       series:[{name:'Cumulative', values:"Financials!$D$"+cf0+":$D$"+cfLast,
+                cache:cash.map(function(p){return Math.round(p.cum);}), color:'15A34A'}],
+       anchor:[5,19,13,36]}]},
+    {name:'Sensitivity', cols:[26,20,20,22], rows:sr, merges:['A1:D1'],
+     charts:[{type:'bar', title:'NPV by scenario', cats:'Sensitivity!$A$3:$A$6',
+       catVals:scen.map(function(s){return s.label;}), axisFmt:'$#,##0', labelFmt:'$#,##0',
+       series:[{name:'NPV', values:'Sensitivity!$D$3:$D$6',
+                cache:scen.map(function(s){return Math.round(s.npv);}),
+                pointColors:scen.map(function(s){ return s.npv<0?'DC2626':(s.f===1?'2F6FEB':'15A34A'); })}],
+       anchor:[5,1,13,18]}]}
+  ]});
+}
+
+/* ============================================ template -> email-safe HTML
+   Every template can be pasted into an email. Markdown templates get their
+   rendered HTML restyled with inline attributes; workbook templates get their
+   preview grid redrawn as tables, with each calculated cell showing the
+   formula underneath the value - tooltips do not survive an email client, and
+   the formula is the part Finance actually wants to see.
+=========================================================================== */
+var TPL_TAG_STYLE = {
+  H1:'font-size:20px;font-weight:700;margin:0 0 6px;color:#0f1520;',
+  H2:EM.h2, H3:'font-size:14px;font-weight:700;margin:18px 0 6px;color:#0f1520;',
+  H4:'font-size:13.5px;font-weight:700;margin:14px 0 5px;color:#0f1520;',
+  P:EM.p, UL:'margin:0 0 12px;padding-left:22px;', OL:'margin:0 0 12px;padding-left:22px;',
+  LI:'margin:0 0 4px;', TABLE:EM.tbl, TH:EM.th, TD:EM.td,
+  BLOCKQUOTE:'border-left:3px solid #2f6feb;background:#f5f8ff;padding:9px 13px;margin:0 0 12px;',
+  CODE:'font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;'+
+       'background:#f2f4f8;padding:1px 5px;border-radius:3px;',
+  PRE:'font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;'+
+      'background:#f7f9fc;border:1px solid #dde3ec;padding:10px;overflow-x:auto;',
+  HR:'border:0;border-top:1px solid #dde3ec;margin:18px 0;',
+  STRONG:'font-weight:700;', B:'font-weight:700;', EM:'font-style:italic;'
+};
+
+var XCLS = {
+  'x-title':'background:#151b24;color:#fff;font-weight:700;font-size:14px;padding:8px 10px;border:1px solid #151b24;',
+  'x-band' :'background:#eef1f6;font-weight:700;padding:6px 10px;border:1px solid #dde3ec;',
+  'x-hdr'  :'background:#333c49;color:#fff;font-weight:600;font-size:12px;padding:6px 9px;border:1px solid #333c49;',
+  'x-b'    :'font-weight:700;padding:5px 9px;border:1px solid #dde3ec;',
+  'x-fill' :'background:#fff9e3;padding:5px 9px;border:1px solid #dde3ec;',
+  'x-calc' :'background:#f2f7ff;color:#1d4ed8;padding:5px 9px;border:1px solid #dde3ec;',
+  'x-ex'   :'background:#ecfaef;padding:5px 9px;border:1px solid #dde3ec;',
+  'x-bad'  :'background:#fdecec;color:#b42318;padding:5px 9px;border:1px solid #dde3ec;'
+};
+
+function tplEmailHTML(slug){
+  var t = TPLS[slug], out = '';
+  out += '<div style="'+EM.h1+'">'+eh(t.title)+'</div>'+
+         '<div style="'+EM.sub+'">'+eh(t.desc)+'</div>';
+
+  if(t.ext === 'md'){
+    var d = document.createElement('div');
+    d.innerHTML = renderMD(t.content);
+    d.querySelectorAll('*').forEach(function(n){
+      var s = TPL_TAG_STYLE[n.tagName];
+      if(s) n.setAttribute('style', s);
+      // Classes are inert once this is pasted somewhere else, and they can
+      // collide with the host page's stylesheet. Drop them.
+      n.removeAttribute('class');
+    });
+    out += d.innerHTML;
+  } else {
+    var src = document.createElement('div');
+    src.innerHTML = t.preview;
+    var tabs = [].slice.call(src.querySelectorAll('.xtab')).map(function(b){ return b.textContent.trim(); });
+    [].slice.call(src.querySelectorAll('.xsheet')).forEach(function(sh, si){
+      out += '<div style="'+EM.h2+'">'+eh(tabs[si] || ('Sheet '+(si+1)))+'</div>';
+      out += '<table role="presentation" cellpadding="0" cellspacing="0" style="'+EM.tbl+'font-size:12.5px">';
+      [].slice.call(sh.querySelectorAll('tr')).forEach(function(tr){
+        var cells = [].slice.call(tr.children);
+        if(!cells.some(function(td){ return (td.textContent||'').trim() || td.className; })) return;
+        out += '<tr>';
+        cells.forEach(function(td){
+          var cls = (td.className||'').split(/\s+/);
+          var style = '', hasF = cls.indexOf('x-f') >= 0;
+          for(var i=0;i<cls.length;i++){ if(XCLS[cls[i]]){ style = XCLS[cls[i]]; break; } }
+          if(!style) style = 'padding:5px 9px;border:1px solid #dde3ec;vertical-align:top;';
+          var cs = td.getAttribute('colspan');
+          var txt = eh((td.textContent||'').trim());
+          if(hasF){
+            var f = td.getAttribute('title') || '';
+            if(f) txt += '<div style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;'+
+                         'color:#5b6675;margin-top:2px;word-break:break-all">'+eh(f)+'</div>';
+          }
+          out += '<td'+(cs?' colspan="'+cs+'"':'')+' style="'+style+'vertical-align:top">'+txt+'</td>';
+        });
+        out += '</tr>';
+      });
+      out += '</table>';
+    });
+    out += '<div style="'+EM.note+'">Yellow cells are yours to fill in. Blue cells calculate themselves; the '+
+           'formula is printed under each one. Download the .xlsx for the working version.</div>';
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------- wiring */
+(function(){
+  // Template modal: add an "Email version" button next to Download.
+  var dlBtn = document.getElementById('tplDl');
+  if(dlBtn){
+    var b = document.createElement('button');
+    b.className = 'chip'; b.id = 'tplEmail'; b.textContent = 'Email version';
+    dlBtn.parentNode.insertBefore(b, dlBtn);
+    b.addEventListener('click', function(){
+      var slug = window.__curTpl;
+      if(!slug) return;
+      var t = TPLS[slug];
+      openExport({
+        title: t.title,
+        subtitle: t.file + ' · paste straight into an email, or download as a standalone page',
+        html: tplEmailHTML(slug),
+        filename: slug,
+        xlsx: t.ext === 'xlsx' ? function(){
+          var bin = atob(t.b64), arr = new Uint8Array(bin.length);
+          for(var i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+          return arr;
+        } : null
+      });
+    });
+  }
+})();
+
 
 /* ================================================================ run glossary last */
 // per-section so each part of the document gets its own links, not just the first few
