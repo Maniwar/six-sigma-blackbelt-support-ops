@@ -562,8 +562,20 @@ def test_toollib() -> None:
     check("card.id = 'fml-'+f.id" in src, "formula cards carry anchors for those links")
 
     for needed in ("function slugify(", "'tgroup p-'", "id=\"tExpand\"", "id=\"tReset\"",
-                   "'tempty'", "mark.thit", "id=\"toolPick\"", "openFromHash"):
+                   "'tempty'", "mark.thit", "id=\"toolPick\"", "openFromHash",
+                   "idx.className='tindex'", "className='fmlback'", "window.__gotoTool"):
         check(needed in src, f"tool library affordance present: {needed}")
+
+    # Every formula card should name the tool that explains its method, so the
+    # link runs both ways instead of stranding the reader in the arithmetic.
+    card_ids = set(re.findall(r'\{id:"([a-z]+)",group:', src))
+    linked_back = set()
+    blk = src[src.index("var TOOL_CALC={"):src.index("var CALC_NAME=")]
+    for grp in re.findall(r"\[([^\]]+)\]", blk):
+        linked_back |= {x.strip().strip("'") for x in grp.split(",")}
+    orphans = sorted(card_ids - linked_back)
+    check(not orphans, "every formula card links back to a tool",
+          f"no backlink for: {orphans}")
 
     # Finance is told they can check the maths in the workbook, so every chart
     # drawn in the HTML case must have a counterpart bound to cells in the Excel.

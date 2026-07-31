@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="app-version" content="2.5">
+<meta name="app-version" content="2.6">
 <title>Six Sigma Black Belt Program — Customer Support Operations</title>
 <style>
 :root{
@@ -580,6 +580,29 @@ mark.thit{background:#fde68a;color:inherit;padding:0 1px;border-radius:2px}
 .tpres-i .tpb{margin-top:6px;display:flex;gap:5px}
 .tpfoot{font-size:12.4px;color:var(--muted);margin:10px 0 0}
 @media print{.tpick{display:none!important}}
+
+/* ---- A-Z index and calculator backlinks ---- */
+.tindex{border:1px solid var(--line);border-radius:10px;margin:10px 0 6px;background:var(--bg2)}
+.tindex>summary{padding:10px 16px;cursor:pointer;font-size:13.6px;font-weight:650;list-style:none;
+  color:var(--muted)}
+.tindex>summary::-webkit-details-marker{display:none}
+.tindex>summary::after{content:"▾";float:right}
+.tindex[open]>summary::after{content:"▴"}
+.tindexlist{padding:4px 16px 14px;columns:4;column-gap:22px}
+.tindexlist a{display:block;font-size:13px;padding:3px 0;text-decoration:none;
+  break-inside:avoid;color:var(--ink)}
+.tindexlist a:hover{color:var(--acc);text-decoration:underline}
+@media(max-width:1100px){.tindexlist{columns:3}}
+@media(max-width:760px){.tindexlist{columns:2}}
+@media(max-width:480px){.tindexlist{columns:1}}
+
+.lf .fmlback{margin:0 0 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
+.lf .fmlback span{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+  font-weight:750}
+.lf .fmlback a{font-weight:650;border:1px solid var(--line);border-radius:6px;padding:3px 9px;
+  background:#fff;text-decoration:none}
+.lf .fmlback a:hover{border-color:var(--acc);color:var(--acc)}
+@media print{.tindex{display:none!important}}
 </style>
 </head>
 <body>
@@ -589,7 +612,7 @@ mark.thit{background:#fde68a;color:inherit;padding:0 1px;border-radius:2px}
   <div class="brand">
     <div class="k">Operational Excellence</div>
     <h1>Six Sigma Black Belt Program</h1>
-    <p>Customer Support Operations &middot; v2.5</p>
+    <p>Customer Support Operations &middot; v2.6</p>
   </div>
   <div class="navsearch"><input id="q" type="search" placeholder="Filter curriculum modules&hellip;" autocomplete="off"></div>
 
@@ -677,7 +700,7 @@ mark.thit{background:#fde68a;color:inherit;padding:0 1px;border-radius:2px}
   </div>
 
 <div class="box good" style="margin-top:26px">
-<div class="t">New in v2.5 &mdash; the tool library is navigable</div>
+<div class="t">New in v2.6 &mdash; the tool library is navigable</div>
 <ul style="margin-bottom:0">
 <li><b>&ldquo;Not sure which tool you need?&rdquo;</b> Two questions &mdash; where you are, and what you
 are actually trying to do &mdash; and you land on two or three tools. Every one of the 52 is reachable
@@ -689,6 +712,10 @@ sections away with nothing joining them.</li>
 <li><b>Every tool has a link you can send.</b> Copy the link from any tool and it opens straight to it.
 Tools are grouped under DMAIC headings, badged with whether they come with a template, a calculator or
 Minitab steps, and there is an expand-all for reading or printing.</li>
+<li><b>An A&ndash;Z index</b> of all 52, for when you already know the name and just want it. It jumps
+straight there and clears any filter that was hiding it.</li>
+<li><b>The calculators link back.</b> Every one of the 14 live formula cards now names the tool that
+explains the method, so the link runs both ways rather than stranding you in the arithmetic.</li>
 <li><b>The filters got out of the way.</b> Twenty-two category chips are now behind one control and can
 be combined, search highlights what it matched, and a dead-end filter offers a way back instead of a
 blank page. Press <b>/</b> to jump to search.</li>
@@ -3416,7 +3443,7 @@ if(fh){
     erlangcastaffingmodels:['staffing'],
     valuestreammap:['pce'],
     costofpoorquality:['volben'],
-    projectcharter:['roi']
+    projectcharter:['roi','ahtben','volben']
   };
   var CALC_NAME={dpu:'Defects per unit',dpmo:'DPMO and sigma level',rty:'Rolled throughput yield',
     ppu:'Capability and breach rate',littles:"Little's Law",pce:'Process cycle efficiency',
@@ -3470,6 +3497,35 @@ if(fh){
       }
     }
   });
+
+  /* ---------- A-Z index, for people who already know the name ---------- */
+  var idx=document.createElement('details'); idx.className='tindex';
+  var sorted=tools.slice().sort(function(a,b){
+    return a.dataset.name.localeCompare(b.dataset.name, 'en', {numeric:true, sensitivity:'base'}); });
+  idx.innerHTML='<summary>A&ndash;Z index of all '+tools.length+' tools</summary>'+
+    '<div class="tindexlist">'+ sorted.map(function(t){
+      return '<a href="#'+t.id+'" data-goto="'+t.id+'">'+t.dataset.name+'</a>'; }).join('')+'</div>';
+  list.parentNode.insertBefore(idx, list);
+
+  /* ---------- the calculators link back to the method ---------- */
+  (function(){
+    var back={};
+    Object.keys(TOOL_CALC).forEach(function(k){
+      TOOL_CALC[k].forEach(function(id){ (back[id]=back[id]||[]).push(k); });
+    });
+    tools.forEach(function(t){
+      var key=norm(t.dataset.name);
+      (TOOL_CALC[key]||[]).forEach(function(id){
+        var card=document.getElementById('fml-'+id);
+        if(!card || card.querySelector('.fmlback')) return;
+        var d=document.createElement('div'); d.className='fmlback';
+        d.innerHTML='<span>How to run it properly</span>'+
+          '<a href="#'+t.id+'" data-goto="'+t.id+'">'+t.dataset.name+'</a>';
+        var sym=card.querySelector('.sym');
+        sym ? sym.parentNode.insertBefore(d, sym.nextSibling) : card.appendChild(d);
+      });
+    });
+  })();
 
   /* ---------- DMAIC group headings ---------- */
   var heads={};
@@ -3617,6 +3673,24 @@ if(fh){
       navigator.clipboard.writeText(url).then(done, done);
     else done();
     if(history.replaceState) history.replaceState(null,'','#'+t.id);
+  });
+
+  /* ---------- jumping to a tool from anywhere on the page ---------- */
+  function gotoTool(id){
+    var t=document.getElementById(id);
+    if(!t || !t.classList.contains('tool')) return false;
+    if(t.hidden) reset();                       // a filter must not hide the thing you asked for
+    t.hidden=false; t.open=true;
+    t.scrollIntoView({behavior:SCROLL_BEHAVIOR, block:'start'});
+    t.classList.add('flash');
+    setTimeout(function(){ t.classList.remove('flash'); },1800);
+    if(history.replaceState) history.replaceState(null,'','#'+id);
+    return true;
+  }
+  window.__gotoTool = gotoTool;               // the picker and the calculators use this too
+  document.addEventListener('click', function(e){
+    var a=e.target.closest('[data-goto]'); if(!a) return;
+    if(gotoTool(a.dataset.goto)) e.preventDefault();
   });
 
   /* ---------- deep links ---------- */
@@ -3778,17 +3852,8 @@ if(fh){
     var o=e.target.closest('[data-opt]');
     if(o){ state.opt=+o.dataset.opt; render(); return; }
     if(e.target.closest('[data-back]')){ state.phase=null; state.opt=null; render(); return; }
-    var g=e.target.closest('[data-goto]');
-    if(g){
-      e.preventDefault();
-      var t=document.getElementById(g.dataset.goto);
-      if(!t) return;
-      t.hidden=false; t.open=true;
-      t.scrollIntoView({behavior:SCROLL_BEHAVIOR, block:'start'});
-      t.classList.add('flash');
-      setTimeout(function(){ t.classList.remove('flash'); },1800);
-      if(history.replaceState) history.replaceState(null,'','#'+t.id);
-    }
+    // [data-goto] is handled by the shared document-level handler in the
+    // tool-library module, which also clears any filter hiding the target.
   });
 
   // expose the mapping so the test suite can prove every name resolves
