@@ -524,6 +524,53 @@ def test_a11y() -> None:
     check(":focus-visible" in src, "a visible focus ring is defined")
 
 
+JARGON = [
+    # Terms that were used in the prose with no explainer behind them. If any of
+    # these stops resolving, the page is talking jargon at people again.
+    "Six Sigma", "Lean", "DMADV", "PDCA", "TQM", "QA", "ASQ", "IASSC", "CSSBB", "BOK",
+    "SOP", "KB", "WFM", "CRM", "ACD", "IVR", "ETL", "ROI", "KPI", "SME", "DOE", "EVOP",
+    "RACI", "SCAMPER", "TRIZ", "ADKAR", "QFD", "Non-parametric", "Parametric",
+    "Transformation", "Normality", "Skew", "Poisson", "Binomial", "Exponential",
+    "Hypothesis test", "Null hypothesis", "Type I error", "Type II error", "Sample size",
+    "Statistical significance", "Welch", "Wilcoxon", "Tukey", "Levene", "Post-hoc",
+    "Bonferroni", "Independence", "Clustering", "Poisson regression", "Negative binomial",
+    "Offset", "Control chart", "Control limits", "Special cause", "Common cause",
+    "Rational subgrouping", "I-MR", "Moving range", "p-chart", "u-chart", "g-chart",
+    "t-chart", "Nelson rules", "Capability", "Cpu", "Pp", "USL", "LSL", "Z-score",
+    "Attribute agreement", "Repeatability", "Reproducibility", "Bias", "Linearity",
+    "Mix shift", "Operational definition", "Value stream", "Cycle time", "Lead time",
+    "Touch time", "Queue time", "Kanban", "Backlog", "Deflection", "Tier 2",
+    "Disposition code", "After-call work", "Concurrency", "Intraday", "Async",
+    "Schedule adherence", "Forecast accuracy", "Queue discipline", "Swivel-chair",
+    "Discount rate", "Soft savings", "Loaded cost", "Charter", "Control plan", "Kano",
+    "Pugh", "Multiple regression", "Residual", "Multicollinearity", "Holdout",
+    "Histogram", "Boxplot", "Run chart", "Pareto chart", "Percentile",
+    "Standard deviation", "Variance", "Changeover", "Pull system", "Bottleneck",
+]
+
+
+def test_glossary() -> None:
+    """No term should be used in the prose without an explainer behind it."""
+    src = HTML.read_text(encoding="utf-8")
+    gl = src[src.index("const GLOSS="):src.index("/* ================================================================ helpers */")]
+    missing = [t for t in JARGON if f'"{t}":{{' not in gl and f"'{t}'" not in gl and f'"{t}"' not in gl]
+    check(not missing, f"every audited term has a glossary entry ({len(JARGON)} checked)",
+          "undefined: " + ", ".join(missing[:8]))
+
+    # The A-Z index used to be hand-written and drifted 148 entries behind GLOSS.
+    check("listEl.innerHTML = Object.keys(GLOSS)" in src,
+          "the glossary index is generated from GLOSS, not hand-maintained")
+    # Anything rendered after load starts with no links unless it is re-glossed.
+    check(src.count("window.reGloss(") >= 5,
+          f"dynamic surfaces are re-glossed (found {src.count('window.reGloss(')} call sites)")
+    check("<pre id=\"tplBody\">" not in src,
+          "template preview is not a <pre> (PRE is skipped, so it could never gloss)")
+    check("t + 's?'" in src, "acronym plurals (SLAs, CTQs) resolve to the singular entry")
+    # Test-selector results must not be dead ends.
+    check("function resultLinks(" in src and "var R_TOOL={" in src,
+          "statistical test results link to a tool and a template")
+
+
 def test_toollib() -> None:
     """The tool library's navigation aids, and that nothing dangles."""
     src = HTML.read_text(encoding="utf-8")
@@ -598,6 +645,8 @@ def main() -> int:
     test_a11y()
     print("TOOLS      library navigation, picker and calculator links")
     test_toollib()
+    print("GLOSSARY   jargon coverage and dynamic linking")
+    test_glossary()
     print("EXPORT     business case HTML + live-formula workbook")
     test_export()
     if fast:

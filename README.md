@@ -42,7 +42,7 @@ Every module carries its BOK mapping, learning objectives, the support-specific 
 - **19 templates you can actually download** — including **8 real Excel workbooks with live formulas**, data-validation dropdowns and conditional formatting. RPN, weighted scores, Process Cycle Efficiency, kappa, sigma level and ROI all calculate themselves. Every workbook has a "how to use this" tab, a worked example row, and a legend telling you which cells to fill in. Download offers a **format** rather than assuming one: Word for the documents you fill in and sign, a web page, or the Excel workbook itself. Every template also has an **Email version** — one click renders it as email-safe HTML you can paste into Outlook or Gmail with formatting intact, with each calculated cell showing its formula underneath the value.
 
 ### Built for people who are not statisticians
-- **Every acronym is clickable.** 97 glossary entries. Anything with a dotted underline opens a plain-English explainer: what it means, why it matters, and exactly where to find the number in your own systems.
+- **Every acronym is clickable.** 253 glossary entries. Anything with a dotted underline opens a plain-English explainer: what it means, why it matters, and exactly where to find the number in your own systems.
 - **14 live formula cards.** Change any input and the arithmetic redoes itself line by line — you see the substitution, not just the answer. Each one ends with what the result actually means for your operation.
 - **"Where does this number come from?" on every input** — the calculators, the wizard, the glossary, and every yellow cell in every workbook.
 
