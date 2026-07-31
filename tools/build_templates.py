@@ -215,7 +215,10 @@ def five_whys():
         for i, v in enumerate(row, start=1):
             c = ws.cell(row=10 + k, column=i, value=v); c.fill = EX; c.border = THIN
             c.alignment = Alignment(wrap_text=True, vertical="top")
-        ws.row_dimensions[10 + k].height = 30
+        # size the row to its longest cell: a fixed 30pt clipped the last line
+        # of every branch, which is exactly the line that names the root cause
+        widest = max(len(str(v)) for v in row[1:6])
+        ws.row_dimensions[10 + k].height = max(32, 15 * -(-widest // 25))
     for r in range(13, 26):
         ws.cell(row=r, column=1, value=r - 9).font = F_NOTE
         for c in range(2, 10):
