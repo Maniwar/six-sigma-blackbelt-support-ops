@@ -287,6 +287,20 @@ def test_sync() -> None:
                   f"{entry['file']}: embedded markdown matches the file on disk")
 
     check(HTML.read_bytes() == DOCS.read_bytes(), "docs/index.html is identical to the root HTML")
+
+    # Version: the meta tag, the sidebar badge and the newest release-note
+    # callout must agree, so a deploy can be identified without opening the page.
+    meta = re.search(r'<meta name="app-version" content="([0-9.]+)"', src)
+    badge = re.search(r"Customer Support Operations &middot; v([0-9.]+)", src)
+    notes = re.findall(r"New in v([0-9.]+)", src)
+    check(bool(meta), "an <meta name=\"app-version\"> tag is present")
+    check(bool(badge), "the sidebar shows a version")
+    check(bool(notes), "there are release notes for the current version")
+    if meta and badge and notes:
+        newest = max(notes, key=lambda v: [int(p) for p in v.split(".")])
+        check(meta.group(1) == badge.group(1) == newest,
+              "meta tag, sidebar badge and release notes agree on the version",
+              f"meta={meta.group(1)} sidebar={badge.group(1)} notes={newest}")
     for dead in ("parseCSV", "renderCSV"):
         check(dead not in src, f"dead {dead}() removed")
     check("function esc2(" in src, "esc2() retained (renderMD depends on it)")
@@ -324,7 +338,10 @@ def _check_preview(entry: dict, path: Path) -> None:
 # workbook it produces actually recalculates to the numbers the page showed.
 
 JS_START = "/* ============================================================ xlsx writer"
-JS_END = "/* ============================================ template -> email-safe HTML"
+# Stop before the docx writer: everything after it needs a live DOM, which node
+# has no business providing. The docx package is validated in the browser
+# instead, by parsing its own ZIP with DOMParser.
+JS_END = "/* ============================================================ docx writer"
 
 # Each problem archetype emits a different benefit model, so the row the gross
 # value lands on shifts. Every branch gets generated and recalculated.
@@ -369,11 +386,24 @@ def test_export() -> None:
     src = HTML.read_text(encoding="utf-8")
     check("business-case.md" not in src, "markdown business case replaced by HTML/Excel")
     check("  function doc(){" not in src, "old markdown generator removed")
-    for needed in ("var XLSX = (function(){", "function bizXlsx(", "function bizHTML(",
+    for needed in ("var XLSX = (function(){", "var DOCX = (function(){",
+                   "function bizXlsx(", "function bizHTML(",
                    "function openExport(", "function tplEmailHTML(", 'id="expCopy"',
+                   "function showFmtMenu(", "function dlTemplateAs(",
                    # the template modal's button is created at runtime, not in the markup
-                   "b.id = 'tplEmail'", "fullCalcOnLoad"):
+                   "b.id = 'tplEmail'", "fullCalcOnLoad",
+                   "wordprocessingml.document.main+xml"):
         check(needed in src, f"export code present: {needed}")
+
+    # Download must offer a format rather than pushing a .md at everyone.
+    # (Markdown is still *available* from the menu - it just isn't the default.)
+    check("""if(t.ext==='xlsx'){
+    dlBlob(t.file, b64ToBlob(t.b64,""" not in src,
+          "old markdown-by-default download path removed")
+    check("dlTemplateAs(slug, t.ext==='xlsx' ? 'xlsx' : 'docx')" in src,
+          "bulk download defaults to Excel for workbooks and Word for documents")
+    for fmt in ("'docx'", "'html'", "'md'"):
+        check(fmt in src, f"format menu offers {fmt}")
 
     if JS_START not in src or JS_END not in src:
         check(False, "export JS block markers found in the HTML")

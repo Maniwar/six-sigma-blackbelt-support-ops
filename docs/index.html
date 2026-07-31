@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="app-version" content="2.1">
 <title>Six Sigma Black Belt Program — Customer Support Operations</title>
 <style>
 :root{
@@ -467,6 +468,18 @@ table.xgrid td{border:1px solid #dfe4ec;padding:5px 7px;vertical-align:top;line-
 .expwrap .btnp:hover{background:#2560d4}
 .expscroll{overflow:auto;flex:1;padding:22px 26px;background:#fff}
 @media(max-width:640px){ .exphd{padding:11px 14px} .expscroll{padding:14px} .expt{font-size:15px} }
+
+/* ---- download format menu ---- */
+.fmtmenu{position:absolute;z-index:10002;background:#fff;border:1px solid #d7dee9;border-radius:10px;
+  box-shadow:0 14px 40px rgba(6,10,16,.22);padding:6px;min-width:252px}
+.fmtmenu .fmh{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  color:#8892a2;padding:6px 10px 5px}
+.fmtmenu button{display:block;width:100%;text-align:left;background:none;border:0;border-radius:7px;
+  padding:8px 10px;cursor:pointer;font-family:inherit}
+.fmtmenu button:hover{background:#eef3fb}
+.fmtmenu .fn{display:block;font-size:13.4px;font-weight:650;color:#18202b}
+.fmtmenu .fn i{font-style:normal;font-family:var(--mono);font-size:11px;color:#8892a2;margin-left:6px}
+.fmtmenu .fd{display:block;font-size:11.8px;color:#6b7583;margin-top:1px}
 </style>
 </head>
 <body>
@@ -475,7 +488,7 @@ table.xgrid td{border:1px solid #dfe4ec;padding:5px 7px;vertical-align:top;line-
   <div class="brand">
     <div class="k">Operational Excellence</div>
     <h1>Six Sigma Black Belt Program</h1>
-    <p>Customer Support Operations &middot; v2.0</p>
+    <p>Customer Support Operations &middot; v2.1</p>
   </div>
   <div class="navsearch"><input id="q" type="search" placeholder="Filter curriculum modules&hellip;" autocomplete="off"></div>
 
@@ -563,7 +576,23 @@ table.xgrid td{border:1px solid #dfe4ec;padding:5px 7px;vertical-align:top;line-
   </div>
 
 <div class="box good" style="margin-top:26px">
-<div class="t">New in v2.0 &mdash; built for people who are not statisticians</div>
+<div class="t">New in v2.1 &mdash; every artifact is something you can actually send</div>
+<ul style="margin-bottom:0">
+<li><b>The business case opens on screen</b> with a benefit bridge, discounted benefit by year,
+your cumulative position against breakeven, and NPV by scenario &mdash; and every arithmetic step
+printed out, so the number can be traced rather than taken on trust.</li>
+<li><b>One button copies it into an email</b> with formatting intact. Another saves it as a web page.</li>
+<li><b>Download it as Excel</b> and every figure is a live formula with native charts bound to the
+cells &mdash; change an assumption and the whole case moves. Finance can audit it, not just read it.</li>
+<li><b>Every template downloads as Word, a web page or Markdown</b>, and has an email version with
+each calculated cell showing its formula.</li>
+<li><b>Corrected calculators.</b> The QA agreement verdict was reading chance agreement instead of
+kappa, and the SLA verdict was reading an empty cell &mdash; so it reported &ldquo;not capable&rdquo;
+for every input. Both are fixed, along with the value-stream, FMEA and ROI sheets.</li>
+</ul></div>
+
+<div class="box good" style="margin-top:18px">
+<div class="t">In v2.0 &mdash; built for people who are not statisticians</div>
 <ul style="margin-bottom:0">
 <li><b>Every acronym is clickable.</b> Anything with a dotted underline opens a plain-English
 explainer: what it means, why it matters, and exactly where to get the number in your own systems.</li>
@@ -2969,12 +2998,10 @@ function b64ToBlob(b64, mime){
   return new Blob([arr],{type:mime});
 }
 function dlTemplate(t){
-  if(t.ext==='xlsx'){
-    dlBlob(t.file, b64ToBlob(t.b64,
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'));
-  } else {
-    dl(t.file, t.content, 'text/markdown');
-  }
+  // Used by "download everything"; hands back the format that suits each
+  // template rather than a .md nobody in an ops team can open.
+  var slug = tplSlug(t);
+  dlTemplateAs(slug, t.ext==='xlsx' ? 'xlsx' : 'docx');
 }
 function dlBlob(name, blob){
   var u=URL.createObjectURL(blob), a=document.createElement('a');
@@ -3325,13 +3352,13 @@ function renderMD(text){
   document.addEventListener('click', function(e){
     var p=e.target.closest('[data-prev]'); if(p){ open(p.dataset.prev); return; }
     var d=e.target.closest('[data-dl]');
-    if(d){ dlTemplate(TPLS[d.dataset.dl]); return; }
+    if(d){ showFmtMenu(d, d.dataset.dl); return; }
     var tl=e.target.closest('[data-tpl]');
     if(tl){ e.preventDefault();
       document.getElementById('templates').scrollIntoView({behavior:'smooth'});
       setTimeout(function(){ open(tl.dataset.tpl); }, 500); return; }
     if(e.target.id==='tplClose' || e.target===modal){ modal.classList.remove('on'); return; }
-    if(e.target.id==='tplDl' && cur){ dlTemplate(TPLS[cur]); return; }
+    if(e.target.id==='tplDl' && cur){ showFmtMenu(e.target, cur); return; }
     if(e.target.id==='dlAll'){
       Object.keys(TPLS).forEach(function(k,i){
         setTimeout(function(){ dlTemplate(TPLS[k]); }, i*320);
@@ -4100,7 +4127,7 @@ function build(spec){
   return zip(files);
 }
 
-return {build:build, colName:colName, STYLE:STYLE};
+return {build:build, colName:colName, STYLE:STYLE, zip:zip};
 })();
 
 if(typeof module!=='undefined') module.exports = XLSX;
@@ -4236,6 +4263,7 @@ function ensureExpModal(){
         '<div class="expbtns">'+
           '<button class="btnp" id="expCopy">Copy for email</button>'+
           '<button class="chip" id="expHtml">Download .html</button>'+
+          '<button class="chip" id="expDocx">Download Word</button>'+
           '<button class="chip" id="expXlsx">Download Excel</button>'+
           '<button class="chip" id="expClose">Close</button>'+
         '</div>'+
@@ -4262,9 +4290,14 @@ function openExport(opts){
   body.innerHTML = '<div style="'+EM.page+'">'+opts.html+'</div>';
   var cp = document.getElementById('expCopy'),
       dh = document.getElementById('expHtml'),
+      dw = document.getElementById('expDocx'),
       dx = document.getElementById('expXlsx');
   cp.onclick = function(){ copyRich(htmlDoc(opts.title, opts.html), toPlain(opts.html), cp); };
   dh.onclick = function(){ dl(opts.filename+'.html', htmlDoc(opts.title, opts.html), 'text/html'); };
+  dw.onclick = function(){
+    dlBlob(opts.filename+'.docx', new Blob([DOCX.build(opts.title, opts.html)],
+      {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}));
+  };
   if(opts.xlsx){
     dx.style.display = '';
     dx.onclick = function(){
@@ -4691,6 +4724,274 @@ function bizXlsx(ctx){
        anchor:[5,1,13,18]}]}
   ]});
 }
+
+
+/* ============================================================ docx writer
+   Turns the HTML we already render into a Word document, so the narrative
+   templates download as something people can actually type into and sign.
+   Reuses the ZIP writer from the xlsx module - a .docx is the same OOXML
+   package shape.
+
+   Lists use literal bullet/number prefixes with an indent rather than Word's
+   numbering.xml. Real numbering is prettier, but a malformed numbering part
+   makes Word offer to "repair" the file, and this cannot be tested against
+   Word from here. Prefixes always render.
+
+   DOCX.build(title, htmlString) -> Uint8Array
+=========================================================================== */
+var DOCX = (function(){
+"use strict";
+
+function esc(s){ return String(s==null?'':s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;').replace(/'/g,'&apos;'); }
+
+var BORDER = '<w:tblBorders>'+
+  ['top','left','bottom','right','insideH','insideV'].map(function(s){
+    return '<w:'+s+' w:val="single" w:sz="4" w:space="0" w:color="D5DCE6"/>'; }).join('')+
+  '</w:tblBorders>';
+
+/* ---- inline runs ---- */
+function runsFrom(node, fmt){
+  fmt = fmt || {};
+  var out = '';
+  node.childNodes.forEach(function(n){
+    if(n.nodeType === 3){
+      var t = n.nodeValue;
+      if(!t) return;
+      out += run(t, fmt);
+    } else if(n.nodeType === 1){
+      var f = Object.assign({}, fmt), tag = n.tagName;
+      if(tag==='STRONG'||tag==='B') f.b = true;
+      else if(tag==='EM'||tag==='I') f.i = true;
+      else if(tag==='CODE') f.mono = true;
+      else if(tag==='BR'){ out += '<w:r><w:br/></w:r>'; return; }
+      else if(tag==='A') f.link = true;
+      out += runsFrom(n, f);
+    }
+  });
+  return out;
+}
+function run(text, f){
+  f = f || {};
+  var rpr = '';
+  if(f.b) rpr += '<w:b/>';
+  if(f.i) rpr += '<w:i/>';
+  if(f.mono) rpr += '<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/><w:sz w:val="19"/>';
+  if(f.link) rpr += '<w:color w:val="1D4ED8"/><w:u w:val="single"/>';
+  if(f.color) rpr += '<w:color w:val="'+f.color+'"/>';
+  if(f.sz) rpr += '<w:sz w:val="'+f.sz+'"/>';
+  return '<w:r>'+(rpr?'<w:rPr>'+rpr+'</w:rPr>':'')+
+    '<w:t xml:space="preserve">'+esc(text)+'</w:t></w:r>';
+}
+function para(inner, opts){
+  opts = opts || {};
+  var ppr = '';
+  if(opts.style) ppr += '<w:pStyle w:val="'+opts.style+'"/>';
+  if(opts.indent) ppr += '<w:ind w:left="'+opts.indent+'"/>';
+  if(opts.quote) ppr += '<w:pBdr><w:left w:val="single" w:sz="18" w:space="8" w:color="2F6FEB"/></w:pBdr>'+
+    '<w:shd w:val="clear" w:fill="F5F8FF"/><w:ind w:left="240"/>';
+  if(opts.rule) ppr += '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="D5DCE6"/></w:pBdr>';
+  if(opts.spaceBefore) ppr += '<w:spacing w:before="'+opts.spaceBefore+'"/>';
+  return '<w:p>'+(ppr?'<w:pPr>'+ppr+'</w:pPr>':'')+(inner||'')+'</w:p>';
+}
+
+/* ---- tables ---- */
+function tableFrom(tbl){
+  var rows = [].slice.call(tbl.querySelectorAll('tr'));
+  if(!rows.length) return '';
+  var widthTotal = 9360;                       // usable width for Letter with 1" margins
+  var cols = Math.max.apply(null, rows.map(function(r){ return r.children.length; })) || 1;
+  var w = Math.floor(widthTotal/cols);
+  var x = '<w:tbl><w:tblPr><w:tblW w:w="'+widthTotal+'" w:type="dxa"/>'+BORDER+
+    '<w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>'+
+    Array.apply(null,{length:cols}).map(function(){ return '<w:gridCol w:w="'+w+'"/>'; }).join('')+
+    '</w:tblGrid>';
+  rows.forEach(function(tr){
+    var isHead = tr.children.length && tr.children[0].tagName === 'TH';
+    x += '<w:tr>'+(isHead?'<w:trPr><w:tblHeader/></w:trPr>':'');
+    var cells = [].slice.call(tr.children);
+    for(var i=0;i<cols;i++){
+      var td = cells[i];
+      var span = td && td.getAttribute('colspan') ? parseInt(td.getAttribute('colspan'),10) : 1;
+      if(td && span > 1) i += span-1;
+      var inner = td ? runsFrom(td, isHead?{b:true}:{}) : '';
+      x += '<w:tc><w:tcPr><w:tcW w:w="'+(w*span)+'" w:type="dxa"/>'+
+        (span>1?'<w:gridSpan w:val="'+span+'"/>':'')+
+        (isHead?'<w:shd w:val="clear" w:fill="333C49"/>':'')+
+        '</w:tcPr>'+
+        para(isHead ? inner.replace(/<w:rPr>/g,'<w:rPr><w:color w:val="FFFFFF"/>') : inner,
+             {style:'TableText'})+
+        '</w:tc>';
+      if(td && span > 1) { /* consumed */ }
+    }
+    x += '</w:tr>';
+  });
+  return x + '</w:tbl>' + para('');
+}
+
+/* ---- block walk ---- */
+function blocks(root){
+  var out = '';
+  [].slice.call(root.childNodes).forEach(function(n){
+    if(n.nodeType === 3){
+      var t = (n.nodeValue||'').trim();
+      if(t) out += para(run(t,{}));
+      return;
+    }
+    if(n.nodeType !== 1) return;
+    var tag = n.tagName;
+    if(tag === 'H1') out += para(runsFrom(n), {style:'Heading1'});
+    else if(tag === 'H2') out += para(runsFrom(n), {style:'Heading2'});
+    else if(tag === 'H3') out += para(runsFrom(n), {style:'Heading3'});
+    else if(tag === 'H4') out += para(runsFrom(n), {style:'Heading4'});
+    else if(tag === 'P') out += para(runsFrom(n));
+    else if(tag === 'BLOCKQUOTE') out += para(runsFrom(n), {quote:true});
+    else if(tag === 'HR') out += para('', {rule:true});
+    else if(tag === 'TABLE') out += tableFrom(n);
+    else if(tag === 'UL' || tag === 'OL'){
+      var i = 1;
+      [].slice.call(n.children).forEach(function(li){
+        if(li.tagName !== 'LI') return;
+        var mark = tag === 'OL' ? (i++)+'.' : '•';
+        out += para(run(mark+'  ', {}) + runsFrom(li), {indent:360});
+      });
+      out += para('');
+    }
+    else if(tag === 'PRE') out += para(run(n.textContent||'', {mono:true}));
+    else if(n.children.length || (n.textContent||'').trim()) out += blocks(n);
+  });
+  return out;
+}
+
+function stylesXml(){
+  function h(id,name,sz,color,before){
+    return '<w:style w:type="paragraph" w:styleId="'+id+'"><w:name w:val="'+name+'"/>'+
+      '<w:basedOn w:val="Normal"/><w:qFormat/>'+
+      '<w:pPr><w:keepNext/><w:spacing w:before="'+before+'" w:after="80"/></w:pPr>'+
+      '<w:rPr><w:b/><w:color w:val="'+color+'"/><w:sz w:val="'+sz+'"/></w:rPr></w:style>';
+  }
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'+
+  '<w:docDefaults><w:rPrDefault><w:rPr>'+
+    '<w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="22"/></w:rPr></w:rPrDefault>'+
+    '<w:pPrDefault><w:pPr><w:spacing w:after="140" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault>'+
+  '</w:docDefaults>'+
+  '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>'+
+  h('Heading1','heading 1','36','0F1520','0')+
+  h('Heading2','heading 2','28','0F1520','280')+
+  h('Heading3','heading 3','24','0F1520','240')+
+  h('Heading4','heading 4','22','0F1520','200')+
+  '<w:style w:type="paragraph" w:styleId="TableText"><w:name w:val="Table Text"/>'+
+    '<w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="40" w:line="240" w:lineRule="auto"/></w:pPr>'+
+    '<w:rPr><w:sz w:val="20"/></w:rPr></w:style>'+
+  '</w:styles>';
+}
+
+function build(title, html){
+  var host = document.createElement('div');
+  host.innerHTML = html;
+  var body = blocks(host);
+  var doc = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'+
+    '<w:body>'+ body +
+    '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/>'+
+    '<w:pgMar w:top="1080" w:right="1440" w:bottom="1080" w:left="1440" w:header="720" w:footer="720"/>'+
+    '</w:sectPr></w:body></w:document>';
+
+  return XLSX.zip([
+    {name:'[Content_Types].xml', data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
+      '<Default Extension="xml" ContentType="application/xml"/>'+
+      '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'+
+      '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>'+
+      '</Types>'},
+    {name:'_rels/.rels', data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>'+
+      '</Relationships>'},
+    {name:'word/_rels/document.xml.rels', data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'+
+      '</Relationships>'},
+    {name:'word/styles.xml', data:stylesXml()},
+    {name:'word/document.xml', data:doc}
+  ]);
+}
+
+return {build:build};
+})();
+
+/* ====================================================== download formats
+   A .md file is not a useful deliverable for most people in a support org, so
+   Download offers a format instead of assuming one. Word is the default for
+   the narrative templates because they exist to be filled in and signed;
+   Excel stays the default for the workbooks.
+=========================================================================== */
+function tplSlug(t){ for(var k in TPLS){ if(TPLS[k] === t) return k; } return null; }
+
+var MIME = {
+  xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+};
+
+function dlTemplateAs(slug, fmt){
+  var t = TPLS[slug], base = slug;
+  if(fmt === 'xlsx'){
+    dlBlob(base+'.xlsx', b64ToBlob(t.b64, MIME.xlsx));
+  } else if(fmt === 'docx'){
+    dlBlob(base+'.docx', new Blob([DOCX.build(t.title, tplEmailHTML(slug))], {type:MIME.docx}));
+  } else if(fmt === 'html'){
+    dl(base+'.html', htmlDoc(t.title, tplEmailHTML(slug)), 'text/html');
+  } else {
+    dl(t.file, t.content, 'text/markdown');
+  }
+}
+
+var FMT_OPTS = {
+  xlsx:[['xlsx','Excel workbook','Live formulas, dropdowns and charts'],
+        ['html','Web page','Opens anywhere, prints cleanly'],
+        ['docx','Word document','For pasting into a report']],
+  md:  [['docx','Word document','Fill it in, circulate it, sign it'],
+        ['html','Web page','Opens anywhere, prints cleanly'],
+        ['md','Markdown','For wikis, repos and note apps']]
+};
+
+var fmtMenu = null;
+function closeFmtMenu(){ if(fmtMenu){ fmtMenu.remove(); fmtMenu = null; } }
+
+function showFmtMenu(anchor, slug){
+  closeFmtMenu();
+  var t = TPLS[slug];
+  var opts = FMT_OPTS[t.ext === 'xlsx' ? 'xlsx' : 'md'];
+  var m = document.createElement('div');
+  m.className = 'fmtmenu';
+  m.innerHTML = '<div class="fmh">Download as</div>' + opts.map(function(o){
+    return '<button data-fmt="'+o[0]+'"><span class="fn">'+o[1]+
+      '<i>.'+o[0]+'</i></span><span class="fd">'+o[2]+'</span></button>'; }).join('');
+  document.body.appendChild(m);
+  var r = anchor.getBoundingClientRect();
+  var top = r.bottom + window.scrollY + 6, left = r.left + window.scrollX;
+  if(left + m.offsetWidth > window.innerWidth - 12) left = window.innerWidth - m.offsetWidth - 12;
+  if(r.bottom + m.offsetHeight + 16 > window.innerHeight) top = r.top + window.scrollY - m.offsetHeight - 6;
+  m.style.top = Math.max(8, top)+'px';
+  m.style.left = Math.max(8, left)+'px';
+  m.addEventListener('click', function(e){
+    var b = e.target.closest('[data-fmt]');
+    if(!b) return;
+    dlTemplateAs(slug, b.dataset.fmt);
+    closeFmtMenu();
+  });
+  fmtMenu = m;
+}
+document.addEventListener('click', function(e){
+  if(fmtMenu && !e.target.closest('.fmtmenu') && !e.target.closest('[data-dl]')
+     && e.target.id !== 'tplDl') closeFmtMenu();
+}, true);
+document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeFmtMenu(); });
+window.addEventListener('resize', closeFmtMenu);
+
 
 /* ============================================ template -> email-safe HTML
    Every template can be pasted into an email. Markdown templates get their
