@@ -249,6 +249,39 @@ def test_numeric_other() -> None:
         check(approx(e31, 1), "control plan: decaying count survives a junk paste", f"got {e31!r} want 1")
         check(approx(e32, 0.5), "control plan: durable share", f"got {e32!r} want 0.5")
 
+    # Kano: the published evaluation table, cell by cell. Two of these were
+    # transposed — Like/Dislike returned "Delighter" and Expect-it/Dislike
+    # returned "Performance", so the two most common answers in a support
+    # survey each got the other's investment advice.
+    src = TEMPLATES / "23-kano-analysis.xlsx"
+    KANO = [
+        ("Like", "Dislike", "Performance"),        # one-dimensional
+        ("Like", "Live with it", "Delighter"),
+        ("Like", "Neutral", "Delighter"),
+        ("Like", "Expect it", "Delighter"),
+        ("Like", "Like", "Questionable"),
+        ("Expect it", "Dislike", "Must-have"),
+        ("Neutral", "Dislike", "Must-have"),
+        ("Live with it", "Dislike", "Must-have"),
+        ("Neutral", "Neutral", "Indifferent"),
+        ("Expect it", "Neutral", "Indifferent"),
+        ("Dislike", "Neutral", "Reverse"),
+        ("Neutral", "Like", "Reverse"),
+        ("Dislike", "Dislike", "Questionable"),
+    ]
+    with tempfile.TemporaryDirectory() as td:
+        tmp = Path(td) / src.name
+        shutil.copyfile(src, tmp)
+        wb = load_workbook(tmp)
+        ws = wb["Kano analysis"]
+        for i, (fun, dys, _) in enumerate(KANO):
+            ws[f"B{7 + i}"], ws[f"C{7 + i}"] = fun, dys
+        wb.save(tmp)
+        sol = _engine(tmp).calculate()
+        for i, (fun, dys, want) in enumerate(KANO):
+            got = _read(sol, src.name, "Kano analysis", f"D{7 + i}")
+            check(got == want, f"Kano: {fun} / {dys} classifies as {want}", f"got {got!r}")
+
     # VSM: "% of lead time" must divide by lead time, not by waiting time.
     src = TEMPLATES / "10-value-stream-map.xlsx"
     with tempfile.TemporaryDirectory() as td:

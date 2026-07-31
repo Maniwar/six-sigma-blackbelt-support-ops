@@ -16,9 +16,12 @@ embedded base64 in the HTML.
 """
 from __future__ import annotations
 
+import pathlib
+
 from openpyxl.chart import BarChart, LineChart, Reference, Series
 from openpyxl.chart.label import DataLabelList
 from openpyxl.chart.marker import Marker
+from openpyxl.packaging.custom import StringProperty
 from openpyxl.styles import Alignment, Font, PatternFill
 
 CALC = PatternFill("solid", fgColor="FFF2F7FF")
@@ -83,6 +86,13 @@ def _bar(ws, title, cats, vals, anchor, colours=None, horizontal=False,
         ch.dataLabels = DataLabelList()
         ch.dataLabels.showVal = True
         ch.dataLabels.numFmt = fmt or "#,##0"
+        # without these the label reads "YOU; Column B; 50,667" — the category
+        # is already on the axis and the series name is meaningless here
+        ch.dataLabels.showCatName = False
+        ch.dataLabels.showSerName = False
+        ch.dataLabels.showLegendKey = False
+        ch.dataLabels.showPercent = False
+        ch.dataLabels.showBubbleSize = False
     if colours:
         # per-bar colour, so "you" reads differently from the benchmark bars
         from openpyxl.chart.marker import DataPoint
@@ -468,15 +478,44 @@ def _fingerprint(wb) -> str:
     return "\n".join(parts)
 
 
+def _spec_version() -> str:
+    """A short hash of this file.
+
+    The reference fingerprint catches a chart being added, removed or
+    re-pointed. It cannot see a styling change — turning off the category name
+    in a data label leaves every reference identical — so a fix to how charts
+    LOOK was computed, found to match, and thrown away without ever reaching
+    disk. Stamping the spec version into the workbook closes that hole: edit
+    this file and every workbook it builds is rewritten once, then left alone.
+    """
+    import hashlib
+    return hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest()[:12]
+
+
+def _stamp(wb) -> str:
+    for prop in getattr(wb.custom_doc_props, "props", []):
+        if prop.name == "chartspec":
+            return str(prop.value or "")
+    return ""
+
+
 def add_charts(wb, wbname: str) -> int:
     """Rebuild this workbook's charts from the spec. Returns the change count."""
     spec = SPECS.get(wbname)
     if spec is None:
         return 0
+    version = _spec_version()
+    stale = _stamp(wb) != version
     before = _fingerprint(wb)
     for ws in wb.worksheets:
         ws._charts = []
     changed = spec(wb)
+    if stale:
+        props = wb.custom_doc_props
+        for prop in list(getattr(props, "props", [])):
+            if prop.name == "chartspec":
+                props.props.remove(prop)
+        props.append(StringProperty(name="chartspec", value=version))
     # A workbook whose charts were added, removed or re-pointed must be saved
     # even if not a single cell value moved.
-    return changed + (1 if _fingerprint(wb) != before else 0)
+    return changed + (1 if stale or _fingerprint(wb) != before else 0)

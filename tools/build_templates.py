@@ -543,21 +543,45 @@ def kano():
     header(ws, 6, ["Feature or requirement", "If present (functional)", "If absent (dysfunctional)",
                    "Category", "Invest?", "What it means for you"])
     scale = "Like,Expect it,Neutral,Live with it,Dislike"
+    # Kano's published evaluation table. The previous version had two cells of
+    # it transposed: Like/Dislike is One-dimensional (Performance) and
+    # Expect-it/Dislike is Must-be — they were returning each other's answer,
+    # which inverts the investment advice on the two most common responses.
     CATF = ('=IF(OR(B{r}="",C{r}=""),"",'
-            'IF(AND(B{r}="Like",C{r}="Dislike"),"Delighter",'
-            'IF(AND(B{r}="Like",OR(C{r}="Live with it",C{r}="Neutral")),"Delighter",'
-            'IF(AND(B{r}="Expect it",C{r}="Dislike"),"Performance",'
+            'IF(B{r}="Like",'
+            'IF(C{r}="Like","Questionable",IF(C{r}="Dislike","Performance","Delighter")),'
+            'IF(B{r}="Dislike",'
+            'IF(C{r}="Dislike","Questionable","Reverse"),'
             'IF(C{r}="Dislike","Must-have",'
-            'IF(AND(B{r}="Neutral",C{r}="Neutral"),"Indifferent","Indifferent"))))))')
+            'IF(C{r}="Like","Reverse","Indifferent")))))')
     INVF = ('=IF(D{r}="","",IF(D{r}="Must-have","Fix it — no credit for doing it, all the blame for not",'
             'IF(D{r}="Performance","Invest — more is better, and measurable",'
-            'IF(D{r}="Delighter","Consider — wins goodwill, does not lose you anything if absent",'
-            '"Do not spend here"))))')
-    ex = ["Resolved without me repeating myself", "Expect it", "Dislike"]
-    for i, v in enumerate(ex, start=1):
-        c = ws.cell(row=7, column=i, value=v); c.fill = EX; c.border = THIN
-    for col, f, shown in [(4, CATF.format(r=7), "Performance"),
-                          (5, INVF.format(r=7), "Invest — more is better, and measurable")]:
+            'IF(D{r}="Delighter","Consider — wins goodwill, costs you nothing if absent",'
+            'IF(D{r}="Reverse","Stop doing it — they want the opposite",'
+            'IF(D{r}="Questionable","Re-ask — the two answers contradict each other",'
+            '"Do not spend here"))))))')
+    # One row demonstrated one category and left the other three reading zero,
+    # so the chart was a single bar and the summary said nothing.
+    EXROWS = [
+        ("Resolved without me repeating myself", "Expect it", "Dislike", "Must-have"),
+        ("Answered within the time you promised", "Expect it", "Dislike", "Must-have"),
+        ("Agent already knows my account history", "Like", "Dislike", "Performance"),
+        ("Fewer transfers between teams", "Like", "Dislike", "Performance"),
+        ("Proactive notice before I notice the problem", "Like", "Live with it", "Delighter"),
+        ("A follow-up note a week later", "Like", "Neutral", "Delighter"),
+        ("Choice of chat colour scheme", "Neutral", "Neutral", "Indifferent"),
+        ("A survey after every single contact", "Dislike", "Neutral", "Reverse"),
+    ]
+    for k, (feat, fun, dys, _cat) in enumerate(EXROWS):
+        rr = 7 + k
+        for i, v in enumerate((feat, fun, dys), start=1):
+            c = ws.cell(row=rr, column=i, value=v); c.fill = EX; c.border = THIN
+        for col, f in [(4, CATF.format(r=rr)), (5, INVF.format(r=rr))]:
+            c = mark(ws, rr, col, "calc"); c.fill = EX; c.value = f
+        SHOWN[("Kano analysis", f"D{rr}")] = _cat
+        SHOWN[("Kano analysis", f"E{rr}")] = ""
+    for col, f, shown in [(4, CATF.format(r=7), "Must-have"),
+                          (5, INVF.format(r=7), "Fix it — no credit for doing it, all the blame for not")]:
         c = mark(ws, 7, col, "calc"); c.fill = EX; c.value = f
         SHOWN[("Kano analysis", f"{get_column_letter(col)}7")] = shown
     mark(ws, 7, 6, "in").fill = EX
@@ -704,8 +728,8 @@ def pareto():
         r = 5 + i
         c = mark(ws, r, 1, "ex" if i == 0 else "in"); c.value = name
         c2 = mark(ws, r, 2, "ex" if i == 0 else "in"); c2.value = n
-        for col, f in [(3, f'=IFERROR(B{r}/SUM($B$5:$B$24),"")'),
-                       (4, f'=IFERROR(SUM($B$5:B{r})/SUM($B$5:$B$24),"")')]:
+        for col, f in [(3, f'=IF(OR(B{r}="",SUM($B$5:$B$24)=0),"",B{r}/SUM($B$5:$B$24))'),
+                       (4, f'=IF(OR(B{r}="",SUM($B$5:$B$24)=0),"",SUM($B$5:B{r})/SUM($B$5:$B$24))')]:
             cc = mark(ws, r, col, "calc"); cc.value = f; cc.number_format = "0.0%"
             if i == 0: cc.fill = EX
         run += n
@@ -715,8 +739,10 @@ def pareto():
     for r in range(10, 25):
         for cc in [1, 2, 5]:
             mark(ws, r, cc, "in")
-        for col, f in [(3, f'=IFERROR(B{r}/SUM($B$5:$B$24),"")'),
-                       (4, f'=IFERROR(SUM($B$5:B{r})/SUM($B$5:$B$24),"")')]:
+        # an empty row used to read 0.0% share and 100.0% cumulative, which
+        # ran the Pareto line flat along the top of the chart
+        for col, f in [(3, f'=IF(OR(B{r}="",SUM($B$5:$B$24)=0),"",B{r}/SUM($B$5:$B$24))'),
+                       (4, f'=IF(OR(B{r}="",SUM($B$5:$B$24)=0),"",SUM($B$5:B{r})/SUM($B$5:$B$24))')]:
             c = mark(ws, r, col, "calc"); c.value = f; c.number_format = "0.0%"
             SHOWN[("Pareto", f"{get_column_letter(col)}{r}")] = ""
     dv = DataValidation(type="list", formula1='"Yes,No"', allow_blank=True)
