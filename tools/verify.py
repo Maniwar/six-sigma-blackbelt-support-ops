@@ -483,6 +483,37 @@ def test_export() -> None:
                       f"got {got!r} want {want}")
 
 
+# --------------------------------------------------------------------- A11Y
+def test_a11y() -> None:
+    """Guard the accessibility and compatibility fixes from silently regressing."""
+    src = HTML.read_text(encoding="utf-8")
+
+    # A regex lookbehind throws a SyntaxError at construction on Safari < 16.4,
+    # which would abort the whole script block - taking the formula cards, the
+    # wizard, the template previews and every download with it.
+    check("(?<!" not in src,
+          "no regex lookbehind (it aborts the entire script on Safari < 16.4)")
+    check("(^|[^\\\\w-])(" in src, "glossary regex uses the portable leading-capture form")
+
+    # The glossary terms carry tabindex, so they must be operable from a keyboard.
+    check("if(e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;" in src,
+          "glossary terms respond to Enter and Space, not just a mouse click")
+    check("s.setAttribute('role','button')" in src, "glossary terms expose a button role")
+    check("s.setAttribute('aria-label'" in src, "glossary terms carry an accessible name")
+    check("back.focus()" in src, "closing the explainer returns focus to the term that opened it")
+
+    # Both modals should announce themselves.
+    check(src.count('aria-modal="true"') + src.count("m.setAttribute('aria-modal','true')") >= 2,
+          "both dialogs are marked aria-modal")
+    check('<div id="tplPrev" role="dialog"' in src, "template preview is a labelled dialog")
+
+    check('class="skiplink"' in src, "a skip-to-content link exists for keyboard users")
+    check("prefers-reduced-motion" in src, "the page honours prefers-reduced-motion")
+    check("behavior:'smooth'" not in src,
+          "scripted scrolls go through SCROLL_BEHAVIOR rather than hardcoding smooth")
+    check(":focus-visible" in src, "a visible focus ring is defined")
+
+
 # --------------------------------------------------------------------- main
 def main() -> int:
     fast = "--fast" in sys.argv
@@ -490,6 +521,8 @@ def main() -> int:
     test_structure()
     print("SYNC       four-way template consistency")
     test_sync()
+    print("A11Y       keyboard, dialogs and browser compatibility")
+    test_a11y()
     print("EXPORT     business case HTML + live-formula workbook")
     test_export()
     if fast:

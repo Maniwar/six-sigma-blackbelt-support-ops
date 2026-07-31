@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="app-version" content="2.2">
+<meta name="app-version" content="2.3">
 <title>Six Sigma Black Belt Program — Customer Support Operations</title>
 <style>
 :root{
@@ -480,15 +480,27 @@ table.xgrid td{border:1px solid #dfe4ec;padding:5px 7px;vertical-align:top;line-
 .fmtmenu .fn{display:block;font-size:13.4px;font-weight:650;color:#18202b}
 .fmtmenu .fn i{font-style:normal;font-family:var(--mono);font-size:11px;color:#8892a2;margin-left:6px}
 .fmtmenu .fd{display:block;font-size:11.8px;color:#6b7583;margin-top:1px}
+
+/* ---- keyboard: let people jump past the 26-item sidebar ---- */
+.skiplink{position:absolute;left:-9999px;top:0;z-index:10010;background:var(--acc);color:#fff;
+  padding:10px 16px;border-radius:0 0 8px 0;font-weight:650;font-size:14px;text-decoration:none}
+.skiplink:focus{left:0}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
+    transition-duration:.001ms!important;scroll-behavior:auto!important}
+}
 </style>
 </head>
 <body>
+<a class="skiplink" href="#main">Skip to content</a>
 <div id="shell">
 <nav id="nav">
   <div class="brand">
     <div class="k">Operational Excellence</div>
     <h1>Six Sigma Black Belt Program</h1>
-    <p>Customer Support Operations &middot; v2.2</p>
+    <p>Customer Support Operations &middot; v2.3</p>
   </div>
   <div class="navsearch"><input id="q" type="search" placeholder="Filter curriculum modules&hellip;" autocomplete="off"></div>
 
@@ -576,7 +588,21 @@ table.xgrid td{border:1px solid #dfe4ec;padding:5px 7px;vertical-align:top;line-
   </div>
 
 <div class="box good" style="margin-top:26px">
-<div class="t">New in v2.2 &mdash; every artifact is something you can actually send</div>
+<div class="t">New in v2.3 &mdash; it now works everywhere, and from the keyboard</div>
+<ul style="margin-bottom:0">
+<li><b>Fixed: the page did not work at all on Safari before 16.4</b> (and iOS before 16.4). The glossary
+used a regular-expression lookbehind, which those versions reject outright &mdash; and the failure took
+the formula cards, the wizard, the template previews and every download down with it. Rewritten to a
+form every browser understands.</li>
+<li><b>The glossary works from the keyboard.</b> The 391 highlighted terms were reachable by Tab but
+could only be opened with a mouse, so keyboard and screen-reader users met 391 dead stops. Enter and
+Space now open them, Escape closes, and focus returns to where it was.</li>
+<li><b>Both dialogs announce themselves</b> to screen readers, there is a skip-to-content link past the
+sidebar, a visible focus ring, and scripted scrolling now respects &ldquo;reduce motion&rdquo;.</li>
+</ul></div>
+
+<div class="box good" style="margin-top:18px">
+<div class="t">In v2.2 &mdash; every artifact is something you can actually send</div>
 <ul style="margin-bottom:0">
 <li><b>The business case opens on screen</b> with a benefit bridge, discounted benefit by year,
 your cumulative position against breakeven, and NPV by scenario &mdash; and every arithmetic step
@@ -2241,7 +2267,7 @@ Decision: proceed to full rollout.</div>
 <div class="btns2"><button data-prev="19-black-belt-calculators">Preview</button>
 <button class="dl" data-dl="19-black-belt-calculators">Download</button></div></div></div>
 </section>
-<div id="tplPrev"><div class="inner"><div class="ph2"><h4 id="tplTitle"></h4>
+<div id="tplPrev" role="dialog" aria-modal="true" aria-labelledby="tplTitle"><div class="inner"><div class="ph2"><h4 id="tplTitle" tabindex="-1"></h4>
 <button class="chip" id="tplRaw">Raw file</button>
 <button class="chip" id="tplDl">Download</button><button class="chip" id="tplClose">Close</button>
 </div><pre id="tplBody"></pre></div></div>
@@ -2990,6 +3016,9 @@ function normCdf(z){
   return z>0 ? 1-p : p;
 }
 window.normInv=normInv; window.normCdf=normCdf;
+// Honour the OS 'reduce motion' setting for the scripted scrolls below.
+var REDUCE = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+var SCROLL_BEHAVIOR = REDUCE ? 'auto' : 'smooth';
 function el(tag,cls,html){ var e=document.createElement(tag); if(cls)e.className=cls;
   if(html!==undefined)e.innerHTML=html; return e; }
 function b64ToBlob(b64, mime){
@@ -3031,7 +3060,12 @@ glTerms.sort(function(a,b){ return b[0].length-a[0].length; });
 function esc(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 var glMap = {};
 glTerms.forEach(function(p){ glMap[p[0].toLowerCase()] = p[1]; });
-var glRe = new RegExp('(?<![\\w-])(' + glTerms.map(function(p){return esc(p[0]);}).join('|') + ')(?![\\w-])','g');
+// A lookbehind here would be neater, but Safari only gained them in 16.4 and an
+// unsupported pattern throws a SyntaxError at construction — which would abort
+// this whole script block and take the formula cards, wizard, templates and
+// downloads with it. A leading capture group works everywhere; group 2 is the
+// term and group 1 is the character in front of it.
+var glRe = new RegExp('(^|[^\\w-])(' + glTerms.map(function(p){return esc(p[0]);}).join('|') + ')(?![\\w-])','g');
 
 var SKIP = {SCRIPT:1,STYLE:1,CODE:1,PRE:1,A:1,ABBR:1,BUTTON:1,INPUT:1,SELECT:1,TEXTAREA:1,
             H1:1,SUMMARY:1,OPTION:1,LABEL:1};
@@ -3063,17 +3097,23 @@ function autoGloss(root){
     glRe.lastIndex = 0;
     var frag = document.createDocumentFragment(), last = 0, m, hit=false;
     while((m = glRe.exec(txt))){
-      var key = glMap[m[1].toLowerCase()];
+      var term = m[2], at = m.index + m[1].length;   // skip the leading char we captured
+      var key = glMap[term.toLowerCase()];
       if(!key) continue;
       seen[key] = (seen[key]||0) + 1;
       if(seen[key] > 3) continue;            // at most 3 links per term per page section
       hit = true;
-      frag.appendChild(document.createTextNode(txt.slice(last, m.index)));
-      var s = el('span','gl',m[1]);
+      frag.appendChild(document.createTextNode(txt.slice(last, at)));
+      var s = el('span','gl',term);
       s.setAttribute('data-gl', key);
       s.setAttribute('tabindex','0');
+      // These are focusable, so they have to be operable from the keyboard and
+      // announce themselves as something you can activate.
+      s.setAttribute('role','button');
+      s.setAttribute('aria-haspopup','dialog');
+      s.setAttribute('aria-label', term + ' — what this means');
       frag.appendChild(s);
-      last = m.index + m[1].length;
+      last = at + term.length;
     }
     if(!hit) return;
     frag.appendChild(document.createTextNode(txt.slice(last)));
@@ -3082,6 +3122,9 @@ function autoGloss(root){
 }
 
 var pop = el('div'); pop.id='pop'; document.body.appendChild(pop);
+pop.setAttribute('role','dialog');
+pop.setAttribute('aria-label','Explanation');
+var popOpener = null;                 // so focus can go back where it came from
 function showPop(target, key, extraHtml, title){
   var g = GLOSS[key];
   if(extraHtml){
@@ -3104,8 +3147,14 @@ function showPop(target, key, extraHtml, title){
   if(r.bottom + phh + 20 > window.innerHeight) top = r.top + window.scrollY - phh - 7;
   if(top < window.scrollY + 6) top = r.bottom + window.scrollY + 7;
   pop.style.left = left+'px'; pop.style.top = top+'px';
+  popOpener = target;
 }
-function hidePop(){ pop.classList.remove('on'); }
+function hidePop(){
+  var back = popOpener; popOpener = null;
+  if(pop.classList.contains('on') && back && document.contains(back)
+     && pop.contains(document.activeElement)) back.focus();
+  pop.classList.remove('on');
+}
 document.addEventListener('click', function(e){
   if(e.target.closest('[data-close]')){ hidePop(); return; }
   var g = e.target.closest('.gl');
@@ -3114,6 +3163,17 @@ document.addEventListener('click', function(e){
   if(q){ e.preventDefault();
     showPop(q, null, q.getAttribute('data-help'), q.getAttribute('data-label')); return; }
   if(!e.target.closest('#pop')) hidePop();
+});
+// The glossary terms carry tabindex, so Enter and Space must open them. Without
+// this they are ~390 focus stops that do nothing, which is worse for a keyboard
+// user than not being focusable at all. (.qm is a real <button>, so it already
+// fires a click on Enter/Space.)
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+  var g = e.target.closest && e.target.closest('.gl');
+  if(!g) return;
+  e.preventDefault();
+  showPop(g, g.getAttribute('data-gl'));
 });
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') hidePop(); });
 window.addEventListener('scroll', hidePop, {passive:true});
@@ -3355,7 +3415,7 @@ function renderMD(text){
     if(d){ showFmtMenu(d, d.dataset.dl); return; }
     var tl=e.target.closest('[data-tpl]');
     if(tl){ e.preventDefault();
-      document.getElementById('templates').scrollIntoView({behavior:'smooth'});
+      document.getElementById('templates').scrollIntoView({behavior:SCROLL_BEHAVIOR});
       setTimeout(function(){ open(tl.dataset.tpl); }, 500); return; }
     if(e.target.id==='tplClose' || e.target===modal){ modal.classList.remove('on'); return; }
     if(e.target.id==='tplDl' && cur){ showFmtMenu(e.target, cur); return; }
@@ -3627,7 +3687,7 @@ function renderMD(text){
         html:bizHTML(ctx), filename:'business-case',
         xlsx:function(){ return bizXlsx(ctx); }});
       return; }
-    step++; render(); document.getElementById('wizard').scrollIntoView({behavior:'smooth',block:'start'});
+    step++; render(); document.getElementById('wizard').scrollIntoView({behavior:SCROLL_BEHAVIOR,block:'start'});
   });
   bBack.addEventListener('click', function(){ if(step>0){ step--; render(); } });
   bReset.addEventListener('click', function(){ step=0; S.arch=null; V=Object.assign({},DEF); render(); });
@@ -3668,7 +3728,7 @@ function renderMD(text){
       mods.forEach(function(m){
         var hit=!v || m.textContent.toLowerCase().indexOf(v)>-1;
         m.style.display=hit?'':'none'; if(v && hit) m.open=true; });
-      if(v){ document.getElementById('curriculum').scrollIntoView({behavior:'smooth'}); }
+      if(v){ document.getElementById('curriculum').scrollIntoView({behavior:SCROLL_BEHAVIOR}); }
     });
   }
 })();
@@ -4256,6 +4316,9 @@ function ensureExpModal(){
   if(expModal) return expModal;
   var m = document.createElement('div');
   m.className = 'expwrap'; m.id = 'expWrap';
+  m.setAttribute('role','dialog');
+  m.setAttribute('aria-modal','true');
+  m.setAttribute('aria-labelledby','expTitle');
   m.innerHTML =
     '<div class="expbox">'+
       '<div class="exphd">'+
