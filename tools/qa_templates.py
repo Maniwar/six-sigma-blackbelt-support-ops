@@ -311,9 +311,13 @@ def main() -> int:
             audit_numeric(path)
     print(f"\n  {charts} charts across {len(books)} workbooks")
     if visual:
-        out = Path(sys.argv[sys.argv.index("--visual") + 1]) if \
-            len(sys.argv) > sys.argv.index("--visual") + 1 and \
-            not sys.argv[sys.argv.index("--visual") + 1].startswith("-") else ROOT / ".qa-render"
+        # --visual takes no value of its own: the positional arguments are
+        # workbook filters, and consuming one here rendered into a directory
+        # named after the filter.
+        out = ROOT / ".qa-render"
+        for a in sys.argv[1:]:
+            if a.startswith("--out="):
+                out = Path(a.split("=", 1)[1])
         print(f"\nRendering to {out} …")
         pngs = render(books, out)
         print(f"  {len(pngs)} page image(s) — open them and look at every chart")

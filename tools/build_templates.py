@@ -143,7 +143,7 @@ def five_whys():
     ws = wb.create_sheet("5 Whys tree")
     title(ws, "5 Whys — run it as a tree, not a chain",
           "A single chain gives you one cause and false confidence. Branching gives you a hypothesis set you can test.", 8)
-    widths(ws, [6, 34, 34, 34, 34, 16, 18, 30])
+    widths(ws, [10, 34, 34, 34, 34, 16, 18, 30])   # 6 clipped "Instance" to "Instan"
     band(ws, 4, "THE PROBLEM — one specific instance, not a general statement", 8)
     ws.cell(row=5, column=1, value="Instance").font = F_B
     ws.merge_cells("B5:E5"); mark(ws, 5, 2, "in")
@@ -158,15 +158,31 @@ def five_whys():
 
     header(ws, 9, ["#", "Why 1", "Why 2", "Why 3", "Why 4 / 5", "Branch?",
                    "Testable with data?", "How you would test it"])
-    ex = ["1", "The adjustment had not posted when the ticket was closed",
-          "Closure is allowed before the posting webhook confirms",
-          "The status model has no pending state",
-          "Nobody owns the ticket lifecycle across billing and support",
-          "A", "Yes", "Count reopens where closure preceded the webhook timestamp"]
-    for i, v in enumerate(ex, start=1):
-        c = ws.cell(row=10, column=i, value=v); c.fill = EX; c.border = THIN
-        c.alignment = Alignment(wrap_text=True, vertical="top")
-    for r in range(11, 26):
+    # The tool is called "a tree, not a chain", so a single-branch example
+    # argues against the template. Three branches from the same instance.
+    ex = [
+        ["1", "The adjustment had not posted when the ticket was closed",
+         "Closure is allowed before the posting webhook confirms",
+         "The status model has no pending state",
+         "Nobody owns the ticket lifecycle across billing and support",
+         "A", "Yes", "Count reopens where closure preceded the webhook timestamp"],
+        ["2", "The agent could not see whether the adjustment had posted",
+         "Billing status lives in another system with no view inside the ticket",
+         "The integration was scoped to write, never to read",
+         "No one owned the end-to-end lifecycle when it was designed",
+         "B", "Yes", "Sample 50 reopens and check whether the agent had visibility at closure"],
+        ["3", "We only count reopens raised for the same reason",
+         "The metric was defined by reporting without asking operations",
+         "No operational definition was agreed when the project started",
+         "The organisation has no standard for who signs off a metric definition",
+         "C", "Yes", "Recount reopens on an any-reason definition and compare the two series"],
+    ]
+    for k, row in enumerate(ex):
+        for i, v in enumerate(row, start=1):
+            c = ws.cell(row=10 + k, column=i, value=v); c.fill = EX; c.border = THIN
+            c.alignment = Alignment(wrap_text=True, vertical="top")
+        ws.row_dimensions[10 + k].height = 30
+    for r in range(13, 26):
         ws.cell(row=r, column=1, value=r - 9).font = F_NOTE
         for c in range(2, 9):
             mark(ws, r, c, "in").alignment = Alignment(wrap_text=True, vertical="top")
@@ -176,7 +192,7 @@ def five_whys():
 
     band(ws, 27, "CHECK BEFORE YOU LEAVE THIS TOOL", 8)
     rows = [("Branches explored", '=COUNTA(B10:B25)', "3"),
-            ("Branches you can test with data", '=COUNTIF(G10:G25,"Yes")', "2"),
+            ("Branches you can test with data", '=COUNTIF(G10:G25,"Yes")', "3"),
             ("Chains that stopped at a person", '=COUNTIF(E10:E25,"*training*")+COUNTIF(E10:E25,"*follow*")', "0")]
     for i, (label, f, shown) in enumerate(rows, start=28):
         ws.cell(row=i, column=1, value=label).font = F_B
@@ -218,21 +234,55 @@ def fishbone():
                    "Priority", "Evidence you would need"])
     cats = ["People", "Process", "Systems", "Knowledge", "Routing & demand",
             "Product / upstream", "Measurement"]
-    ex = ["Process", "Ticket can be closed before the billing adjustment posts", 5, 5,
-          None, "Reopens where closure timestamp precedes the posting webhook"]
-    r = 8
-    for i, v in enumerate(ex, start=1):
-        if v is None: continue
-        c = ws.cell(row=r, column=i, value=v); c.fill = EX; c.border = THIN
-        c.alignment = Alignment(wrap_text=True, vertical="top")
-    c = mark(ws, r, 5, "calc"); c.value = "=IF(COUNT(C8:D8)<2,\"\",C8*D8)"
-    c.fill = EX; SHOWN[("Fishbone", "E8")] = "25"
-    for rr in range(9, 36):
+    # One example cause left six of the seven branches reading "EMPTY — look
+    # again", so the template's own quality gate was firing on its own example.
+    ex = [
+        ["Process", "Ticket can be closed before the billing adjustment posts", 5, 5,
+         "Reopens where closure timestamp precedes the posting webhook"],
+        ["Process", "Billing Ops pull the queue once a day, so nothing moves overnight", 4, 4,
+         "Queue age distribution by hour of arrival"],
+        ["Systems", "The status model has no pending-adjustment state", 5, 5,
+         "Count of closures with an adjustment still in flight"],
+        ["Systems", "The nightly adjustment batch fails silently", 3, 5,
+         "Batch exit codes against the days reopens spiked"],
+        ["People", "New hires close on the request, not on the posting", 3, 4,
+         "Reopen rate split by agent tenure band"],
+        ["Knowledge", "No written definition of 'resolved' for a billing adjustment", 4, 3,
+         "Ask ten agents to define it and compare the answers"],
+        ["Routing & demand", "Adjustment requests route to general billing, not the adjustments desk", 3, 3,
+         "Share of reopens that were transferred at least once"],
+        ["Product / upstream", "The billing platform posts asynchronously with no callback", 4, 5,
+         "Distribution of the gap between request and posting"],
+        ["Measurement", "Reopen rate counts same-reason reopens only, hiding the rest", 3, 4,
+         "Recount on an any-reason definition"],
+    ]
+    for k, row in enumerate(ex):
+        rr = 8 + k
+        for i, v in enumerate(row, start=1):
+            col = i if i < 5 else 6            # column 5 is the calculated priority
+            c = ws.cell(row=rr, column=col, value=v); c.fill = EX; c.border = THIN
+            c.alignment = Alignment(wrap_text=True, vertical="top")
+        c = mark(ws, rr, 5, "calc"); c.value = f'=IF(COUNT(C{rr}:D{rr})<2,"",C{rr}*D{rr})'
+        c.fill = EX
+        SHOWN[("Fishbone", f"E{rr}")] = str(row[2] * row[3])
+    for rr in range(8 + len(ex), 36):
         for cc in range(1, 7):
             mark(ws, rr, cc, "in").alignment = Alignment(wrap_text=True, vertical="top")
         c = mark(ws, rr, 5, "calc")
         c.value = f'=IF(COUNT(C{rr}:D{rr})<2,"",C{rr}*D{rr})'
         SHOWN[("Fishbone", f"E{rr}")] = ""
+    # Key the table so the diagram can pull "the nth cause in this category".
+    # INDEX/MATCH on a composite key works in every Excel version; FILTER and
+    # TEXTJOIN do not.
+    ws.cell(row=7, column=20, value="key (used by the diagram)").font = F_NOTE
+    for rr in range(8, 36):
+        k = ws.cell(row=rr, column=20)
+        k.value = f'=IF(A{rr}="","",A{rr}&"|"&COUNTIF($A$8:A{rr},A{rr}))'
+        k.font = F_NOTE
+        SHOWN[("Fishbone", f"T{rr}")] = ""
+    ws.column_dimensions[get_column_letter(20)].width = 22
+    ws.column_dimensions[get_column_letter(20)].hidden = True   # plumbing, not content
+
     dvc = DataValidation(type="list", formula1='"%s"' % ",".join(cats), allow_blank=True)
     ws.add_data_validation(dvc); dvc.add("A8:A35")
     dvs = DataValidation(type="whole", operator="between", formula1=1, formula2=5, allow_blank=True)
@@ -243,10 +293,11 @@ def fishbone():
         r = 38 + i
         ws.cell(row=r, column=1, value=cat).font = F_B
         c = mark(ws, r, 2, "calc"); c.value = f'=COUNTIF($A$8:$A$35,A{r})'
-        SHOWN[("Fishbone", f"B{r}")] = {"Process": "1"}.get(cat, "0")
+        n = sum(1 for e in ex if e[0] == cat)
+        SHOWN[("Fishbone", f"B{r}")] = str(n)
         c2 = mark(ws, r, 3, "calc")
         c2.value = f'=IF(COUNTIF($A$8:$A$35,A{r})=0,"EMPTY — look again","")'
-        SHOWN[("Fishbone", f"C{r}")] = "" if cat == "Process" else "EMPTY — look again"
+        SHOWN[("Fishbone", f"C{r}")] = "" if n else "EMPTY — look again"
         ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=6)
     bar(ws, "Causes per branch — a thin bar is a blind spot",
         Reference(ws, min_col=1, min_row=38, max_row=44),
@@ -255,6 +306,94 @@ def fishbone():
     ws.cell(row=46, column=1, value="Support teams over-populate People and under-populate Systems and Knowledge, "
             "because blaming agents is culturally available. An empty Measurement branch is almost always wrong — "
             "if you have not questioned the measurement, you have not finished.").font = F_NOTE
+
+    # ---- the diagram itself -------------------------------------------
+    # An Ishikawa is a fishbone-SHAPED diagram: a spine pointing at the effect
+    # with angled bones for each category. A table and a bar chart of counts is
+    # not one. This draws the real thing, and every cause cell is a formula
+    # reading the table, so the picture updates as you type.
+    wsd = wb.create_sheet("Fishbone diagram", 1)
+    wsd.sheet_view.showGridLines = False
+    BONE = Side("medium", color="FF333C49")
+    SPINE = Side("thick", color="FF151B24")
+
+    wsd.column_dimensions["A"].width = 2
+    for c in range(2, 27):
+        wsd.column_dimensions[get_column_letter(c)].width = 7.5
+    for c in range(27, 31):
+        wsd.column_dimensions[get_column_letter(c)].width = 13
+
+    wsd.merge_cells(start_row=1, start_column=1, end_row=1, end_column=30)
+    t = wsd.cell(row=1, column=1, value="Cause & effect — the diagram")
+    t.font = F_TITLE
+    for c in range(1, 31):
+        wsd.cell(row=1, column=c).fill = TITLE
+    wsd.row_dimensions[1].height = 26
+    wsd.merge_cells(start_row=2, start_column=1, end_row=2, end_column=30)
+    wsd.cell(row=2, column=1, value="Every box below is a formula reading the Fishbone tab. Type there; "
+             "this redraws itself. Four causes per branch are shown — the tab holds as many as you like.").font = F_NOTE
+
+    TOP = ["People", "Process", "Systems", "Knowledge"]
+    BOT = ["Routing & demand", "Product / upstream", "Measurement"]
+    CAUSE_ROWS_TOP = [6, 8, 10, 12]
+    CAUSE_ROWS_BOT = [18, 20, 22, 24]
+    SPINE_ROW = 15
+
+    def cause(row, c1, c2, category, n):
+        wsd.merge_cells(start_row=row, start_column=c1, end_row=row, end_column=c2)
+        cell = wsd.cell(row=row, column=c1)
+        cell.value = ('=IFERROR(INDEX(Fishbone!$B$8:$B$35,'
+                      'MATCH("%s|%d",Fishbone!$T$8:$T$35,0)),"")' % (category, n))
+        cell.font = Font(size=9)
+        cell.alignment = Alignment(wrap_text=True, vertical="center")
+        cell.fill = CALC
+        wsd.row_dimensions[row].height = 26
+        SHOWN[("Fishbone diagram", cell.coordinate)] = ""
+
+    def catbox(row, c1, c2, name):
+        wsd.merge_cells(start_row=row, start_column=c1, end_row=row, end_column=c2)
+        cell = wsd.cell(row=row, column=c1, value=name)
+        cell.font = F_HDR
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        for c in range(c1, c2 + 1):
+            wsd.cell(row=row, column=c).fill = HDR
+        wsd.row_dimensions[row].height = 20
+
+    for j, name in enumerate(TOP):
+        c = 2 + 6 * j
+        catbox(4, c, c + 3, name)
+        for i, r in enumerate(CAUSE_ROWS_TOP, start=1):
+            cause(r, c, c + 3, name, i)
+        # one merged block with a single diagonal is a clean straight bone;
+        # a stack of per-cell diagonals renders as a dashed staircase
+        wsd.merge_cells(start_row=5, start_column=c + 4, end_row=SPINE_ROW - 1, end_column=c + 5)
+        wsd.cell(row=5, column=c + 4).border = Border(diagonal=BONE, diagonalDown=True)
+
+    for j, name in enumerate(BOT):
+        c = 5 + 6 * j
+        for i, r in enumerate(CAUSE_ROWS_BOT, start=1):
+            cause(r, c, c + 3, name, i)
+        catbox(26, c, c + 3, name)
+        wsd.merge_cells(start_row=SPINE_ROW + 1, start_column=c + 4, end_row=25, end_column=c + 5)
+        wsd.cell(row=SPINE_ROW + 1, column=c + 4).border = Border(diagonal=BONE, diagonalUp=True)
+
+    for c in range(2, 27):
+        wsd.cell(row=SPINE_ROW, column=c).border = Border(bottom=SPINE)
+    wsd.row_dimensions[SPINE_ROW].height = 10
+
+    wsd.merge_cells(start_row=SPINE_ROW - 3, start_column=27, end_row=SPINE_ROW + 3, end_column=30)
+    eff = wsd.cell(row=SPINE_ROW - 3, column=27, value="=Fishbone!B5")
+    eff.font = Font(bold=True, size=12, color="FFFFFFFF")
+    eff.alignment = Alignment(wrap_text=True, vertical="center", horizontal="center")
+    for r in range(SPINE_ROW - 3, SPINE_ROW + 4):
+        for c in range(27, 31):
+            wsd.cell(row=r, column=c).fill = PatternFill("solid", fgColor="FFC0392B")
+    SHOWN[("Fishbone diagram", eff.coordinate)] = \
+        "7-day reopen rate on billing tickets is 14.2% against a target of 8%"
+
+    wsd.merge_cells(start_row=28, start_column=1, end_row=28, end_column=30)
+    wsd.cell(row=28, column=1, value="A branch with no boxes is where you are not looking, not where there is "
+             "nothing to find. An empty Measurement branch is almost always wrong.").font = F_NOTE
 
     ws2 = wb.create_sheet("Category prompts")
     ws2.sheet_view.showGridLines = False
