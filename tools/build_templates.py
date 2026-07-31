@@ -904,8 +904,13 @@ def pareto():
             "Type above in any order; this sorts itself.").font = F_BAND
     for c in range(7, 12):
         ws.cell(row=3, column=c).fill = BAND
-    header(ws, 4, ["", "", "", "", "", "", "#", "Category", "Count",
-                   "Cumulative", "80% line"])
+    # not header(), which writes every column in the row and would blank the
+    # input block's own headers in A4:E4
+    for col, lab in ((7, "#"), (8, "Category"), (9, "Count"),
+                     (10, "Cumulative"), (11, "80% line")):
+        c = ws.cell(row=4, column=col, value=lab)
+        c.fill, c.font = HDR, F_HDR
+        c.alignment = Alignment(wrap_text=True, vertical="center")
     run = 0
     for i in range(20):
         r = 5 + i
