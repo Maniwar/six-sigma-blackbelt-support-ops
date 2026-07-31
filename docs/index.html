@@ -611,6 +611,13 @@ mark.thit{background:#fde68a;color:inherit;padding:0 1px;border-radius:2px}
 .rlink:hover{background:var(--acc);color:#fff}
 .rlink-t{border-color:var(--c);color:var(--c)}
 .rlink-t:hover{background:var(--c);color:#fff}
+
+/* badges are buttons now, so they need to look like it */
+button.tb{cursor:pointer;font-family:inherit;line-height:1.4}
+button.tb:hover{filter:brightness(.94);box-shadow:0 1px 4px rgba(15,21,32,.16)}
+button.tb-calc:hover{background:var(--acc);color:#fff}
+button.tb-tpl:hover{background:var(--c);color:#fff}
+.lf.flash{animation:toolflash 1.8s ease-out}
 </style>
 </head>
 <body>
@@ -3805,10 +3812,15 @@ if(fh){
 
     // badges say what comes with the tool before you open it
     var badges=document.createElement('span'); badges.className='tbadges';
+    var tplEl=t.querySelector('[data-tpl]');
+    var tplId=tplEl?tplEl.getAttribute('data-tpl'):null;
     var b='';
-    if(calcs) b+='<i class="tb tb-calc">Calculator</i>';
-    if(hasTpl) b+='<i class="tb tb-tpl">Template</i>';
-    if(hasSw)  b+='<i class="tb tb-sw">Minitab</i>';
+    if(calcs) b+='<button type="button" class="tb tb-calc" data-badge="calc" data-id="'+calcs[0]+
+                 '" title="Open the live calculator">Calculator</button>';
+    if(tplId) b+='<button type="button" class="tb tb-tpl" data-badge="tpl" data-id="'+tplId+
+                 '" title="Preview and download the template">Template</button>';
+    if(hasSw)  b+='<button type="button" class="tb tb-sw" data-badge="sw" '+
+                 'title="Show the software steps">Minitab</button>';
     badges.innerHTML=b;
     sum.appendChild(badges);
 
@@ -3996,6 +4008,26 @@ if(fh){
     expanded=!expanded;
     tools.forEach(function(t){ if(!t.hidden) t.open=expanded; });
     this.textContent = expanded ? 'Collapse all' : 'Expand all';
+  });
+
+  /* ---------- the badges actually do something ---------- */
+  list.addEventListener('click', function(e){
+    var bd=e.target.closest('[data-badge]'); if(!bd) return;
+    e.preventDefault(); e.stopPropagation();          // never toggle the <details>
+    var kind=bd.dataset.badge, t=bd.closest('.tool');
+    if(kind==='tpl'){
+      // same modal the Preview button opens, so it can be read and downloaded
+      var card=document.querySelector('[data-prev="'+bd.dataset.id+'"]');
+      if(card) card.click();
+    } else if(kind==='calc'){
+      var c=document.getElementById('fml-'+bd.dataset.id);
+      if(c){ c.scrollIntoView({behavior:SCROLL_BEHAVIOR, block:'center'});
+             c.classList.add('flash'); setTimeout(function(){ c.classList.remove('flash'); },1800); }
+    } else if(kind==='sw'){
+      t.open=true;
+      var sw=t.querySelector('.sw2');
+      if(sw) sw.scrollIntoView({behavior:SCROLL_BEHAVIOR, block:'center'});
+    }
   });
 
   /* ---------- copy a link to one tool ---------- */
