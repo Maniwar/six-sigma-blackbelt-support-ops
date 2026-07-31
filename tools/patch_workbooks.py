@@ -26,6 +26,9 @@ from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.datavalidation import DataValidation
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from xlpolish import polish_workbook  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATES = ROOT / "templates"
 
@@ -214,6 +217,7 @@ def patch_formulas(verbose: bool = True) -> int:
                 local += 1
         _style_new_cells(wb)
         local += _add_validations(wb, wbname)
+        local += polish_workbook(wb)
         # openpyxl's zip output is not byte-stable, so saving an unchanged
         # workbook would churn its base64 copy in the HTML on every run.
         if local:
@@ -222,6 +226,19 @@ def patch_formulas(verbose: bool = True) -> int:
         if verbose:
             state = f"{local:3d} cell(s) rewritten" if local else "  unchanged"
             print(f"  {wbname:46s} {state}")
+
+    # Workbooks with no calculated cells still need the finishing pass — the
+    # X-Y matrix is pure scoring and would otherwise never be polished at all.
+    for path in sorted(TEMPLATES.glob("*.xlsx")):
+        if path.name in by_file:
+            continue
+        wb = load_workbook(path)
+        local = polish_workbook(wb)
+        if local:
+            wb.save(path)
+            changed += local
+            if verbose:
+                print(f"  {path.name:46s} {local:3d} layout fix(es)")
     return changed
 
 

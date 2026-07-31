@@ -1,0 +1,332 @@
+#!/usr/bin/env python3
+"""Quality audit for every workbook in templates/.
+
+A template is only useful if someone can open it, understand what to type, and
+trust what comes back. That is three separate failure modes, so this checks
+three separate layers:
+
+  CHARTS   every chart resolves to real data, is titled, and is readable
+  GUIDED   every cell you are asked to fill in says where the number comes from
+  NUMERIC  the whole workbook recalculates without a single error value
+
+Run it after any change to tools/build_templates.py or tools/patch_workbooks.py:
+
+    python3 tools/qa_templates.py            # all three layers
+    python3 tools/qa_templates.py --fast     # skip NUMERIC (it is the slow one)
+
+Exit status is non-zero if anything failed, so it drops straight into CI.
+"""
+from __future__ import annotations
+
+import re
+import sys
+import warnings
+from pathlib import Path
+
+from openpyxl import load_workbook
+from openpyxl.utils import range_boundaries
+
+ROOT = Path(__file__).resolve().parent.parent
+TEMPLATES = ROOT / "templates"
+
+# Colours the builders use. Yellow is "you fill this in", so a yellow cell that
+# carries no explanation is the single most common way a template goes unused.
+FILL_INPUT = "FFFFF9E3"
+FILL_CALC = "FFF2F7FF"
+
+# Workbooks where a chart would be noise rather than signal: a 5 Whys chain and
+# a RACI grid are structures, not distributions. Everything else must chart.
+NO_CHART_OK = {
+    "20-five-whys-tree.xlsx": "a causal chain is a structure, not a distribution",
+    "22-stakeholder-and-raci.xlsx": "handled by the influence/interest grid on its own tab",
+}
+
+ERR_VALUES = ("#REF!", "#VALUE!", "#DIV/0!", "#NAME?", "#N/A", "#NULL!", "#NUM!")
+
+fails: list[str] = []
+warns: list[str] = []
+
+
+def fail(book: str, layer: str, msg: str) -> None:
+    fails.append(f"  FAIL [{layer}] {book}: {msg}")
+
+
+def warn(book: str, layer: str, msg: str) -> None:
+    warns.append(f"  warn [{layer}] {book}: {msg}")
+
+
+# ---------------------------------------------------------------- helpers
+
+
+def merged_shadow(ws) -> set[tuple[int, int]]:
+    """Cells swallowed by a merge. A formula reading one of these is always empty."""
+    out = set()
+    for rng in ws.merged_cells.ranges:
+        c1, r1, c2, r2 = range_boundaries(str(rng))
+        for r in range(r1, r2 + 1):
+            for c in range(c1, c2 + 1):
+                if (r, c) != (r1, c1):
+                    out.add((r, c))
+    return out
+
+
+REF_RE = re.compile(r"^'?(?P<sheet>[^'!]+)'?!\$?(?P<c1>[A-Z]+)\$?(?P<r1>\d+)"
+                    r"(?::\$?(?P<c2>[A-Z]+)\$?(?P<r2>\d+))?$")
+
+
+def parse_ref(ref: str):
+    """('Sheet1'!$B$4:$B$27) -> (sheet, min_col, min_row, max_col, max_row)."""
+    m = REF_RE.match((ref or "").strip())
+    if not m:
+        return None
+    from openpyxl.utils import column_index_from_string as ci
+    c1, r1 = ci(m.group("c1")), int(m.group("r1"))
+    c2 = ci(m.group("c2")) if m.group("c2") else c1
+    r2 = int(m.group("r2")) if m.group("r2") else r1
+    return m.group("sheet"), min(c1, c2), min(r1, r2), max(c1, c2), max(r1, r2)
+
+
+def series_refs(ser):
+    """(values_ref, categories_ref) for a chart series, as written in the XML."""
+    val = None
+    if ser.val is not None and ser.val.numRef is not None:
+        val = ser.val.numRef.f
+    elif getattr(ser, "yVal", None) is not None and ser.yVal.numRef is not None:
+        val = ser.yVal.numRef.f
+    cat = None
+    if ser.cat is not None:
+        if ser.cat.numRef is not None:
+            cat = ser.cat.numRef.f
+        elif ser.cat.strRef is not None:
+            cat = ser.cat.strRef.f
+    elif getattr(ser, "xVal", None) is not None:
+        if ser.xVal.numRef is not None:
+            cat = ser.xVal.numRef.f
+        elif ser.xVal.strRef is not None:
+            cat = ser.xVal.strRef.f
+    return val, cat
+
+
+def chart_title_text(ch) -> str:
+    """openpyxl nests the title several layers down; dig it out."""
+    t = getattr(ch, "title", None)
+    if t is None:
+        return ""
+    rich = getattr(getattr(t, "tx", None), "rich", None)
+    if rich is None:
+        return str(t) if isinstance(t, str) else ""
+    return "".join(r.t or "" for p in rich.p for r in (p.r or []))
+
+
+# ---------------------------------------------------------------- layers
+
+
+def audit_charts(path: Path, wb) -> int:
+    """Every chart must plot real cells, be titled, and not sit on top of the data."""
+    book = path.name
+    total = 0
+    for ws in wb.worksheets:
+        shadow = merged_shadow(ws)
+        for ch in getattr(ws, "_charts", []):
+            total += 1
+            label = f"{ws.title!r} chart {total}"
+            if not chart_title_text(ch).strip():
+                fail(book, "CHARTS", f"{label} has no title — a chart with no title is a decoration")
+            if not ch.series:
+                fail(book, "CHARTS", f"{label} has no data series at all")
+                continue
+            for si, ser in enumerate(ch.series, start=1):
+                vref, cref = series_refs(ser)
+                if not vref:
+                    fail(book, "CHARTS", f"{label} series {si} has no value reference")
+                    continue
+                p = parse_ref(vref)
+                if not p:
+                    fail(book, "CHARTS", f"{label} series {si} value ref is unparseable: {vref}")
+                    continue
+                sheet, c1, r1, c2, r2 = p
+                if sheet not in wb.sheetnames:
+                    fail(book, "CHARTS", f"{label} series {si} points at missing sheet {sheet!r}")
+                    continue
+                src = wb[sheet]
+                cells = [src.cell(row=r, column=c)
+                         for r in range(r1, r2 + 1) for c in range(c1, c2 + 1)]
+                if len(cells) < 2:
+                    fail(book, "CHARTS", f"{label} series {si} plots {len(cells)} point(s) — not a chart")
+                live = [c for c in cells
+                        if c.value is not None and (r1, c1) not in shadow]
+                if not live:
+                    fail(book, "CHARTS",
+                         f"{label} series {si} range {vref} is entirely empty — this renders blank in Excel")
+                hidden = [c.coordinate for c in cells if (c.row, c.column) in merged_shadow(src)]
+                if hidden:
+                    fail(book, "CHARTS",
+                         f"{label} series {si} reads merged-shadow cells {hidden[:3]} which are always empty")
+                if cref:
+                    pc = parse_ref(cref)
+                    if not pc:
+                        fail(book, "CHARTS", f"{label} series {si} category ref unparseable: {cref}")
+                    else:
+                        _, cc1, cr1, cc2, cr2 = pc
+                        n_cat = (cr2 - cr1 + 1) * (cc2 - cc1 + 1)
+                        n_val = (r2 - r1 + 1) * (c2 - c1 + 1)
+                        if n_cat != n_val:
+                            fail(book, "CHARTS",
+                                 f"{label} series {si} has {n_cat} categories for {n_val} values — "
+                                 "Excel will silently drop the overhang")
+                else:
+                    warn(book, "CHARTS", f"{label} series {si} has no category axis — points get numbered 1..n")
+            if ch.height and ch.height < 5:
+                warn(book, "CHARTS", f"{label} is only {ch.height}cm tall — labels will collide")
+    if total == 0 and book not in NO_CHART_OK:
+        fail(book, "CHARTS", "no charts at all — the numbers are there but nobody can see the shape")
+    return total
+
+
+def audit_guided(path: Path, wb) -> None:
+    """Every yellow cell has to say where its number comes from."""
+    book = path.name
+    if not any(s.lower().startswith("how to use") for s in wb.sheetnames):
+        fail(book, "GUIDED", "no 'How to use this' tab")
+    naked = []
+    inputs = 0
+    for ws in wb.worksheets:
+        for row in ws.iter_rows():
+            for c in row:
+                try:
+                    rgb = str(c.fill.fgColor.rgb) if c.fill and c.fill.patternType else ""
+                except Exception:
+                    rgb = ""
+                if rgb != FILL_INPUT:
+                    continue
+                inputs += 1
+                # an explanation is either a cell comment, or prose in the
+                # column to the right, or a note row directly beneath
+                has_note = c.comment is not None
+                if not has_note:
+                    right = ws.cell(row=c.row, column=c.column + 1).value
+                    has_note = isinstance(right, str) and len(right) > 12
+                if not has_note:
+                    left = ws.cell(row=c.row, column=max(1, c.column - 1)).value
+                    has_note = isinstance(left, str) and len(left) > 12
+                if not has_note:
+                    naked.append(f"{ws.title}!{c.coordinate}")
+    if inputs == 0:
+        warn(book, "GUIDED", "no yellow input cells — is anything meant to be filled in?")
+    if naked:
+        fail(book, "GUIDED",
+             f"{len(naked)} input cell(s) with no explanation of where the number comes from: {naked[:5]}")
+    if not any(ws.sheet_view.showGridLines is False for ws in wb.worksheets):
+        warn(book, "GUIDED", "gridlines left on everywhere — reads like a spreadsheet, not a tool")
+
+
+def audit_numeric(path: Path) -> None:
+    """Recalculate the whole workbook and refuse a single error value."""
+    book = path.name
+    try:
+        import formulas
+    except ImportError:
+        warn(book, "NUMERIC", "the `formulas` package is not installed — skipped")
+        return
+    warnings.filterwarnings("ignore")
+    try:
+        xl = formulas.ExcelModel().loads(str(path)).finish()
+        sol = xl.calculate()
+    except Exception as exc:                                   # noqa: BLE001
+        fail(book, "NUMERIC", f"workbook will not recalculate: {type(exc).__name__}: {exc}")
+        return
+    bad = {}
+    for key, cell in sol.items():
+        if "'!" not in key or "!_XLFN" in key.upper():
+            continue
+        try:
+            v = cell.value[0, 0]
+        except Exception:
+            continue
+        if isinstance(v, str) and v.strip() in ERR_VALUES:
+            bad.setdefault(v.strip(), []).append(key.split("]")[-1].replace("'", ""))
+    for err, where in sorted(bad.items()):
+        fail(book, "NUMERIC", f"{len(where)} cell(s) evaluate to {err}: {where[:5]}")
+
+
+# ---------------------------------------------------------------- main
+
+
+SOFFICE = "/Applications/LibreOffice.app/Contents/MacOS/soffice"
+
+
+def render(books: list[Path], outdir: Path) -> list[Path]:
+    """Render each workbook to page PNGs so the charts can actually be looked at.
+
+    Structural checks prove a chart references live cells. They cannot tell you
+    the axis runs 0-500 for data that lives between 396 and 442, so every point
+    is squashed into the top fifth of the plot. Only looking at it tells you
+    that, so the audit renders through LibreOffice and leaves PNGs behind.
+    """
+    import shutil
+    import subprocess
+
+    soffice = SOFFICE if Path(SOFFICE).exists() else shutil.which("soffice")
+    if not soffice:
+        print("  (no LibreOffice — skipping the visual layer)")
+        return []
+    if not shutil.which("pdftoppm"):
+        print("  (no pdftoppm — `brew install poppler` — skipping the visual layer)")
+        return []
+    outdir.mkdir(parents=True, exist_ok=True)
+    pngs = []
+    for book in books:
+        subprocess.run([soffice, "--headless", "--norestore", "--convert-to",
+                        "pdf:calc_pdf_Export", "--outdir", str(outdir), str(book)],
+                       check=False, capture_output=True, stdin=subprocess.DEVNULL)
+        pdf = outdir / (book.stem + ".pdf")
+        if not pdf.exists():
+            fail(book.name, "VISUAL", "LibreOffice could not open it — the file may be corrupt")
+            continue
+        subprocess.run(["pdftoppm", "-r", "100", "-png", str(pdf), str(outdir / book.stem)],
+                       check=False, capture_output=True)
+        got = sorted(outdir.glob(book.stem + "-*.png"))
+        pngs += got
+        print(f"  rendered {book.name:36s} {len(got)} page(s)")
+    return pngs
+
+
+def main() -> int:
+    fast = "--fast" in sys.argv
+    visual = "--visual" in sys.argv
+    only = [a for a in sys.argv[1:] if not a.startswith("-")]
+    books = sorted(TEMPLATES.glob("*.xlsx"))
+    if only:
+        books = [b for b in books if any(o in b.name for o in only)]
+    print(f"Auditing {len(books)} workbook(s) in templates/\n")
+    charts = 0
+    for path in books:
+        wb = load_workbook(path)
+        n = audit_charts(path, wb)
+        audit_guided(path, wb)
+        charts += n
+        note = f"  ({NO_CHART_OK[path.name]})" if n == 0 and path.name in NO_CHART_OK else ""
+        print(f"  {path.name:36s} sheets={len(wb.worksheets):2d}  charts={n:2d}{note}")
+        if not fast:
+            audit_numeric(path)
+    print(f"\n  {charts} charts across {len(books)} workbooks")
+    if visual:
+        out = Path(sys.argv[sys.argv.index("--visual") + 1]) if \
+            len(sys.argv) > sys.argv.index("--visual") + 1 and \
+            not sys.argv[sys.argv.index("--visual") + 1].startswith("-") else ROOT / ".qa-render"
+        print(f"\nRendering to {out} …")
+        pngs = render(books, out)
+        print(f"  {len(pngs)} page image(s) — open them and look at every chart")
+    if warns:
+        print(f"\n{len(warns)} warning(s):")
+        print("\n".join(warns))
+    if fails:
+        print(f"\n{len(fails)} FAILURE(S):")
+        print("\n".join(fails))
+        return 1
+    print("\nAll checks passed.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
