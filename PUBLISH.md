@@ -1,47 +1,63 @@
-# How to publish this repo
+# Publishing and updating this repo
 
-Everything is committed already — the git history is in this folder. You just need to
-create the remote and push.
+## Current state
 
-## Option A — with the GitHub CLI (one command)
+The repo already exists at
+**https://github.com/Maniwar/six-sigma-blackbelt-support-ops**
+with the first two commits pushed.
 
-```bash
-cd six-sigma-blackbelt-support-ops
-gh repo create six-sigma-blackbelt-support-ops \
-  --public --source=. --remote=origin --push \
-  --description "A complete, deployable Lean Six Sigma Black Belt program for customer support operations."
-```
+This folder contains the full git history including one **newer commit** that is
+not on GitHub yet — the Excel workbooks, the template rebuild, and the QA fixes.
 
-## Option B — from the web
+## Push the new commit
 
-1. Create an empty repo at https://github.com/new named `six-sigma-blackbelt-support-ops`
-   (no README, no .gitignore, no licence — this folder already has them).
-2. Then:
+The remote is already configured and your local history is a clean fast-forward,
+so this is all it takes:
 
 ```bash
 cd six-sigma-blackbelt-support-ops
-git remote add origin https://github.com/Maniwar/six-sigma-blackbelt-support-ops.git
-git push -u origin main
+git push
 ```
 
-## Turn on GitHub Pages
+If git asks who you are, or the push is rejected as non-fast-forward, you are
+probably in an older copy of the folder. Use this one instead — it is the
+current state.
 
-Settings → Pages → Source: **GitHub Actions**.
+## GitHub Pages
 
-The workflow in `.github/workflows/pages.yml` publishes the `docs/` folder on every push
-to `main`. Your live URL will be:
+The workflow in `.github/workflows/pages.yml` has `enablement: true`, so the
+first successful run turns Pages on by itself and publishes the `docs/` folder.
 
-    https://maniwar.github.io/six-sigma-blackbelt-support-ops/
+After pushing:
+
+1. Open the **Actions** tab and watch the "Deploy to GitHub Pages" run.
+2. When it goes green, the site is live at
+   **https://maniwar.github.io/six-sigma-blackbelt-support-ops/**
+
+If the run fails with a permissions error, set it manually once:
+**Settings → Pages → Source: GitHub Actions**, then re-run the workflow from the
+Actions tab. You may also need **Settings → Actions → General → Workflow
+permissions → Read and write permissions**.
+
+First deployments can take a couple of minutes to appear after the run goes
+green. A 404 immediately afterwards usually just means DNS/CDN hasn't caught up.
 
 ## What's in here
 
 | Path | What it is |
 |---|---|
 | `six-sigma-blackbelt-support-ops.html` | The whole program — one self-contained file, no dependencies |
-| `docs/index.html` | Same file, served by GitHub Pages |
-| `templates/` | The 18 project templates as Markdown and CSV |
+| `docs/index.html` | The same file, served by GitHub Pages |
+| `templates/` | 19 project templates — 11 Markdown documents, 8 Excel workbooks |
 | `README.md` | Repo front page |
 | `LICENSE` | CC BY 4.0 |
-| `.github/workflows/pages.yml` | Auto-deploys Pages on push |
+| `.github/workflows/pages.yml` | Auto-enables and deploys Pages on every push to `main` |
 
-If you change the HTML, copy it to `docs/index.html` too — or add a build step.
+## If you edit the HTML
+
+`docs/index.html` is a copy, not a symlink. Update both:
+
+```bash
+cp six-sigma-blackbelt-support-ops.html docs/index.html
+git add -A && git commit -m "Update program hub" && git push
+```
