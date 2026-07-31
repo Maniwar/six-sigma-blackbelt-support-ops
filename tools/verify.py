@@ -282,6 +282,39 @@ def test_numeric_other() -> None:
             got = _read(sol, src.name, "Kano analysis", f"D{7 + i}")
             check(got == want, f"Kano: {fun} / {dys} classifies as {want}", f"got {got!r}")
 
+    # Pareto: it is sorted by definition. The cumulative used to be a running
+    # sum down the rows, which is only a Pareto if the user happens to type
+    # their categories in descending order. Type them ascending — the worst
+    # case — and the ranked block must still come out ranked.
+    src = TEMPLATES / "25-pareto-and-distribution.xlsx"
+    with tempfile.TemporaryDirectory() as td:
+        tmp = Path(td) / src.name
+        shutil.copyfile(src, tmp)
+        wb = load_workbook(tmp)
+        ws = wb["Pareto"]
+        ascending = [("Refund timing", 74), ("Proration misunderstood", 96),
+                     ("Duplicate charge", 151), ("Wrong plan applied", 233),
+                     ("Adjustment not posted at closure", 412)]
+        for i, (nm, n) in enumerate(ascending):
+            ws.cell(row=5 + i, column=1, value=nm)
+            ws.cell(row=5 + i, column=2, value=n)
+        wb.save(tmp)
+        sol = _engine(tmp).calculate()
+        counts = [_read(sol, src.name, "Pareto", f"I{5 + i}") for i in range(5)]
+        try:
+            nums = [float(c) for c in counts]
+        except (TypeError, ValueError):
+            nums = []
+        check(nums == sorted(nums, reverse=True),
+              "Pareto ranks itself even when the categories are typed ascending",
+              f"chart plots {nums}")
+        check(approx(_read(sol, src.name, "Pareto", "J7"), 0.8240165631469979, 1e-3),
+              "Pareto cumulative follows the ranking, not the typing order",
+              repr(_read(sol, src.name, "Pareto", "J7")))
+        check(approx(_read(sol, src.name, "Pareto", "C29"), 0.8240165631469979, 1e-3),
+              "'share explained by the top three' means the top three by rank",
+              repr(_read(sol, src.name, "Pareto", "C29")))
+
     # VSM: "% of lead time" must divide by lead time, not by waiting time.
     src = TEMPLATES / "10-value-stream-map.xlsx"
     with tempfile.TemporaryDirectory() as td:

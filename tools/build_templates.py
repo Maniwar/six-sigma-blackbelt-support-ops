@@ -862,40 +862,77 @@ def pareto():
     ws = wb.create_sheet("Pareto")
     title(ws, "Pareto — where the bulk of the problem actually sits",
           "Ranked categories with a running cumulative share, so you can see how much of the problem the top few explain.", 5)
-    widths(ws, [40, 16, 16, 18, 44])
-    header(ws, 4, ["Category", "Count", "Share", "Cumulative", "Validated by reading tickets?"])
+    widths(ws, [40, 12, 11, 9, 34, 3, 7, 40, 12, 13, 11])
+    header(ws, 4, ["Category", "Count", "Share", "Rank", "Validated by reading tickets?"])
     data = [("Adjustment not posted at closure", 412), ("Wrong plan applied", 233),
             ("Duplicate charge", 151), ("Proration misunderstood", 96), ("Refund timing", 74)]
     total = sum(d[1] for d in data)
-    run = 0
+
+    # A Pareto is sorted by definition. The cumulative used to be a running sum
+    # down the rows, which is only a Pareto if the user happens to type their
+    # categories in descending order — and if they do not, the 80% line names
+    # the wrong vital few, confidently. Type them in any order now: the ranked
+    # block to the right sorts itself, and the chart reads that.
+    RANKF = ('=IF(B{r}="","",RANK(B{r},$B$5:$B$24,0)+COUNTIF($B$5:B{r},B{r})-1)')
     for i, (name, n) in enumerate(data):
         r = 5 + i
         c = mark(ws, r, 1, "ex" if i == 0 else "in"); c.value = name
         c2 = mark(ws, r, 2, "ex" if i == 0 else "in"); c2.value = n
-        for col, f in [(3, f'=IF(OR(B{r}="",SUM($B$5:$B$24)=0),"",B{r}/SUM($B$5:$B$24))'),
-                       (4, f'=IF(OR(B{r}="",SUM($B$5:$B$24)=0),"",SUM($B$5:B{r})/SUM($B$5:$B$24))')]:
-            cc = mark(ws, r, col, "calc"); cc.value = f; cc.number_format = "0.0%"
-            if i == 0: cc.fill = EX
-        run += n
+        sh = mark(ws, r, 3, "calc")
+        sh.value = f'=IF(OR(B{r}="",SUM($B$5:$B$24)=0),"",B{r}/SUM($B$5:$B$24))'
+        sh.number_format = "0.0%"
+        rk = mark(ws, r, 4, "calc"); rk.value = RANKF.format(r=r); rk.number_format = "0"
+        if i == 0:
+            sh.fill = EX; rk.fill = EX
         SHOWN[("Pareto", f"C{r}")] = f"{n/total*100:.1f}%"
-        SHOWN[("Pareto", f"D{r}")] = f"{run/total*100:.1f}%"
+        SHOWN[("Pareto", f"D{r}")] = str(i + 1)
         mark(ws, r, 5, "ex" if i == 0 else "in")
     for r in range(10, 25):
         for cc in [1, 2, 5]:
             mark(ws, r, cc, "in")
-        # an empty row used to read 0.0% share and 100.0% cumulative, which
-        # ran the Pareto line flat along the top of the chart
-        for col, f in [(3, f'=IF(OR(B{r}="",SUM($B$5:$B$24)=0),"",B{r}/SUM($B$5:$B$24))'),
-                       (4, f'=IF(OR(B{r}="",SUM($B$5:$B$24)=0),"",SUM($B$5:B{r})/SUM($B$5:$B$24))')]:
-            c = mark(ws, r, col, "calc"); c.value = f; c.number_format = "0.0%"
-            SHOWN[("Pareto", f"{get_column_letter(col)}{r}")] = ""
+        sh = mark(ws, r, 3, "calc")
+        sh.value = f'=IF(OR(B{r}="",SUM($B$5:$B$24)=0),"",B{r}/SUM($B$5:$B$24))'
+        sh.number_format = "0.0%"
+        rk = mark(ws, r, 4, "calc"); rk.value = RANKF.format(r=r); rk.number_format = "0"
+        SHOWN[("Pareto", f"C{r}")] = ""
+        SHOWN[("Pareto", f"D{r}")] = ""
     dv = DataValidation(type="list", formula1='"Yes,No"', allow_blank=True)
     ws.add_data_validation(dv); dv.add("E5:E24")
+
+    # ---- the ranked block the chart actually plots ----------------------
+    ws.cell(row=3, column=7, value="RANKED — this is what the chart plots. "
+            "Type above in any order; this sorts itself.").font = F_BAND
+    for c in range(7, 12):
+        ws.cell(row=3, column=c).fill = BAND
+    header(ws, 4, ["", "", "", "", "", "", "#", "Category", "Count",
+                   "Cumulative", "80% line"])
+    run = 0
+    for i in range(20):
+        r = 5 + i
+        ws.cell(row=r, column=7, value=i + 1).font = F_NOTE
+        for col, f, fmt in [
+            (8, f'=IFERROR(INDEX($A$5:$A$24,MATCH(G{r},$D$5:$D$24,0)),"")', "General"),
+            (9, f'=IFERROR(INDEX($B$5:$B$24,MATCH(G{r},$D$5:$D$24,0)),"")', "#,##0"),
+            (10, f'=IF(I{r}="","",SUM($I$5:I{r})/SUM($I$5:$I$24))', "0.0%"),
+            (11, f'=IF(I{r}="","",0.8)', "0%"),
+        ]:
+            c = mark(ws, r, col, "calc"); c.value = f; c.number_format = fmt
+        if i < len(data):
+            run += data[i][1]
+            SHOWN[("Pareto", f"H{r}")] = data[i][0]
+            SHOWN[("Pareto", f"I{r}")] = f"{data[i][1]:,}"
+            SHOWN[("Pareto", f"J{r}")] = f"{run/total*100:.1f}%"
+            SHOWN[("Pareto", f"K{r}")] = "80%"
+        else:
+            for col in "HIJK":
+                SHOWN[("Pareto", f"{col}{r}")] = ""
     band(ws, 26, "SUMMARY", 5)
     for i, (label, f, shown) in enumerate([
             ("Total", '=SUM(B5:B24)', f"{total:,}"),
             ("Categories", '=COUNTA(A5:A24)', str(len(data))),
-            ("Share explained by the top three", '=IFERROR(SUM(B5:B7)/SUM(B5:B24),"")',
+            # the top three by RANK, not the top three rows somebody happened
+            # to type first
+            ("Share explained by the top three", '=IFERROR(SUM(I5:I7)/SUM(I5:I24),"")',
              f"{sum(d[1] for d in data[:3])/total*100:.1f}%")], start=27):
         ws.cell(row=i, column=1, value=label).font = F_B
         ws.merge_cells(start_row=i, start_column=1, end_row=i, end_column=2)
@@ -909,23 +946,17 @@ def pareto():
     pc.legend = None
     pc.legend = Legend()
     pc.legend.position = "b"
-    pc.add_data(Reference(ws, min_col=2, min_row=5, max_row=14), titles_from_data=False)
-    pc.set_categories(Reference(ws, min_col=1, min_row=5, max_row=14))
+    pc.add_data(Reference(ws, min_col=9, min_row=5, max_row=14), titles_from_data=False)
+    pc.set_categories(Reference(ws, min_col=8, min_row=5, max_row=14))
     for ser in pc.series:
         ser.invertIfNegative = False
         ser.graphicalProperties.solidFill = "1F4E79"
         ser.tx = SeriesLabel(v="Count")
     pc.y_axis.title = "Count"
-    for r in range(5, 15):
-        c = mark(ws, r, 6, "calc")
-        c.value = f'=IF(B{r}="","",0.8)'
-        c.number_format = "0%"
-        SHOWN[("Pareto", f"F{r}")] = "80%" if r < 10 else ""
-    ws.cell(row=4, column=6, value="80% line").font = F_NOTE
     line = LineChart()
-    line.add_data(Reference(ws, min_col=4, min_row=5, max_row=14), titles_from_data=False)
+    line.add_data(Reference(ws, min_col=10, min_row=5, max_row=14), titles_from_data=False)
     line.series[0].tx = SeriesLabel(v="Cumulative share")
-    line.add_data(Reference(ws, min_col=6, min_row=5, max_row=14), titles_from_data=False)
+    line.add_data(Reference(ws, min_col=11, min_row=5, max_row=14), titles_from_data=False)
     line.series[1].tx = SeriesLabel(v="80% — the vital few are left of here")
     line.series[1].graphicalProperties.line.dashStyle = "dash"
     line.series[1].graphicalProperties.line.solidFill = "C0392B"
