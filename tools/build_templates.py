@@ -23,6 +23,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.chart import BarChart, LineChart, Reference, ScatterChart, Series
 from openpyxl.chart.marker import Marker
+from openpyxl.comments import Comment
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from preview import workbook_html  # noqa: E402
@@ -47,6 +48,20 @@ F_NOTE = Font(italic=True, size=9, color="FF6B7280")
 F_CALC = Font(size=11, color="FF1D4ED8")
 
 SHOWN: dict = {}          # (sheet, cell) -> what the preview should display
+
+
+def note(ws, row, col, text):
+    """Attach 'where this number comes from' to an input cell.
+
+    Inputs inside a table are explained once by their column header. A
+    standalone input has no header, so it carries its own note — which is what
+    the page means when it says every yellow cell tells you where to look.
+    """
+    c = ws.cell(row=row, column=col)
+    c.comment = Comment(text, "Template")
+    c.comment.width = 320
+    c.comment.height = 110
+    return c
 
 
 def title(ws, text, sub, width):
@@ -148,11 +163,17 @@ def five_whys():
     ws.cell(row=5, column=1, value="Instance").font = F_B
     ws.merge_cells("B5:E5"); mark(ws, 5, 2, "in")
     ws.cell(row=5, column=2, value="Billing ticket #48217, closed 12 Mar, reopened 14 Mar")
+    note(ws, 5, 2, "One concrete record, with it open in front of you: ticket number, what happened, "
+                   "and when. 'Reopens are high' is not an instance and cannot be walked back to a cause.")
     ws.cell(row=5, column=6, value="Date").font = F_B
     mark(ws, 5, 7, "in").value = "2026-03-14"
+    note(ws, 5, 7, "The date of the instance, not the date you ran the session. You will want to go "
+                   "back to the system state as it was.")
     ws.cell(row=6, column=1, value="Effect").font = F_B
     ws.merge_cells("B6:E6"); mark(ws, 6, 2, "in")
     ws.cell(row=6, column=2, value="Customer had to contact us a second time about the same adjustment")
+    note(ws, 6, 2, "What the customer experienced, in their terms. Not the internal symptom and not "
+                   "the fix you already have in mind.")
     ws.cell(row=7, column=2, value="Start from a concrete instance with the record in front of you. "
             "At each level ask 'what else could cause this?' before you go deeper.").font = F_NOTE
 
@@ -229,6 +250,8 @@ def fishbone():
     ws.merge_cells("B5:F5"); mark(ws, 5, 2, "in")
     ws.cell(row=5, column=1, value="Effect").font = F_B
     ws.cell(row=5, column=2, value="7-day reopen rate on billing tickets is 14.2% against a target of 8%")
+    note(ws, 5, 2, "Copy the problem statement's metric and magnitude verbatim — the measured value, "
+                   "the target, and the population. A vague effect gives you a fishbone of vague causes.")
 
     header(ws, 7, ["Category", "Candidate cause", "Likelihood 1-5", "Impact 1-5",
                    "Priority", "Evidence you would need"])
@@ -587,8 +610,17 @@ def doe():
     for i, (f, lo, hi) in enumerate([("Routing rule", "Current", "Skill-based"),
                                      ("Authority limit", "$50", "$250"),
                                      ("Article shown", "No", "Yes")], start=5):
-        ws.cell(row=i, column=1, value=f"Factor {chr(63 + i - 4)}").font = F_B
+        # chr(63 + i - 4) started at '@': the matrix columns are A, B, C, so a
+        # factor labelled '@' pointed at nothing
+        ws.cell(row=i, column=1, value=f"Factor {chr(64 + i - 4)}").font = F_B
         mark(ws, i, 2, "in").value = f
+        note(ws, i, 2, "Name the factor as the team says it out loud. It must be something you can "
+                       "actually set to either level for the whole run — if you cannot control it, "
+                       "it is noise to block or stratify, not a factor.")
+        note(ws, i, 6, "The level you run today. Keep one arm at current practice so the experiment "
+                       "still tells you whether changing anything was worth it.")
+        note(ws, i, 8, "The level you are testing. Push it far enough to move the response — a timid "
+                       "high level is the most common reason a DOE returns nothing.")
         ws.merge_cells(start_row=i, start_column=2, end_row=i, end_column=4)
         ws.cell(row=i, column=5, value="Low (−1)").font = F_NOTE
         mark(ws, i, 6, "in").value = lo

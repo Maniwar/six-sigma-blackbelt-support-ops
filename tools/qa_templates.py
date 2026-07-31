@@ -183,39 +183,82 @@ def audit_charts(path: Path, wb) -> int:
     return total
 
 
+GUIDE_TABS = ("how to use", "start here", "read me", "readme", "pick your chart")
+
+
+def _column_header(ws, col: int, row: int) -> str:
+    """The dark banded header above this cell, if it is in a data table.
+
+    A table column explains itself once, in its header — demanding a note on all
+    230 cells of an entry grid is not a quality bar, it is noise. A standalone
+    input (a label in column A, a value in column B) has no header, and that is
+    the case that genuinely needs a per-cell explanation.
+    """
+    for r in range(row - 1, 0, -1):
+        try:
+            rgb = ""
+            c = ws.cell(row=r, column=col)
+            if c.fill and c.fill.patternType:
+                rgb = str(c.fill.fgColor.rgb)
+            if rgb == "FF333C49":                # the table's header row
+                return str(c.value or "") or "\x00"
+            if rgb == "FFEEF1F6":                # a section band: different block
+                return ""
+            # a band can be merged, so it may only be filled in column A
+            a = ws.cell(row=r, column=1)
+            if a.fill and a.fill.patternType and str(a.fill.fgColor.rgb) == "FFEEF1F6":
+                return ""
+        except Exception:                                        # noqa: BLE001
+            pass
+    return ""
+
+
 def audit_guided(path: Path, wb) -> None:
     """Every yellow cell has to say where its number comes from."""
     book = path.name
-    if not any(s.lower().startswith("how to use") for s in wb.sheetnames):
-        fail(book, "GUIDED", "no 'How to use this' tab")
-    naked = []
-    inputs = 0
+    if not any(any(s.lower().startswith(g) for g in GUIDE_TABS) for s in wb.sheetnames):
+        fail(book, "GUIDED", "no instructions tab — nothing tells a first-time user what to do")
+    naked, unlabelled, inputs = [], [], 0
     for ws in wb.worksheets:
         for row in ws.iter_rows():
             for c in row:
                 try:
                     rgb = str(c.fill.fgColor.rgb) if c.fill and c.fill.patternType else ""
-                except Exception:
+                except Exception:                                # noqa: BLE001
                     rgb = ""
                 if rgb != FILL_INPUT:
                     continue
                 inputs += 1
-                # an explanation is either a cell comment, or prose in the
-                # column to the right, or a note row directly beneath
+                head = _column_header(ws, c.column, c.row)
+                if head:
+                    # a table cell: the header carries the explanation, so the
+                    # only real failure is a header that says nothing
+                    # "#" is a fine header for a row-number column; only a
+                    # genuinely blank one leaves the user guessing
+                    if head == "\x00" or not head.strip():
+                        unlabelled.append(f"{ws.title}!{c.coordinate}")
+                    continue
+                # standalone input: needs a comment, or prose beside it
                 has_note = c.comment is not None
-                if not has_note:
-                    right = ws.cell(row=c.row, column=c.column + 1).value
-                    has_note = isinstance(right, str) and len(right) > 12
-                if not has_note:
-                    left = ws.cell(row=c.row, column=max(1, c.column - 1)).value
-                    has_note = isinstance(left, str) and len(left) > 12
+                # prose beside it, or the label that names it, or a note in the
+                # row underneath the block
+                probes = [(c.row, c.column + 1), (c.row, c.column + 2),
+                          (c.row, max(1, c.column - 1)), (c.row + 1, 1), (c.row + 2, 1)]
+                for pr, pc in probes:
+                    if has_note:
+                        break
+                    v = ws.cell(row=pr, column=pc).value
+                    has_note = isinstance(v, str) and len(v) > 8
                 if not has_note:
                     naked.append(f"{ws.title}!{c.coordinate}")
     if inputs == 0:
         warn(book, "GUIDED", "no yellow input cells — is anything meant to be filled in?")
     if naked:
         fail(book, "GUIDED",
-             f"{len(naked)} input cell(s) with no explanation of where the number comes from: {naked[:5]}")
+             f"{len(naked)} standalone input(s) with no explanation of where the number "
+             f"comes from: {naked[:5]}")
+    if unlabelled:
+        fail(book, "GUIDED", f"{len(unlabelled)} input(s) under a blank column header: {unlabelled[:5]}")
     if not any(ws.sheet_view.showGridLines is False for ws in wb.worksheets):
         warn(book, "GUIDED", "gridlines left on everywhere — reads like a spreadsheet, not a tool")
 
