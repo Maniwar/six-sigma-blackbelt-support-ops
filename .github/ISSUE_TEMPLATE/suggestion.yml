@@ -1,0 +1,17 @@
+name: Suggestion
+description: Something missing, unclear, or worth adding
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you change?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why does it matter in practice?
+      description: |
+        Most useful if you can tie it to something real — a tollgate that got pushed back,
+        a number Finance would not accept, a tool that does not survive contact with a queue.

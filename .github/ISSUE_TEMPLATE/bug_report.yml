@@ -1,0 +1,49 @@
+name: Something is wrong
+description: A number looks wrong, a download failed, or something does not work
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. If a calculator is giving a number you think is wrong,
+        the inputs you used are the most useful thing you can give me.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where did you see it?
+      options:
+        - A calculator or formula card on the page
+        - An Excel workbook (one of the 19 templates)
+        - The business case & ROI wizard
+        - A download (Word, Excel or web page)
+        - The curriculum, tool library or glossary
+        - Somewhere else
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did you get instead?
+    validations:
+      required: true
+  - type: textarea
+    id: inputs
+    attributes:
+      label: The inputs you used
+      description: |
+        For anything numeric, this is the important bit — the actual values you typed,
+        so the arithmetic can be reproduced.
+      placeholder: |
+        e.g. SLA limit 8 hours, average 2.6, standard deviation 1.1 — verdict said X, I expected Y
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: e.g. Chrome 141, Safari 17.4, Edge on Windows 11
+  - type: input
+    id: version
+    attributes:
+      label: Program version
+      description: Bottom of the left sidebar, e.g. v2.2
+      placeholder: v2.2
