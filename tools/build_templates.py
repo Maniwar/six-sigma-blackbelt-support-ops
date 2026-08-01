@@ -3255,7 +3255,12 @@ def regression():
         ws3, h3, [1, 2, 3, 4, 5, 6],
         [(r[0], r[1], r[2], r[3], r[4], r[6]) for r in REG_ROWS],
         [None, "0", "0", "#,##0", "0", "0"])
-    thr = l3 + 3                              # the threshold input, set below
+    # A blank row closes the data block off. Without it the block reads as
+    # running on through the note and the band beneath it and into the two
+    # settings below — and the finishing pass, which repaints filled-in cells
+    # inside a table as worked example, would then tell the reader to delete
+    # their own threshold. Those two are choices to adjust, not data to clear.
+    thr = l3 + 4                              # the threshold input, set below
     b0 = hl + 1
     for i in range(len(REG_ROWS)):
         r = f3 + i
@@ -3269,7 +3274,7 @@ def regression():
             c.value, c.number_format = f, fmt
             if i == 0:
                 c.fill = EX
-    note_cell(ws3, l3 + 1, 1,
+    note_cell(ws3, l3 + 2, 1,
               "The logit is the straight-line part — intercept plus each coefficient "
               "times its column. The probability is that logit squashed into 0-1 by "
               "1/(1+EXP(−logit)), which is the whole reason this is not a linear "

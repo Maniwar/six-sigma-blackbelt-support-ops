@@ -255,6 +255,25 @@ def explain_headers(wb) -> int:
 
 FILL_IN = "FFFFF9E3"        # "you fill this in"
 FILL_EX = "FFECFAEF"        # "a worked example — delete it when you start"
+FILL_BAND = "FFEEF1F6"      # a section band: the table above it has ended
+FILL_HDR = "FF333C49"
+
+
+def _boundary(ws, row: int, span) -> bool:
+    """Does this row end the table above it?"""
+    for c in span:
+        cell = ws.cell(row=row, column=c)
+        try:
+            if cell.fill and cell.fill.patternType and \
+                    str(cell.fill.fgColor.rgb) in (FILL_BAND, FILL_HDR):
+                return True
+        except Exception:                                        # noqa: BLE001
+            pass
+    # a note merged across the width of the block
+    for rng in ws.merged_cells.ranges:
+        if rng.min_row == row and (rng.max_col - rng.min_col + 1) >= max(2, len(span) - 1):
+            return True
+    return False
 
 
 def mark_examples(wb) -> int:
@@ -286,6 +305,13 @@ def mark_examples(wb) -> int:
             while r <= ws.max_row:
                 row_cells = [ws.cell(row=r, column=c) for c in span]
                 if all(c.value in (None, "") for c in row_cells):
+                    break
+                # A table also ends at the next section band, the next header,
+                # or a merged note spanning it. Walking only to the first blank
+                # row ran straight past the end of the logistic tab's data and
+                # recoloured the threshold and AUC cells below it — settings the
+                # reader chooses, relabelled as an example to delete.
+                if _boundary(ws, r, span):
                     break
                 for cell in row_cells:
                     if (cell.row, cell.column) in shadow:
