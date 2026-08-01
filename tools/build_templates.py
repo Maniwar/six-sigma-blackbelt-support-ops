@@ -803,13 +803,40 @@ def doe():
         mark(ws, i, 6, "in").value = lo
         ws.cell(row=i, column=7, value="High (+1)").font = F_NOTE
         mark(ws, i, 8, "in").value = hi
+    # "A B C AB AC BC" with -1 and +1 in the cells tells a reader nothing
+    # without scrolling up. The headers now name the factor they belong to and
+    # follow whatever the user types in B5:B7.
     header(ws, 9, ["Run", "A", "B", "C", "AB", "AC", "BC", "Response", "Notes"])
+    for col, src in ((2, 5), (3, 6), (4, 7)):
+        c = ws.cell(row=9, column=col)
+        c.value = '=IF($B$%d="","%s","%s: "&$B$%d)' % (
+            src, chr(63 + col), chr(63 + col), src)
+        SHOWN[("2^3 design", "%s9" % get_column_letter(col))] = {
+            2: "A: Routing rule", 3: "B: Authority limit", 4: "C: Article shown"}[col]
+    ws.cell(row=8, column=2, value="−1 = the low level you set above · +1 = the high level").font = F_NOTE
+    ws.merge_cells(start_row=8, start_column=2, end_row=8, end_column=7)
+    h = ws.cell(row=9, column=8)
+    h.value = "Response (mean AHT, seconds)"
+    ws.cell(row=9, column=9).value = "What you observed on the day"
     design = [(-1, -1, -1), (1, -1, -1), (-1, 1, -1), (1, 1, -1),
               (-1, -1, 1), (1, -1, 1), (-1, 1, 1), (1, 1, 1)]
     resp = [412, 388, 401, 372, 395, 366, 380, 344]
+    RUN_NOTES = [
+        "Baseline: current routing, $50 authority, no article",
+        "Skill-based routing alone",
+        "Higher authority alone — fewer transfers to a supervisor",
+        "Routing and authority together; the biggest single drop",
+        "Article shown alone — small effect on its own",
+        "Routing plus article",
+        "Authority plus article",
+        "All three at the high level. Best result, and the one to confirm.",
+    ]
     for i, (a, bq, c) in enumerate(design):
         r = 10 + i
         ws.cell(row=r, column=1, value=i + 1).font = F_B
+        n = ws.cell(row=r, column=9, value=RUN_NOTES[i])
+        n.font = F_NOTE
+        n.alignment = Alignment(wrap_text=True, vertical="center")
         for col, v in zip((2, 3, 4), (a, bq, c)):
             cc = ws.cell(row=r, column=col, value=v); cc.fill = CALC; cc.font = F_CALC; cc.border = THIN
             cc.alignment = Alignment(horizontal="center")
@@ -820,6 +847,18 @@ def doe():
         e = mark(ws, r, 8, "in"); e.value = resp[i]
         e.alignment = Alignment(horizontal="center")
         mark(ws, r, 9, "in")
+    EFFECT_NOTES = {
+        "Effect of A": "Negative means the HIGH level lowers handle time. Biggest single effect "
+                       "here: skill-based routing takes about 29 seconds off the average.",
+        "Effect of B": "Raising the authority limit from $50 to $250 takes off about 16 seconds — "
+                       "fewer calls escalated to a supervisor.",
+        "Effect of C": "Showing the article takes off about 22 seconds.",
+        "Interaction AB": "Routing and authority together. Small against the main effects, so the "
+                          "two can be decided independently.",
+        "Interaction AC": "Routing and article together. Also small.",
+        "Interaction BC": "Authority and article together. Also small — which is the useful "
+                          "finding: none of these has to be rolled out as a package.",
+    }
     band(ws, 19, "EFFECTS — how much each factor moves the response", 9)
     eff = [("Effect of A", "B", 2), ("Effect of B", "C", 3), ("Effect of C", "D", 4),
            ("Interaction AB", "E", 5), ("Interaction AC", "F", 6), ("Interaction BC", "G", 7)]
@@ -840,8 +879,9 @@ def doe():
         v = sum(s * y for s, y in zip(cols[idx], resp)) / 4
         SHOWN[("2^3 design", f"D{r}")] = f"{v:.1f}"
         ws.merge_cells(start_row=r, start_column=5, end_row=r, end_column=9)
-        ws.cell(row=r, column=5, value="Bigger absolute value = bigger effect. A large interaction means the two "
-                "factors cannot be set independently.").font = F_NOTE
+        # The same sentence on all six rows told the reader nothing about their
+        # own result. Each row now reads its own number back.
+        ws.cell(row=r, column=5, value=EFFECT_NOTES.get(label, "")).font = F_NOTE
     # A..I are merged across the effects block, so the reference column goes
     # to the right of everything the sheet already uses
     for r in range(20, 26):

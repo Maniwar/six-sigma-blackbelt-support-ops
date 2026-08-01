@@ -54,6 +54,15 @@ where each cause box reads the table so the picture redraws as you type.
 input says where its number comes from, that each workbook recalculates without an error value — and it
 renders every workbook through LibreOffice so the charts get looked at rather than assumed.
 
+Two further harnesses exist because the audit alone kept passing things a reader would not:
+
+- **`tools/qa_properties.py`** perturbs the inputs. A workbook is a function, not the one example shipped
+  inside it, and every axis, divisor and chart range has to survive somebody pasting numbers of a different
+  magnitude.
+- **`tools/qa_selftest.py`** reintroduces each defect the repo has actually shipped and asserts the audit
+  still catches it. A check that has passed for months is either guarding a solved problem or unable to
+  fire, and those look identical from a green run. 110 mutants, all killed, or the build fails.
+
 ### Built for people who are not statisticians
 - **Every acronym is clickable.** 265 glossary entries, matched in either case. Anything with a dotted underline opens a plain-English explainer: what it means, why it matters, and exactly where to find the number in your own systems.
 - **14 live formula cards.** Change any input and the arithmetic redoes itself line by line — you see the substitution, not just the answer. Each one ends with what the result actually means for your operation.

@@ -7,6 +7,8 @@ three separate layers:
 
   CHARTS   every chart resolves to real data, is titled, and is readable
   GUIDED   every cell you are asked to fill in says where the number comes from
+  EXAMPLE  the guidance that exists actually says something — no empty columns,
+           no opaque codes, no one sentence pasted onto every row
   NUMERIC  the whole workbook recalculates without a single error value
 
 Run it after any change to tools/build_templates.py or tools/patch_workbooks.py:
@@ -24,7 +26,7 @@ import warnings
 from pathlib import Path
 
 from openpyxl import load_workbook
-from openpyxl.utils import range_boundaries
+from openpyxl.utils import get_column_letter, range_boundaries
 
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATES = ROOT / "templates"
@@ -372,6 +374,99 @@ def audit_guided(path: Path, wb) -> None:
         warn(book, "GUIDED", "gridlines left on everywhere — reads like a spreadsheet, not a tool")
 
 
+def _blocks(ws):
+    """Every banded data table on the sheet: (header_row, first, last, cols).
+
+    A block runs from its dark header row down to the first row that is blank
+    across all of its columns.
+    """
+    shadow = merged_shadow(ws)
+    out = []
+    for row in ws.iter_rows():
+        hdr = [c for c in row
+               if (c.row, c.column) not in shadow
+               and c.fill and c.fill.patternType
+               and str(c.fill.fgColor.rgb) == "FF333C49"]
+        if len(hdr) < 2:
+            continue
+        cols = {c.column: str(c.value or "").strip() for c in hdr}
+        r = row[0].row + 1
+        last = r - 1
+        while r <= ws.max_row:
+            vals = [ws.cell(row=r, column=k).value for k in cols]
+            if all(v in (None, "") for v in vals):
+                break
+            last = r
+            r += 1
+        if last >= row[0].row + 1:
+            out.append((row[0].row, row[0].row + 1, last, cols))
+    return out
+
+
+def audit_example(path: Path, wb) -> None:
+    """The shipped example has to be worth reading, not merely present.
+
+    GUIDED asks whether an explanation EXISTS. Every defect a reader has
+    actually reported was one that exists and says nothing: a Notes column
+    headed and then left empty on all eight runs, a header reading "AB", the
+    same sentence pasted onto six effect rows. Presence is not substance, so
+    this layer asks the three questions presence cannot.
+    """
+    book = path.name
+    for ws in wb.worksheets:
+        if any(ws.title.lower().startswith(g) for g in GUIDE_TABS):
+            continue
+        for hrow, first, last, cols in _blocks(ws):
+            n = last - first + 1
+            if n < 3:
+                continue
+            for col, head in cols.items():
+                cells = [ws.cell(row=r, column=col) for r in range(first, last + 1)]
+                filled = [c for c in cells if c.value not in (None, "")]
+                typeable = any(c.fill and c.fill.patternType
+                               and str(c.fill.fgColor.rgb) == FILL_INPUT for c in cells)
+                # (1) a column the example declares and then never demonstrates
+                if head and not filled and not typeable:
+                    fail(book, "EXAMPLE",
+                         f"{ws.title}!{get_column_letter(col)}{first}:{last} — the "
+                         f"example declares a {head!r} column and leaves it empty on "
+                         f"all {n} rows; the reader is told it matters and never "
+                         "shown what goes in it")
+                # (2) a header that names nothing
+                if head and len(head) <= 3 and head not in ("#", "No", "Qty", "Wk",
+                                                            "Day", "RPN", "n", "SL"):
+                    legend = any(
+                        isinstance(ws.cell(row=r, column=c).value, str)
+                        and len(str(ws.cell(row=r, column=c).value)) > 25
+                        for r in (hrow - 1, hrow + 1)
+                        for c in range(1, max(cols) + 1))
+                    if not legend:
+                        fail(book, "EXAMPLE",
+                             f"{ws.title}!{get_column_letter(col)}{hrow} — column "
+                             f"headed {head!r} with no legend anywhere near it; a "
+                             "code is only readable to whoever wrote it")
+        # (3) the same sentence on every row tells the reader nothing about
+        #     their own row. Deliberately NOT scoped to banded blocks: the six
+        #     identical DOE effect notes sat under a section band, not a table
+        #     header, which is exactly how the first version of this check
+        #     missed the defect it was written for.
+        percol: dict[int, dict[str, list[int]]] = {}
+        for row in ws.iter_rows():
+            for c in row:
+                v = c.value
+                if isinstance(v, str) and len(v) > 30 and not v.startswith("="):
+                    percol.setdefault(c.column, {}).setdefault(v, []).append(c.row)
+        for col, seen in percol.items():
+            dup = sorted(((v, rs) for v, rs in seen.items() if len(rs) >= 3),
+                         key=lambda x: -len(x[1]))
+            if dup:
+                v, rs = dup[0]
+                fail(book, "EXAMPLE",
+                     f"{ws.title}!{get_column_letter(col)} rows {rs[:4]} — the same "
+                     f"note is repeated on {len(rs)} rows ({v[:44]!r}…); boilerplate "
+                     "that cannot be about any particular row is not guidance")
+
+
 def _na_ok(book: str, where: str) -> bool:
     """Is this cell one of the marker columns that is #N/A on purpose?"""
     import re as _re
@@ -496,6 +591,7 @@ def main() -> int:
         before = len(fails)
         audit_guided(path, wb)
         guidance = 2 if len(fails) == before else 1
+        audit_example(path, wb)
         charts += n
         if rubric:
             graded += audit_rubric(path, wb, guidance)
