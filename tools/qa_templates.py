@@ -46,19 +46,26 @@ NO_CHART_OK = {
 ERR_VALUES = ("#REF!", "#VALUE!", "#DIV/0!", "#NAME?", "#N/A", "#NULL!", "#NUM!")
 
 # NA() is the only construction that reliably leaves a gap in a plotted series;
-# "" plots as zero and draws a row of markers along the axis floor. The marker
-# columns are therefore FULL of #N/A by design. Exempt those columns only —
-# whitelisting #N/A globally would blunt the check that catches real breakage.
-NA_BY_DESIGN = {
-    # the ROI horizon: years beyond "Years to model" are NA() so the line stops
-    # rather than dropping to zero under a title promising it crosses zero
-    "19-black-belt-calculators.xlsx": {"9 ROI and payback": "B:C",
-                                      "3 SLA capability": "C:C"},
-    "27-control-charts.xlsx": {"I-MR": "AD:AF", "Laney p-prime": "AD:AE",
-                               "Laney u-prime": "AD:AE", "Xbar-R": "AD:AF",
-                               "EWMA": "AD:AD", "CUSUM": "AD:AD",
-                               "t and g (rare events)": "AD:AG"},
-}
+# "" plots as zero and draws a row of markers along the axis floor. Marker and
+# horizon columns are therefore FULL of #N/A by design.
+#
+# This used to be a hand-written book -> sheet -> column-span map, and the map
+# was the problem: two workbooks that use the same idiom were never added to
+# it, so the harness ran red on 37 deliberate cells for months. A permanently
+# red gate is read by nobody, which costs exactly as much as no gate.
+#
+# The formula already says which it is. A deliberate gap CALLS NA() — the
+# author wrote it. An accidental #N/A propagates out of a lookup that missed
+# (INDEX/MATCH, VLOOKUP) and never contains the word. So the exemption is a
+# property of the cell rather than a list somebody has to remember to update:
+#
+#   =IF(I5="",NA(),SUM(...))          deliberate: gap this point
+#   =INDEX(A:A,MATCH(x,B:B,0))        accidental: the match failed
+#
+# A cell whose formula is a bare reference to a marker cell inherits #N/A
+# without calling it, so one hop of propagation is followed too.
+RE_CALLS_NA = re.compile(r"\bNA\s*\(\s*\)")
+RE_REF = re.compile(r"(?<![A-Za-z0-9_!$])(\$?[A-Z]{1,3}\$?[0-9]{1,7})(?![0-9(])")
 
 fails: list[str] = []
 warns: list[str] = []
@@ -794,22 +801,28 @@ def audit_rowlabel(path: Path, wb) -> None:
              f"beside it — the reader sees a name and a number: {bare[:5]}")
 
 
-def _na_ok(book: str, where: str) -> bool:
-    """Is this cell one of the marker columns that is #N/A on purpose?"""
-    import re as _re
-    from openpyxl.utils import column_index_from_string as _ci
-    sheets = NA_BY_DESIGN.get(book)
-    if not sheets:
-        return False
-    m = _re.match(r"^(.*)!([A-Z]+)\d+$", where)
-    if not m:
-        return False
+def _na_ok(wb, where: str, depth: int = 1) -> bool:
+    """Is this cell #N/A because somebody wrote NA(), or because it broke?"""
+    sheet, _, addr = where.rpartition("!")
     # the recalculated keys come back with the sheet name upper-cased
-    span = next((v for k, v in sheets.items() if k.upper() == m.group(1).upper()), None)
-    if not span:
+    ws = next((w for w in wb.worksheets if w.title.upper() == sheet.upper()), None)
+    if ws is None:
         return False
-    lo, hi = (_ci(x) for x in span.split(":"))
-    return lo <= _ci(m.group(2)) <= hi
+    try:
+        f = ws[addr].value
+    except (ValueError, KeyError):
+        return False
+    if not isinstance(f, str) or not f.startswith("="):
+        return False
+    if RE_CALLS_NA.search(f):
+        return True
+    if depth <= 0:
+        return False
+    # A helper column that is just `=AD5` inherits the gap without calling it.
+    # One hop only: past that the chain is long enough to be hiding something.
+    refs = RE_REF.findall(f)
+    return bool(refs) and all(
+        _na_ok(wb, f"{ws.title}!{r.replace('$', '')}", depth - 1) for r in refs)
 
 
 def audit_numeric(path: Path) -> None:
@@ -827,6 +840,8 @@ def audit_numeric(path: Path) -> None:
     except Exception as exc:                                   # noqa: BLE001
         fail(book, "NUMERIC", f"workbook will not recalculate: {type(exc).__name__}: {exc}")
         return
+    from openpyxl import load_workbook as _lw
+    wb = _lw(path)
     bad = {}
     for key, cell in sol.items():
         if "'!" not in key or "!_XLFN" in key.upper():
@@ -837,7 +852,7 @@ def audit_numeric(path: Path) -> None:
             continue
         if isinstance(v, str) and v.strip() in ERR_VALUES:
             where = key.split("]")[-1].replace("'", "")
-            if v.strip() == "#N/A" and _na_ok(book, where):
+            if v.strip() == "#N/A" and _na_ok(wb, where):
                 continue
             bad.setdefault(v.strip(), []).append(where)
     for err, where in sorted(bad.items()):

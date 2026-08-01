@@ -26,6 +26,7 @@ from openpyxl import load_workbook
 from openpyxl.styles import Font, PatternFill
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import qa_citations as C                                          # noqa: E402
 import qa_templates as Q                                          # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -207,6 +208,8 @@ def m_paint_over_the_inputs(wb):
     the mutant creates the mismatch: paint the inputs over, then delete the
     instruction that would have made it coherent.
     """
+    import re as _re
+
     green = PatternFill("solid", fgColor="FFECFAEF")
     for ws in wb.worksheets:
         if any(ws.title.lower().startswith(g) for g in Q.GUIDE_TABS):
@@ -466,6 +469,213 @@ def run_markdown() -> tuple[int, int, list[str]]:
     return killed, applied, survivors
 
 
+# ------------------------------------------------------- numeric mutants
+# The #N/A exemption used to be a hand-written list of column spans, and two
+# workbooks that use the same NA() idiom were never added to it — so the gate
+# ran red on 37 deliberate cells for months and everyone learned to read past
+# it. It is now a property of the formula: a deliberate gap CALLS NA(), an
+# accidental one falls out of a lookup that missed.
+#
+# That rule is only worth having if it can tell the two apart, so the first
+# mutant leaves the cell reporting the very same #N/A and changes nothing but
+# the REASON. If the check survives that, it is reading the value and calling
+# it a design decision, which is where the old list ended up.
+#
+# audit_numeric recalculates a whole workbook, far too slow for the per-mutant
+# loop above, so this runs only on the four workbooks that use NA() at all.
+NA_BOOKS = ["05-data-collection-plan", "19-black-belt-calculators",
+            "25-pareto-and-distribution", "27-control-charts"]
+MISS = '=MATCH("no such row",$A$1:$A$2,0)'
+
+
+def nm_reason_swap(wb):
+    """A gap that is #N/A because a lookup missed, not because it was written.
+
+    Every NA() in the book, not the first one found: `=IF(I5="",NA(),...)` on a
+    row that HAS data never takes its NA() branch, so swapping that one changes
+    no value and proves nothing.
+    """
+    n = 0
+    for ws in wb.worksheets:
+        for row in ws.iter_rows():
+            for c in row:
+                if isinstance(c.value, str) and "NA()" in c.value.replace(" ", ""):
+                    c.value = c.value.replace("NA()", MISS.lstrip("="))
+                    n += 1
+    return f"{n} deliberate gap(s) now come from a missed lookup" if n else None
+
+
+def nm_hidden_break(wb):
+    """A broken lookup somewhere ordinary — the base check, not the exemption."""
+    for ws in wb.worksheets:
+        if ws.max_row < 2:
+            continue
+        ws.cell(row=ws.max_row + 3, column=60).value = MISS
+        return f"broken lookup dropped into {ws.title}!BH{ws.max_row}"
+    return None
+
+
+NUM_MUTANTS = [("numeric: #N/A for the wrong reason", nm_reason_swap),
+               ("numeric: a lookup that misses", nm_hidden_break)]
+
+
+def run_numeric() -> tuple[int, int, list[str]]:
+    killed = applied = 0
+    survivors = []
+    with tempfile.TemporaryDirectory() as td:
+        for stem in NA_BOOKS:
+            book = TEMPLATES / f"{stem}.xlsx"
+            base = Path(td) / ("base_" + book.name)
+            shutil.copyfile(book, base)
+            load_workbook(base).save(base)
+            Q.fails.clear()
+            Q.audit_numeric(base)
+            baseline = set(Q.fails)
+            for name, mutate in NUM_MUTANTS:
+                safe = "".join(ch if ch.isalnum() else "_" for ch in name)
+                tmp = Path(td) / (safe + "_" + book.name)
+                shutil.copyfile(book, tmp)
+                wb = load_workbook(tmp)
+                what = mutate(wb)
+                if not what:
+                    continue
+                wb.save(tmp)
+                applied += 1
+                Q.fails.clear()
+                Q.audit_numeric(tmp)
+                if [f for f in set(Q.fails) - baseline if "[NUMERIC]" in f]:
+                    killed += 1
+                else:
+                    survivors.append(
+                        f"    SURVIVED [NUMERIC] {name} on {book.name} — {what}")
+    return killed, applied, survivors
+
+
+# ------------------------------------------------------ citation mutants
+# This layer shipped DEAD. tools/qa_citations.py was written, wired into
+# verify.py, and never called by main() — so for one whole release the pack's
+# 163 cross-references were resolved by nothing at all, and the harness said
+# "PASSED" with the same confidence it says everything else. That is the exact
+# failure a mutation suite exists to catch, and it caught it only because these
+# mutants were written afterwards. Anything not mutated here can die the same
+# way without anybody noticing.
+#
+# Citations are cross-document, so unlike the markdown mutants these cannot run
+# against one file in isolation: the whole templates directory is copied, one
+# document is edited, and the resolver is pointed at the copy.
+
+
+def _cite_runs(text: str, want_figures: bool):
+    """Citation runs in this document, optionally only the ones whose clause
+    demands a figure (the ones the resolution check can actually judge)."""
+    out = []
+    for i, line in enumerate(text.split("\n"), start=1):
+        masked = C.RE_RUN.sub(lambda x: " " * len(x.group(0)), line)
+        for m in C.RE_RUN.finditer(line):
+            if not m.group(1).endswith(".md"):
+                continue
+            want = C.figures(C.sentence_around(masked, m.start()))
+            if want or not want_figures:
+                out.append((i, m, want))
+    return out
+
+
+def _retarget(text: str, i: int, m, line_no) -> str:
+    lines = text.split("\n")
+    lines[i - 1] = (lines[i - 1][:m.start()] + f"{m.group(1)}:{line_no}"
+                    + lines[i - 1][m.end():])
+    return "\n".join(lines)
+
+
+def cite_drift(text: str):
+    """A citation that no longer lands on its row.
+
+    The pack cites by line number and every edit shifts them — one pass added
+    seventeen lines to the charter and silently broke references in four other
+    files. The mutant moves a reference onto a line that carries none of the
+    figures its sentence claims, and stays clear of the +/-2 window the check
+    forgives as an off-by-a-line.
+    """
+    for i, m, want in _cite_runs(text, want_figures=True):
+        tgt = TEMPLATES / m.group(1)
+        if not tgt.exists():
+            continue
+        body = tgt.read_text(encoding="utf-8").split("\n")
+        for j, ln in enumerate(body, start=1):
+            if not ln.strip():
+                continue
+            near = "\n".join(body[max(0, j - 3):j + 2])
+            if want & {C.norm(x.group(0)) for x in C.RE_FIG.finditer(near)}:
+                continue
+            return _retarget(text, i, m, j), f"moved {m.group(0)} to :{j}"
+    return None, None
+
+
+def cite_past_eof(text: str):
+    """A citation into a document that has since been shortened."""
+    for i, m, _ in _cite_runs(text, want_figures=False):
+        if (TEMPLATES / m.group(1)).exists():
+            return _retarget(text, i, m, 99999), f"sent {m.group(0)} past the end"
+    return None, None
+
+
+def cite_blank(text: str):
+    """A citation onto a line with nothing on it — what a deleted row leaves."""
+    for i, m, _ in _cite_runs(text, want_figures=False):
+        tgt = TEMPLATES / m.group(1)
+        if not tgt.exists():
+            continue
+        body = tgt.read_text(encoding="utf-8").split("\n")
+        for j, ln in enumerate(body, start=1):
+            if not ln.strip():
+                return _retarget(text, i, m, j), f"pointed {m.group(0)} at a blank line"
+    return None, None
+
+
+CITE_MUTANTS = [("citation: drifted off its row", cite_drift),
+                ("citation: past the end of the file", cite_past_eof),
+                ("citation: onto a blank line", cite_blank)]
+
+
+def _cite_fails(work: Path) -> set[str]:
+    C.fails.clear()
+    C.warns.clear()
+    C.checked[0] = 0
+    cache: dict = {}
+    for doc in sorted(work.glob("*.md")):
+        C.check_file(doc, cache)
+    return set(C.fails)
+
+
+def run_citations() -> tuple[int, int, list[str]]:
+    killed = applied = 0
+    survivors = []
+    with tempfile.TemporaryDirectory() as td:
+        work = Path(td) / "templates"
+        shutil.copytree(TEMPLATES, work)
+        real = C.TEMPLATES
+        C.TEMPLATES = work
+        try:
+            baseline = _cite_fails(work)
+            for doc in sorted(TEMPLATES.glob("*.md")):
+                text = doc.read_text(encoding="utf-8")
+                for name, mutate in CITE_MUTANTS:
+                    out, what = mutate(text)
+                    if out is None:
+                        continue
+                    (work / doc.name).write_text(out, encoding="utf-8")
+                    applied += 1
+                    if _cite_fails(work) - baseline:
+                        killed += 1
+                    else:
+                        survivors.append(
+                            f"    SURVIVED [CITATION] {name} on {doc.name} — {what}")
+                    (work / doc.name).write_text(text, encoding="utf-8")
+        finally:
+            C.TEMPLATES = real
+    return killed, applied, survivors
+
+
 # -------------------------------------------------------- visual mutants
 # The visual layer this replaces rendered PNGs and told a human to look at
 # them. It made no claim, so it could not fail, so a green run from it meant
@@ -595,8 +805,16 @@ def run(book: Path) -> tuple[int, int, list[str]]:
             try:
                 what = mutate(wb)
             except Exception as exc:                             # noqa: BLE001
+                # A mutant that raises is evidence of nothing, and it used to
+                # print a note and move on. `m_paint_over_the_inputs` died on a
+                # NameError against sixteen of the twenty-one workbooks and the
+                # suite still reported every mutant killed, because a mutant
+                # that never applied is not counted as applied. Same shape as
+                # the citation check that was never called: silent absence
+                # reading as success. It fails the run now.
                 what = None
-                print(f"      ! {name}: could not apply ({type(exc).__name__}: {exc})")
+                survivors.append(f"    ERRORED  [{layer}] {name} on {book.name} "
+                                 f"— {type(exc).__name__}: {exc}")
             if not what:
                 continue
             applied += 1
@@ -634,6 +852,18 @@ def main() -> int:
         docs = len(sorted(TEMPLATES.glob("*.md")))
         print(f"  {'(markdown templates)':36s} {k}/{a} mutants killed"
               f"{'' if k == a else '   <-- a check did not fire'}   across {docs} docs")
+        k, a, s = run_numeric()
+        total_k += k
+        total_a += a
+        survivors += s
+        print(f"  {'(recalculated values)':36s} {k}/{a} mutants killed"
+              f"{'' if k == a else '   <-- a check did not fire'}")
+        k, a, s = run_citations()
+        total_k += k
+        total_a += a
+        survivors += s
+        print(f"  {'(cross-references)':36s} {k}/{a} mutants killed"
+              f"{'' if k == a else '   <-- a check did not fire'}")
         k, a, s = run_visual()
         total_k += k
         total_a += a
