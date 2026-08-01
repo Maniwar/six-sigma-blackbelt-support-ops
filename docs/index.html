@@ -89,6 +89,11 @@ hr{border:0;border-top:1px solid var(--line);margin:34px 0}
 /* ---------- components ---------- */
 .pill{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.05em;
   text-transform:uppercase;padding:2.5px 8px;border-radius:20px;vertical-align:middle}
+/* body-of-knowledge coverage: module chips, and the rows nothing covers */
+#bokmap .pill{background:var(--bg3);color:var(--acc);margin:1px 3px 1px 0}
+#bokmap tr.gap td{background:var(--aBg)}
+#bokmap tr.gap em{color:var(--muted);font-style:italic}
+#bokmap code{font-size:12px;white-space:nowrap}
 .p-d{background:var(--dBg);color:var(--d)} .p-m{background:var(--mBg);color:var(--m)}
 .p-a{background:var(--aBg);color:var(--a)} .p-i{background:var(--iBg);color:var(--i)}
 .p-c{background:var(--cBg);color:var(--c)} .p-x{background:var(--bg3);color:var(--muted)}
@@ -692,6 +697,7 @@ button.tb-tpl:hover{background:var(--c);color:#fff}
   <a href="#dictionary">Metric dictionary</a>
   <a href="#formulas">Calculators &amp; formulas</a>
   <a href="#glossary">Plain-English glossary</a>
+  <a href="#bokmap">Body of knowledge coverage</a>
   <a href="#sources">Sources</a>
 </nav>
 
@@ -956,8 +962,7 @@ button.tb-tpl:hover{background:var(--c);color:#fff}
 
   <details class="mod" open><summary><span class="mid">M01</span><span class="mtitle">Six Sigma, Lean and the support operating system</span><span class="mmeta">0.5 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5>
-    <p>ASQ I.A–I.C (organization-wide considerations, leadership, deployment) · IASSC 1.1, 1.4</p>
+    <h5>BOK mapping</h5><p>ASQ I.A Organization-wide considerations · IASSC 1.1 The Basics of Six Sigma, 1.4 The Lean Enterprise</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Explain the history and logic of Six Sigma, Lean, TQM and the Theory of Constraints, and where each is the right tool</li>
@@ -979,7 +984,7 @@ button.tb-tpl:hover{background:var(--c);color:#fff}
 
   <details class="mod"><summary><span class="mid">M02</span><span class="mtitle">Voice of the customer, business and employee</span><span class="mmeta">0.75 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ IV.B (VOC) · IASSC 1.1, 1.2</p>
+    <h5>BOK mapping</h5><p>ASQ IV.A Voice of the customer, IV.D Analytical tools · IASSC 1.1 The Basics of Six Sigma, 1.2 The Fundamentals of Six Sigma</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Design and execute VOC collection: survey design, interviews, focus groups, contact-driver mining, verbatim analysis</li>
@@ -1012,7 +1017,7 @@ button.tb-tpl:hover{background:var(--c);color:#fff}
 
   <details class="mod"><summary><span class="mid">M03</span><span class="mtitle">Project selection, charters and financial benefit definition</span><span class="mmeta">0.75 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ I.D, II.C, IV.A, IV.D · IASSC 1.3</p>
+    <h5>BOK mapping</h5><p>ASQ II.C Business measures, IV.B Business case and project charter · IASSC 1.3 Selecting Lean Six Sigma Projects</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Screen a project idea against selection criteria: benefit size, data availability, scope containment, sponsor commitment, DMAIC-appropriateness</li>
@@ -1060,7 +1065,7 @@ button.tb-tpl:hover{background:var(--c);color:#fff}
 
   <details class="mod"><summary><span class="mid">M04</span><span class="mtitle">Process mapping: SIPOC, swimlanes and value stream maps</span><span class="mmeta">0.75 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ II.A, IV.C, V.A · IASSC 2.1</p>
+    <h5>BOK mapping</h5><p>ASQ V.A Process characteristics, VI.D Additional analysis methods · IASSC 1.4 The Lean Enterprise, 2.1 Process Definition</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Build SIPOC at the right altitude to set scope boundaries</li>
@@ -1105,7 +1110,7 @@ Waiting states consuming the other 98.1%:
 
   <details class="mod"><summary><span class="mid">M05</span><span class="mtitle">Support metrics, DPMO and sigma level</span><span class="mmeta">0.5 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ II.B, II.C · IASSC 1.2</p>
+    <h5>BOK mapping</h5><p>ASQ II.C Business measures, V.F Process capability · IASSC 1.2 The Fundamentals of Six Sigma, 2.4 Process Capability</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Compute DPU, DPO, DPMO, FTY, RTY and translate to sigma level (with and without the 1.5σ shift)</li>
@@ -1152,7 +1157,7 @@ yet every individual step reports 78–96% success.</div>
 
   <details class="mod"><summary><span class="mid">M06</span><span class="mtitle">Team leadership, stakeholders and change management</span><span class="mmeta">1 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ III.A–III.E (team formation, facilitation, dynamics, training, tools) · I.E change management</p>
+    <h5>BOK mapping</h5><p>ASQ I.B Leadership, II.A Impact on stakeholders, III.A Team formation, III.B Team facilitation, III.C Team dynamics · IASSC 1.3 Selecting Lean Six Sigma Projects</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Form and launch a project team: RACI, ground rules, meeting cadence, decision rights</li>
@@ -1180,6 +1185,7 @@ yet every individual step reports 78–96% success.</div>
 
   <details class="mod"><summary><span class="mid">M07</span><span class="mtitle">Define tollgate clinic</span><span class="mmeta">0.75 day</span></summary>
   <div class="body">
+    <h5>BOK mapping</h5><p>ASQ IV.B Business case and project charter, IV.C.2 Toll-gate reviews, IV.C.4 RACI model · IASSC 1.2 The Fundamentals of Six Sigma, 1.3 Selecting Lean Six Sigma Projects</p>
     <h5>Format</h5>
     <p>Each participant presents their charter for 10 minutes; the cohort and instructor critique
     against the tollgate checklist. Participants leave with a written action list.</p>
@@ -1208,7 +1214,7 @@ yet every individual step reports 78–96% success.</div>
 
   <details class="mod"><summary><span class="mid">M08</span><span class="mtitle">Data types, sampling and data collection plans</span><span class="mmeta">0.75 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ V.A, V.B · IASSC 3.2</p>
+    <h5>BOK mapping</h5><p>ASQ V.B Data collection, VI.B.3 Sample size · IASSC 2.2 Six Sigma Statistics, 3.2 Inferential Statistics</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Classify data: nominal, ordinal, interval, ratio; continuous vs. discrete; and choose analysis accordingly</li>
@@ -1239,7 +1245,7 @@ yet every individual step reports 78–96% success.</div>
 
   <details class="mod"><summary><span class="mid">M09</span><span class="mtitle">Descriptive statistics and graphical analysis</span><span class="mmeta">0.75 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ V.C, V.D · IASSC 2.2</p>
+    <h5>BOK mapping</h5><p>ASQ V.D Basic statistics · IASSC 2.2 Six Sigma Statistics, 3.1 Patterns of Variation</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Compute and interpret measures of central tendency, dispersion, skewness and kurtosis</li>
@@ -1269,7 +1275,7 @@ yet every individual step reports 78–96% success.</div>
 
   <details class="mod"><summary><span class="mid">M10</span><span class="mtitle">Measurement System Analysis I — attribute agreement</span><span class="mmeta">1 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ V.E (MSA) · IASSC 2.3</p>
+    <h5>BOK mapping</h5><p>ASQ V.C Measurement systems · IASSC 2.3 Measurement System Analysis</p>
     <div class="box good"><div class="t">The highest-value day in the program</div>
     <p>Most support organizations have never validated their QA scoring, disposition coding or intent
     tagging. This module routinely produces the single most useful finding of an entire Black Belt
@@ -1318,7 +1324,7 @@ Output:      within-appraiser %, between-appraiser %, vs-standard %,
 
   <details class="mod"><summary><span class="mid">M11</span><span class="mtitle">Measurement System Analysis II — continuous Gage R&amp;R and data lineage</span><span class="mmeta">0.5 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ V.E · IASSC 2.3</p>
+    <h5>BOK mapping</h5><p>ASQ V.C Measurement systems · IASSC 2.3 Measurement System Analysis</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Run and interpret a crossed Gage R&amp;R (ANOVA method): %contribution, %study variation, number of distinct categories</li>
@@ -1346,7 +1352,7 @@ Output:      within-appraiser %, between-appraiser %, vs-standard %,
 
   <details class="mod"><summary><span class="mid">M12</span><span class="mtitle">Process capability and baseline performance</span><span class="mmeta">0.75 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ V.F · IASSC 2.4</p>
+    <h5>BOK mapping</h5><p>ASQ V.F Process capability · IASSC 2.4 Process Capability</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Distinguish Cp, Cpk, Pp, Ppk and know when each is valid</li>
@@ -1386,6 +1392,7 @@ Resolution time, right-skewed lognormal, USL = 48 hours
 
   <details class="mod"><summary><span class="mid">M13</span><span class="mtitle">Measure tollgate clinic</span><span class="mmeta">0.5 day</span></summary>
   <div class="body">
+    <h5>BOK mapping</h5><p>ASQ IV.C.2 Toll-gate reviews, V.B Data collection, V.C Measurement systems, V.F Process capability · IASSC 2.1 Process Definition, 2.3 Measurement System Analysis, 2.4 Process Capability</p>
     <h5>Measure tollgate checklist</h5>
     <ul class="chk">
       <li>Data collection plan executed as designed; deviations documented</li>
@@ -1414,7 +1421,7 @@ Resolution time, right-skewed lognormal, USL = 48 hours
 
   <details class="mod"><summary><span class="mid">M14</span><span class="mtitle">Root cause generation and qualitative analysis</span><span class="mmeta">0.5 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ VI.A · IASSC 2.1, 3.1</p>
+    <h5>BOK mapping</h5><p>ASQ VI.A.3 Multivariate tools, VI.C Risk analysis and management, VI.D Additional analysis methods · IASSC 2.1 Process Definition, 3.1 Patterns of Variation</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Facilitate cause-and-effect (Ishikawa) analysis using support-appropriate categories</li>
@@ -1452,7 +1459,7 @@ alone reprioritizes most FMEAs dramatically.</div>
 
   <details class="mod"><summary><span class="mid">M15</span><span class="mtitle">Inferential statistics, sampling distributions and confidence intervals</span><span class="mmeta">0.75 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ VI.B · IASSC 3.2</p>
+    <h5>BOK mapping</h5><p>ASQ V.D Basic statistics, V.E Probability, VI.B Hypothesis testing · IASSC 3.1 Patterns of Variation, 3.2 Inferential Statistics</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Explain the Central Limit Theorem and its actual scope — and its irrelevance to capability analysis</li>
@@ -1482,7 +1489,7 @@ alone reprioritizes most FMEAs dramatically.</div>
 
   <details class="mod"><summary><span class="mid">M16</span><span class="mtitle">Hypothesis testing foundations</span><span class="mmeta">0.75 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ VI.C.1 · IASSC 3.3</p>
+    <h5>BOK mapping</h5><p>ASQ VI.B Hypothesis testing · IASSC 3.3 Hypothesis Testing</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Formulate null and alternative hypotheses; one- vs. two-tailed tests</li>
@@ -1517,7 +1524,7 @@ alone reprioritizes most FMEAs dramatically.</div>
 
   <details class="mod"><summary><span class="mid">M17</span><span class="mtitle">Hypothesis tests for normal and non-normal data</span><span class="mmeta">1.25 days</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ VI.C.2–VI.C.5 · IASSC 3.4, 3.5</p>
+    <h5>BOK mapping</h5><p>ASQ VI.B Hypothesis testing · IASSC 3.4 Hypothesis Testing with Normal Data, 3.5 Hypothesis Testing with Non-Normal Data</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Select and run the correct test for the data type, distribution and design</li>
@@ -1565,7 +1572,7 @@ alone reprioritizes most FMEAs dramatically.</div>
 
   <details class="mod"><summary><span class="mid">M18</span><span class="mtitle">Correlation, regression and predictive modelling</span><span class="mmeta">1.25 days</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ VI.D (correlation, linear/multiple regression), VII.A · IASSC 4.1, 4.2</p>
+    <h5>BOK mapping</h5><p>ASQ VI.A Measuring and modeling relationships between variables · IASSC 4.1 Simple Linear Regression, 4.2 Multiple Regression Analysis</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Compute and interpret Pearson and Spearman correlation; recognize why correlation is not causation</li>
@@ -1608,6 +1615,7 @@ intervals — directly consumable by the Improve phase.</div>
 
   <details class="mod"><summary><span class="mid">M19</span><span class="mtitle">Analyze tollgate clinic</span><span class="mmeta">0.5 day</span></summary>
   <div class="body">
+    <h5>BOK mapping</h5><p>ASQ IV.C.2 Toll-gate reviews, VI.B Hypothesis testing, VI.D Additional analysis methods · IASSC 3.2 Inferential Statistics, 3.3 Hypothesis Testing</p>
     <h5>Analyze tollgate checklist</h5>
     <ul class="chk">
       <li>Comprehensive list of candidate causes generated, not just the first plausible one</li>
@@ -1634,7 +1642,7 @@ intervals — directly consumable by the Improve phase.</div>
 
   <details class="mod"><summary><span class="mid">M20</span><span class="mtitle">Solution generation, selection and Lean countermeasures</span><span class="mmeta">0.75 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ VII.C, VII.D · IASSC 1.4, 5.1</p>
+    <h5>BOK mapping</h5><p>ASQ VII.B Lean methods, VII.C Implementation · IASSC 1.4 The Lean Enterprise, 5.1 Lean Controls</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Generate solution options: brainwriting, SCAMPER, TRIZ contradictions, benchmarking, analogy</li>
@@ -1672,7 +1680,7 @@ intervals — directly consumable by the Improve phase.</div>
 
   <details class="mod"><summary><span class="mid">M21</span><span class="mtitle">Design of Experiments — fundamentals and full factorials</span><span class="mmeta">1 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ VII.B.1–VII.B.3 · IASSC 4.3, 4.4</p>
+    <h5>BOK mapping</h5><p>ASQ VII.A Design of experiments (DOE) · IASSC 4.3 Designed Experiments, 4.4 Full Factorial Experiments</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Explain DOE principles: factors, levels, responses, replication, randomization, blocking, confounding</li>
@@ -1719,7 +1727,7 @@ intervals — directly consumable by the Improve phase.</div>
 
   <details class="mod"><summary><span class="mid">M22</span><span class="mtitle">Fractional factorials, screening and response surface</span><span class="mmeta">0.75 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ VII.B.4–VII.B.5 · IASSC 4.5</p>
+    <h5>BOK mapping</h5><p>ASQ VII.A.5 Two-level fractional factorial experiments · IASSC 4.5 Fractional Factorial Experiments</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Construct 2^(k−p) fractional factorial designs and understand the generator and defining relation</li>
@@ -1744,7 +1752,7 @@ intervals — directly consumable by the Improve phase.</div>
 
   <details class="mod"><summary><span class="mid">M23</span><span class="mtitle">Piloting, implementation and change adoption</span><span class="mmeta">0.5 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ VII.C, VII.D, I.E</p>
+    <h5>BOK mapping</h5><p>ASQ I.B.3 Change management, VII.C Implementation · not covered by the IASSC Black Belt body of knowledge</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Design a pilot with a valid comparison group, adequate duration and pre-declared success and kill criteria</li>
@@ -1770,7 +1778,7 @@ intervals — directly consumable by the Improve phase.</div>
 
   <details class="mod"><summary><span class="mid">M24</span><span class="mtitle">Statistical Process Control for support</span><span class="mmeta">1 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ VIII.A–VIII.C · IASSC 5.2</p>
+    <h5>BOK mapping</h5><p>ASQ VIII.A Statistical process control (SPC) · IASSC 5.2 Statistical Process Control (SPC)</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Distinguish common cause from special cause variation and understand the cost of tampering</li>
@@ -1826,7 +1834,7 @@ intervals — directly consumable by the Improve phase.</div>
 
   <details class="mod"><summary><span class="mid">M25</span><span class="mtitle">Control plans, sustainment and handover</span><span class="mmeta">0.75 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ VIII.D, VIII.E · IASSC 5.1, 5.3</p>
+    <h5>BOK mapping</h5><p>ASQ VIII.B Other controls, VIII.C Maintain controls, VIII.D Sustain improvements · IASSC 5.1 Lean Controls, 5.3 Six Sigma Control Plans</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Build a control plan: what is monitored, by whom, how often, with what limits, and what happens when it signals</li>
@@ -1869,7 +1877,7 @@ intervals — directly consumable by the Improve phase.</div>
 
   <details class="mod"><summary><span class="mid">M26</span><span class="mtitle">Design for Six Sigma and program close</span><span class="mmeta">0.75 day</span></summary>
   <div class="body">
-    <h5>BOK mapping</h5><p>ASQ IX (DFSS frameworks and methodologies)</p>
+    <h5>BOK mapping</h5><p>ASQ IX.A Common DFSS methodologies, IX.C Robust designs · not covered by the IASSC Black Belt body of knowledge</p>
     <h5>Learning objectives</h5>
     <ul>
       <li>Explain when DMAIC is the wrong framework and DMADV / IDOV / DMEDI is right</li>
@@ -2980,6 +2988,77 @@ Decision: proceed to full rollout.</div>
 <p>Everything currently open and unfinished — your ticket backlog and pending queues.</p><p style="color:var(--muted);font-size:12.9px">It is the lever in Little's Law you can actually control directly.</p>
 <div class="hw"><b>How you get this number</b>Count open items at a point in time. Report the 90th percentile <em>age</em> alongside the count — a stable count can hide a growing tail of very old tickets.</div></div></div>
 </section>
+<section id="bokmap">
+  <h2 class="big">Body of knowledge coverage</h2>
+  <p class="lede">Every section of both bodies of knowledge, against the module that teaches it. 30 of 33 ASQ sections and 21 of 21 IASSC sections are taught here. The sections below marked &ldquo;not taught&rdquo; are outside the scope of this programme &mdash; it is built for support operations, and these have no worked support application. If you are sitting the ASQ exam, study them elsewhere.</p>
+  <h3>ASQ Certified Six Sigma Black Belt (2022)</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Section</th><th>Title</th><th>Taught in</th></tr></thead>
+    <tbody>
+      <tr><td><code>I.A</code></td><td>Organization-wide considerations</td><td><span class="pill">M01</span></td></tr>
+      <tr><td><code>I.B</code></td><td>Leadership</td><td><span class="pill">M06</span><span class="pill">M23</span></td></tr>
+      <tr><td><code>II.A</code></td><td>Impact on stakeholders</td><td><span class="pill">M06</span></td></tr>
+      <tr class="gap"><td><code>II.B</code></td><td>Benchmarking</td><td><em>not taught in this programme</em></td></tr>
+      <tr><td><code>II.C</code></td><td>Business measures</td><td><span class="pill">M03</span><span class="pill">M05</span></td></tr>
+      <tr><td><code>III.A</code></td><td>Team formation</td><td><span class="pill">M06</span></td></tr>
+      <tr><td><code>III.B</code></td><td>Team facilitation</td><td><span class="pill">M06</span></td></tr>
+      <tr><td><code>III.C</code></td><td>Team dynamics</td><td><span class="pill">M06</span></td></tr>
+      <tr class="gap"><td><code>III.D</code></td><td>Team training</td><td><em>not taught in this programme</em></td></tr>
+      <tr><td><code>IV.A</code></td><td>Voice of the customer</td><td><span class="pill">M02</span></td></tr>
+      <tr><td><code>IV.B</code></td><td>Business case and project charter</td><td><span class="pill">M03</span><span class="pill">M07</span></td></tr>
+      <tr><td><code>IV.C</code></td><td>Project management (PM) tools</td><td><span class="pill">M07</span><span class="pill">M13</span><span class="pill">M19</span></td></tr>
+      <tr><td><code>IV.D</code></td><td>Analytical tools</td><td><span class="pill">M02</span></td></tr>
+      <tr><td><code>V.A</code></td><td>Process characteristics</td><td><span class="pill">M04</span></td></tr>
+      <tr><td><code>V.B</code></td><td>Data collection</td><td><span class="pill">M08</span><span class="pill">M13</span></td></tr>
+      <tr><td><code>V.C</code></td><td>Measurement systems</td><td><span class="pill">M10</span><span class="pill">M11</span><span class="pill">M13</span></td></tr>
+      <tr><td><code>V.D</code></td><td>Basic statistics</td><td><span class="pill">M09</span><span class="pill">M15</span></td></tr>
+      <tr><td><code>V.E</code></td><td>Probability</td><td><span class="pill">M15</span></td></tr>
+      <tr><td><code>V.F</code></td><td>Process capability</td><td><span class="pill">M05</span><span class="pill">M12</span><span class="pill">M13</span></td></tr>
+      <tr><td><code>VI.A</code></td><td>Measuring and modeling relationships between variables</td><td><span class="pill">M14</span><span class="pill">M18</span></td></tr>
+      <tr><td><code>VI.B</code></td><td>Hypothesis testing</td><td><span class="pill">M08</span><span class="pill">M15</span><span class="pill">M16</span><span class="pill">M17</span><span class="pill">M19</span></td></tr>
+      <tr><td><code>VI.C</code></td><td>Risk analysis and management</td><td><span class="pill">M14</span></td></tr>
+      <tr><td><code>VI.D</code></td><td>Additional analysis methods</td><td><span class="pill">M04</span><span class="pill">M14</span><span class="pill">M19</span></td></tr>
+      <tr><td><code>VII.A</code></td><td>Design of experiments (DOE)</td><td><span class="pill">M21</span><span class="pill">M22</span></td></tr>
+      <tr><td><code>VII.B</code></td><td>Lean methods</td><td><span class="pill">M20</span></td></tr>
+      <tr><td><code>VII.C</code></td><td>Implementation</td><td><span class="pill">M20</span><span class="pill">M23</span></td></tr>
+      <tr><td><code>VIII.A</code></td><td>Statistical process control (SPC)</td><td><span class="pill">M24</span></td></tr>
+      <tr><td><code>VIII.B</code></td><td>Other controls</td><td><span class="pill">M25</span></td></tr>
+      <tr><td><code>VIII.C</code></td><td>Maintain controls</td><td><span class="pill">M25</span></td></tr>
+      <tr><td><code>VIII.D</code></td><td>Sustain improvements</td><td><span class="pill">M25</span></td></tr>
+      <tr><td><code>IX.A</code></td><td>Common DFSS methodologies</td><td><span class="pill">M26</span></td></tr>
+      <tr class="gap"><td><code>IX.B</code></td><td>Design for X (DFX)</td><td><em>not taught in this programme</em></td></tr>
+      <tr><td><code>IX.C</code></td><td>Robust designs</td><td><span class="pill">M26</span></td></tr>
+    </tbody>
+  </table></div>
+  <h3>IASSC Lean Six Sigma Black Belt</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Section</th><th>Title</th><th>Taught in</th></tr></thead>
+    <tbody>
+      <tr><td><code>1.1</code></td><td>The Basics of Six Sigma</td><td><span class="pill">M01</span><span class="pill">M02</span></td></tr>
+      <tr><td><code>1.2</code></td><td>The Fundamentals of Six Sigma</td><td><span class="pill">M02</span><span class="pill">M05</span><span class="pill">M07</span></td></tr>
+      <tr><td><code>1.3</code></td><td>Selecting Lean Six Sigma Projects</td><td><span class="pill">M03</span><span class="pill">M06</span><span class="pill">M07</span></td></tr>
+      <tr><td><code>1.4</code></td><td>The Lean Enterprise</td><td><span class="pill">M01</span><span class="pill">M04</span><span class="pill">M20</span></td></tr>
+      <tr><td><code>2.1</code></td><td>Process Definition</td><td><span class="pill">M04</span><span class="pill">M13</span><span class="pill">M14</span></td></tr>
+      <tr><td><code>2.2</code></td><td>Six Sigma Statistics</td><td><span class="pill">M08</span><span class="pill">M09</span></td></tr>
+      <tr><td><code>2.3</code></td><td>Measurement System Analysis</td><td><span class="pill">M10</span><span class="pill">M11</span><span class="pill">M13</span></td></tr>
+      <tr><td><code>2.4</code></td><td>Process Capability</td><td><span class="pill">M05</span><span class="pill">M12</span><span class="pill">M13</span></td></tr>
+      <tr><td><code>3.1</code></td><td>Patterns of Variation</td><td><span class="pill">M09</span><span class="pill">M14</span><span class="pill">M15</span></td></tr>
+      <tr><td><code>3.2</code></td><td>Inferential Statistics</td><td><span class="pill">M08</span><span class="pill">M15</span><span class="pill">M19</span></td></tr>
+      <tr><td><code>3.3</code></td><td>Hypothesis Testing</td><td><span class="pill">M16</span><span class="pill">M19</span></td></tr>
+      <tr><td><code>3.4</code></td><td>Hypothesis Testing with Normal Data</td><td><span class="pill">M17</span></td></tr>
+      <tr><td><code>3.5</code></td><td>Hypothesis Testing with Non-Normal Data</td><td><span class="pill">M17</span></td></tr>
+      <tr><td><code>4.1</code></td><td>Simple Linear Regression</td><td><span class="pill">M18</span></td></tr>
+      <tr><td><code>4.2</code></td><td>Multiple Regression Analysis</td><td><span class="pill">M18</span></td></tr>
+      <tr><td><code>4.3</code></td><td>Designed Experiments</td><td><span class="pill">M21</span></td></tr>
+      <tr><td><code>4.4</code></td><td>Full Factorial Experiments</td><td><span class="pill">M21</span></td></tr>
+      <tr><td><code>4.5</code></td><td>Fractional Factorial Experiments</td><td><span class="pill">M22</span></td></tr>
+      <tr><td><code>5.1</code></td><td>Lean Controls</td><td><span class="pill">M20</span><span class="pill">M25</span></td></tr>
+      <tr><td><code>5.2</code></td><td>Statistical Process Control (SPC)</td><td><span class="pill">M24</span></td></tr>
+      <tr><td><code>5.3</code></td><td>Six Sigma Control Plans</td><td><span class="pill">M25</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
 <section id="sources">
   <h2 class="big">Sources and standards referenced</h2>
   <p class="srcs">Certification structures and body-of-knowledge outlines used to map the curriculum:</p>

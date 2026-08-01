@@ -79,6 +79,65 @@ def covered_non_anchor(ws) -> set[str]:
     return dead
 
 
+RE_BOK = re.compile(r"<h5>BOK mapping</h5>\s*<p>(.*?)</p>", re.S)
+RE_ASQ_CODE = re.compile(r"\b((?:I|II|III|IV|V|VI|VII|VIII|IX)(?:\.[A-Z])?(?:\.\d+)?)\b")
+RE_IASSC_CODE = re.compile(r"\b([1-5]\.[1-5])\b")
+
+
+def test_bok() -> None:
+    """Every body-of-knowledge section the page cites has to exist.
+
+    The page asserts certification coverage on all 23 modules, and an assertion
+    nobody checks is a claim rather than a mapping. It cited six ASQ sections
+    that exist in neither the 2015 nor the 2022 body of knowledge — I.C, I.D,
+    I.E, III.E, VII.D, VIII.E — and several that exist but mean something else,
+    each with a parenthetical contradicting the real section title: "IV.B (VOC)"
+    where IV.B is the business case, "V.E (MSA)" where V.E is probability, "VI.D
+    (correlation, linear/multiple regression)" where VI.D is gap, root cause and
+    waste analysis.
+
+    tools/bok.py holds both outlines as data, transcribed from the two documents
+    the page's own reference list links to, so the claim and the check cannot
+    drift apart.
+    """
+    sys.path.insert(0, str(ROOT / "tools"))
+    from bok import ALL_ASQ, IASSC as IASSC_BOK, MODULE_MAP, render
+    src = HTML.read_text(encoding="utf-8")
+
+    # The line on the page is rendered from MODULE_MAP, so drift between the two
+    # means somebody typed a mapping by hand again — which is the habit that put
+    # six nonexistent sections on the page in the first place.
+    for block in re.split(r'(?=<details class="mod">)', src):
+        m = re.search(r'<span class="mid">(M\d+)</span>', block)
+        if not m:
+            continue
+        want = render(m.group(1))
+        got = re.search(r"<h5>BOK mapping</h5>\s*<p>(.*?)</p>", block, re.S)
+        check(want is not None, f"{m.group(1)} is declared in MODULE_MAP",
+              "the module is on the page but tools/bok.py does not map it")
+        if want is None:
+            continue
+        check(got is not None and got.group(1).strip() == want,
+              f"{m.group(1)} BOK line matches tools/bok.py",
+              f"page says {got.group(1).strip()[:60]!r} but MODULE_MAP renders "
+              f"{want[:60]!r} — run tools/apply_bok.py" if got else
+              "the module carries no BOK mapping at all")
+
+    mappings = RE_BOK.findall(src)
+    check(len(mappings) >= 20, "every module declares a BOK mapping",
+          f"only {len(mappings)} found — the curriculum claims full coverage")
+    for text in mappings:
+        plain = re.sub(r"<[^>]+>", "", text)
+        asq_part, _, iassc_part = plain.partition("IASSC")
+        for code in set(RE_ASQ_CODE.findall(asq_part)):
+            check(code in ALL_ASQ, f"ASQ {code} is a real BOK section",
+                  f"cited in {plain.strip()[:70]!r} but no such section exists in the "
+                  "ASQ CSSBB body of knowledge")
+        for code in set(RE_IASSC_CODE.findall(iassc_part)):
+            check(code in IASSC_BOK, f"IASSC {code} is a real BOK section",
+                  f"cited in {plain.strip()[:70]!r} but no such section exists")
+
+
 def test_deterministic() -> None:
     """Every shipped workbook carries frozen timestamps, so a diff means something.
 
@@ -1182,6 +1241,8 @@ def test_toollib() -> None:
 # --------------------------------------------------------------------- main
 def main() -> int:
     fast = "--fast" in sys.argv
+    print("BOK        every cited certification section exists")
+    test_bok()
     print("BUILD      workbooks are byte-reproducible")
     test_deterministic()
     print("STRUCTURE  merged-cell reference audit")
