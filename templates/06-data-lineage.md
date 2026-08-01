@@ -15,21 +15,6 @@
 
 ---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 **Purpose:** trace one record from the event that created it to the number on the
 dashboard. Roughly a third of projects find a defect here that materially changes
 the baseline.
@@ -38,18 +23,18 @@ the baseline.
 
 | # | Stage | System / object | Transformation, join or filter applied | Business rule | Owner | Refresh | Known gap |
 |---|---|---|---|---|---|---|---|
-| 1 | Event capture | | | | | | |
-| 2 | Source table | | | | | | |
-| 3 | Ingest / ETL | | | | | | |
-| 4 | Warehouse model | | | | | | |
-| 5 | Semantic layer / metric definition | | | | | | |
-| 6 | Dashboard / report | | | | | | |
+| 1 | Event capture | *Event capture* | *Zendesk UI* | *Agent clicks Resolved* | *resolved_at is browser local time* | *Support Ops* | *Real time* |
+| 2 | Source table | *Replication* | *zendesk.tickets* | *Hourly copy, no transformation* | *None* | *Data Eng* | *Hourly* |
+| 3 | Ingest / ETL | *Staging* | *stg_tickets (dbt)* | *Merged tickets collapsed to the survivor* | *A merged ticket keeps the survivor's timestamps* | *Data Eng* | *02:00* |
+| 4 | Warehouse model | *Warehouse* | *warehouse.tickets* | *Test tickets filtered on requester domain* | *Internal domains excluded* | *Data Eng* | *02:40* |
+| 5 | Semantic layer / metric definition | *Metric build* | *warehouse.reopen_daily* | *Reopen flagged where reopened_at - resolved_at <= 168h* | *First Resolved only* | *Analytics* | *03:10* |
+| 6 | Dashboard / report | *Dashboard* | *Looker: Ops weekly reopen* | *Filters to billing contact reasons* | *Chat excluded by a legacy filter* | *Ops Insights* | *06:00* |
 
 ## Single-record walkthrough
 
 | Stage | Value at this stage | Matches previous? | If not, why |
 |---|---|---|---|
-| Event capture | | — | |
+| Event capture | *Agent clicks Resolved* | — | *Zendesk UI* |
 | Source table | *zendesk.tickets* | *replicated hourly* | *timezone converted to UTC here* |
 | ETL output | *stg_tickets* | *dbt run 02:00* | *merged tickets collapsed to the survivor* |
 | Warehouse | *warehouse.tickets* | *02:40* | *test tickets filtered on requester domain* |

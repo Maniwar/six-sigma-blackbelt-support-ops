@@ -15,21 +15,6 @@
 
 ---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 **Measurement being validated:** <observer-timed task / timestamp-derived metric>
 
 ## 1. Study design (crossed, ANOVA method)
@@ -50,20 +35,20 @@
 | — Repeatability (equipment) | *11.2%* |  |  |
 | — Reproducibility (appraiser) | *26.1% — the analysts disagree more than the tool does* |  |  |
 | Part-to-part | *95.9%* |  |  |
-| **Total variation** | | 100% | 100% |
+| **Total variation** | *100.0* | 100% | 100% |
 
 | Measure | Value | Verdict |
 |---|---|---|
-| % Study variation | | <10% acceptable · 10–30% marginal · >30% unacceptable |
-| Number of distinct categories (ndc) | | want ≥ 5 |
+| % Study variation | *28.4%* | <10% acceptable · 10–30% marginal · >30% unacceptable |
+| Number of distinct categories (ndc) | *4* | want ≥ 5 |
 
 ## 3. Bias, linearity and stability
 
 | Check | Method | Result | Acceptable? |
 |---|---|---|---|
-| Bias | Compare mean measurement to a reference value | | |
-| Linearity | Bias across the operating range | | |
-| Stability | Repeat measurement of the same item over time | | |
+| Bias | Compare mean measurement to a reference value | *+0.8 min* | *Two analysts consistently round after-call work up* |
+| Linearity | Bias across the operating range | *No trend across the range* | *—* |
+| Stability | Repeat measurement of the same item over time | *Re-measured after 4 weeks, no drift* | *—* |
 
 ## 4. Verdict and action
 

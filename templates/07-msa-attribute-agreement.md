@@ -15,21 +15,6 @@
 
 ---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 **Measurement being validated:** <QA scoring / disposition coding / intent tagging / severity classification>
 
 ## 1. Study design
@@ -58,7 +43,7 @@
 | Within-appraiser agreement (repeatability) | *78%* | *>= 90%* | *Fail — QA-03 at 62%* |
 | Between-appraiser agreement (reproducibility) | *64%* | *>= 90%* | *Fail* |
 | Agreement with the standard (accuracy) | *71%* | *>= 90%* | *Fail* |
-| Fleiss' / Cohen's kappa | | see below | |
+| Fleiss' / Cohen's kappa | *0.41* | see below | *>= 0.80* |
 
 **Kappa interpretation:** >0.90 excellent · 0.75–0.90 good · 0.40–0.75 marginal (do not
 use for individual performance management) · <0.40 unacceptable (halt any use of this

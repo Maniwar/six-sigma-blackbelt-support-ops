@@ -15,21 +15,6 @@
 
 ---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## Part A — Handover checklist
 
 - [ ] Signed control plan with named owners for every metric
@@ -90,11 +75,11 @@ Name: ____________  Role: ____________  Signature: ____________  Date: _________
 | Baseline metric | *14.2%* |
 | Post metric | *7.6%* |
 | Improvement | *6.6 percentage points* |
-| Annualized units affected | *4,052 reopens avoided* |
+| Annualized units affected | *17,556 reopens avoided — 266,000 x 6.6 points* |
 | Unit cost basis ($) | *$6.80 fully-loaded cost per contact* |
-| **Gross annual benefit** | *$27,554* |
+| **Gross annual benefit** | *$119,381* |
 | Realization factor applied | *0.85* |
-| **Realized annual benefit** | *$23,421* |
+| **Realized annual benefit** | *$101,474* |
 | Benefit type | hard / soft / cost avoidance |
 | Harvest mechanism | *Hiring avoidance — two billing roles removed from the Q1 plan* |
 | Harvest evidence (req/plan/PO reference) | *Headcount plan v4, lines 22-23, signed by WFM 2026-11-08* |
@@ -108,14 +93,14 @@ Name: ____________  Role: ____________  Signature: ____________  Date: _________
 | Black Belt | *M. Berenji* |  | *2026-11-14* |
 | Champion | *R. Mehta* |  | *2026-11-15* |
 | **Finance partner** | *J. Lindqvist* |  | *2026-11-20* |
-| Master Black Belt | | | |
+| Master Black Belt | *S. Iyer* |  | *2026-11-20* |
 
 ## Part D — Checkpoints
 
 | Checkpoint | Due date | Metric value | Booked benefit still valid? | Revision | Signed |
 |---|---|---|---|---|---|
-| 90-day | | | | | |
-| **180-day re-audit** | | | | | |
+| 90-day | *2027-02-12* | *A. Okafor* | *7.9%* | *Held* | *No action* |
+| **180-day re-audit** | *2027-05-14* | *A. Okafor* | *8.4%* | *Drifting* | *Reopen: check whether the deferred-close rule is still enforced after the platform upgrade* |
 
 > **The 6-month re-audit is mandatory.** Programs that skip it consistently over-report
 > cumulative benefits, and the number eventually gets challenged by Finance in a way the

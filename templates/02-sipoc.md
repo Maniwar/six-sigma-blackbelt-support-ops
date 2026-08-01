@@ -15,21 +15,6 @@
 
 ---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 **Process purpose (one sentence):**
 >
 

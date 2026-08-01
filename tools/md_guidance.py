@@ -298,7 +298,7 @@ EXAMPLE = {
         "Metric": "7-day reopen rate, billing adjustments",
         "Operational definition ref": "OD-BIL-004 v2",
         "Period covered": "2026-01-05 to 2026-03-29 (12 whole weeks)",
-        "Records (n)": "61,400 billing tickets",
+        "Records (n)": "61,400 billing tickets over the 12-week window",
         "Extract date": "2026-04-02",
         "Extract query / job ref": "warehouse job bl_reopen_baseline, commit 4f2a9c1",
         "Immutable snapshot stored at": "s3://analytics-snapshots/BIL-2026-014/baseline.parquet",
@@ -465,10 +465,16 @@ def main() -> int:
             if line.startswith("# "):
                 lines.insert(i + 1, "\n" + block(name))
                 break
-        values = {} if done else EXAMPLE.get(name, {})
+        # Filling is safe to repeat: fill_row skips any row that already carries
+        # an italic example, so a second run is a no-op rather than a shift.
+        # Gating on `done` meant a template restored from git could never be
+        # re-filled, which is exactly what happened.
+        values = EXAMPLE.get(name, {})
         if values:
             lines = [fill_row(ln, values) if ln.startswith("|") else ln for ln in lines]
-        out = "\n".join(lines)
+        # The block removal leaves the newline that preceded it, so each run
+        # added two blank lines and the file never settled.
+        out = re.sub(r"\n{3,}", "\n\n", "\n".join(lines))
         if out != path.read_text(encoding="utf-8"):
             path.write_text(out, encoding="utf-8")
             changed += 1

@@ -15,21 +15,6 @@
 
 ---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 | Field | Content |
 |---|---|
 | **Metric name** | *7-day reopen rate, billing adjustments* |
@@ -46,9 +31,9 @@
 | **Business rules applied** | *First Resolved only; a second reopen does not double-count* |
 | **Refresh cadence** | *Nightly, 02:00 UTC; restated for 3 days as late events land* |
 | **Metric is final at** | T + ___ |
-| **Owner** | |
-| **Known limitations** | |
-| **Related metrics it must reconcile with** | |
+| **Owner** | *A. Okafor, Billing Ops Manager — owns the definition, not just the number* |
+| **Known limitations** | *Excludes chat until the channel field is backfilled; understates by roughly 0.4 points* |
+| **Related metrics it must reconcile with** | *Contact rate (same denominator) and the Ops weekly reopen tile (currently 1.8 pts apart — see the lineage doc)* |
 
 ## Worked example
 > Show one real record and how it is classified.
@@ -63,7 +48,7 @@ Two people independently applied this definition to the same 20 records.
 | | Result |
 |---|---|
 | Agreement | ___ / 20 |
-| Disagreements and resolution | |
+| Disagreements and resolution | *Reporting counted same-reason reopens only; operations wanted any-reason. Resolved 2026-04-24 in favour of any-reason, and the baseline was recut.* |
 | Definition revised? | Yes / No |
 
 Reviewed by: ____________  Date: __________

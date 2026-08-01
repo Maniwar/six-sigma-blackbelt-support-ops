@@ -15,21 +15,6 @@
 
 ---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 | Field | Value |
 |---|---|
 | Project ID | *BIL-2026-014* |
@@ -59,14 +44,14 @@ Reduce / increase `<metric>` from `<baseline>` to `<target>` by `<date>`, while 
 
 | Item | Value | Source |
 |---|---|---|
-| Baseline volume (annual) | *61,400 billing tickets* |  |
+| Baseline volume (annual) | *266,000 billing tickets a year (the 61,400 in the baseline document is one quarter)* |  |
 | Baseline metric | *14.2% reopened within 7 days* |  |
 | Target metric | *8.0%* |  |
-| Units avoided / improved | *3,807 reopens avoided a year* |  |
+| Units avoided / improved | *16,492 reopens avoided a year — 266,000 x 6.2 points* |  |
 | Unit cost basis ($) | *$6.80 fully-loaded cost per contact* |  |
-| **Gross annual benefit** | *$25,888* |  |
+| **Gross annual benefit** | *$112,146* |  |
 | Realization factor | *0.85 — agreed with Finance, reflects partial harvest in year one* |  |
-| **Realized annual benefit** | *$22,005* |  |
+| **Realized annual benefit** | *$95,324* |  |
 
 **Benefit type** (select one, per the program benefit accounting policy):
 - [ ] Hard — headcount reduction

@@ -15,21 +15,6 @@
 
 ---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 **This document is the zero point for the benefit clock. Finance signs it.**
 
 ## 1. Extract
@@ -63,15 +48,15 @@
 
 | Statistic | Value |
 |---|---|
-| n | *61,400 tickets* |
+| n | *61,400 tickets over the 12-week window (~5,100/week)* |
 | Mean | *14.2%* |
 | **Median** | *14.0%* |
 | Standard deviation | *1.4 points* |
 | p10 / p50 / p90 / p95 | *12.3% / 14.0% / 16.2% / 16.9%* |
 | Skewness | *0.31 — mild right skew, as expected for a proportion near the middle* |
 | Distribution shape | *Approximately symmetric at weekly aggregation; the underlying durations are not* |
-| Normality assessment (probability plot, not just the p-value) | |
-| Bimodality present? If so, resolved by stratifying on | |
+| Normality assessment (probability plot, not just the p-value) | *Probability plot near-linear; Anderson-Darling p = 0.03, which at 12 weekly points is not a concern* |
+| Bimodality present? If so, resolved by stratifying on | *No. Checked by stratifying on site and on tenure band — one distribution in both* |
 
 > For any duration metric, report median and p90 — never the mean alone. The customers
 > who suffer are in the tail, and the mean hides them.
@@ -87,11 +72,11 @@
 | **Capability index value** | *Ppu 0.42* |
 | % outside specification (observed) | *58% of weeks above the 8.0% target* |
 | % outside specification (fitted) | *61%* |
-| DPU / DPO / DPMO | |
-| Opportunities per unit (program standard) | |
-| Z from data (long-term) | |
-| Sigma level (with 1.5σ shift) | |
-| Rolled throughput yield across tiers | |
+| DPU / DPO / DPMO | *0.142 / 0.0284 / 28,400* |
+| Opportunities per unit (program standard) | *5 — fixed at programme level, never renegotiated mid-project* |
+| Z from data (long-term) | *1.90* |
+| Sigma level (with 1.5σ shift) | *3.40* |
+| Rolled throughput yield across tiers | *55.6% — first-pass yield compounds badly across four steps* |
 
 ## 5. Stratified baseline
 
@@ -115,7 +100,7 @@
 
 | Role | Name | Signature | Date |
 |---|---|---|---|
-| Black Belt | | | |
-| Process owner | | | |
-| **Finance partner** | | | |
-| Master Black Belt | | | |
+| Black Belt | *M. Berenji* |  | *2026-06-05* |
+| Process owner | *A. Okafor* |  | *2026-06-05* |
+| **Finance partner** | *J. Lindqvist* |  | *2026-06-08* |
+| Master Black Belt | *S. Iyer* |  | *2026-06-08* |

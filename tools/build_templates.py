@@ -1397,8 +1397,9 @@ def control_charts():
         else:
             sg.value = ("=IF(B{r}=\"\",\"\",IF(OR(B{r}>$B$9,B{r}<$B$10),"
                         "\"OUT OF CONTROL\",\"\"))").format(r=r)
-    mu = sum(vals) / float(len(vals))
-    mrb = _mrbar(vals)
+    base = vals[:BASE_PTS]                 # the window the sheet actually uses
+    mu = sum(base) / float(len(base))
+    mrb = _mrbar(base)
     SHOWN.update({("I-MR", "B5"): "%d" % N_PTS, ("I-MR", "B6"): "%.2f" % mu,
                   ("I-MR", "B7"): "%.2f" % mrb, ("I-MR", "B8"): "%.2f" % (mrb / 1.128),
                   ("I-MR", "B9"): "%.2f" % (mu + 2.66 * mrb), ("I-MR", "B10"): "%.2f" % (mu - 2.66 * mrb),
@@ -1461,7 +1462,10 @@ def control_charts():
           7930, 8260, 7810, 8150, 8470, 7860, 8030, 8340, 7900, 8180, 7770, 8240]
     ks = [5610, 5990, 5570, 6120, 5410, 5880, 6210, 5490, 6050, 5380, 5940, 6180,
           5520, 6010, 5480, 5860, 6240, 5600, 5760, 6090, 5710, 5900, 5450, 6020]
-    pbar, sigs, zs, sz = _laney(ns, ks)
+    pbar, sigs, zs, sz = _laney(ns[:BASE_PTS], ks[:BASE_PTS])
+    # per-point sigma still needs every point, only the centre is baselined
+    _, sigs, _, _ = _laney(ns, ks)
+    sigs = [((pbar * (1 - pbar) / n) ** 0.5) for n in ns]
     SHOWN.update({("Laney p-prime", "B5"): "%.2f%%" % (100 * pbar),
                   ("Laney p-prime", "B6"): "%.3f" % _mrbar(zs),
                   ("Laney p-prime", "B7"): "%.3f" % sz,
@@ -1541,7 +1545,9 @@ def control_charts():
     rates = [.031, .052, .036, .058, .033, .049, .041, .056, .030, .047, .038, .054,
              .032, .050, .035, .057, .040, .045, .031, .053, .037, .048, .034, .055]
     ds = [int(round(us[i] * rates[i])) for i in range(N_PTS)]
-    ubar, usig, uz, usz = _laney(us, ds, poisson=True)
+    ubar, _, _, usz = _laney(us[:BASE_PTS], ds[:BASE_PTS], poisson=True)
+    usig = [((ubar / n) ** 0.5) for n in us]
+    uz = [((ds[i] / float(us[i])) - ubar) / usig[i] for i in range(len(us))]
     SHOWN.update({("Laney u-prime", "B5"): "%.4f" % ubar, ("Laney u-prime", "B6"): "%.3f" % _mrbar(uz),
                   ("Laney u-prime", "B7"): "%.3f" % usz, ("Laney u-prime", "B8"): "%.2f" % (ubar * 100)})
     for i in range(N_PTS):
@@ -1626,8 +1632,8 @@ def control_charts():
         _rngs.append(max(obs) - min(obs))
         SHOWN[("Xbar-R", "G%d" % r)] = "%.2f" % _avgs[-1]
         SHOWN[("Xbar-R", "H%d" % r)] = "%.2f" % _rngs[-1]
-    grand = sum(_avgs) / float(len(_avgs))
-    rbar = sum(_rngs) / float(len(_rngs))
+    grand = sum(_avgs[:BASE_PTS]) / float(BASE_PTS)
+    rbar = sum(_rngs[:BASE_PTS]) / float(BASE_PTS)
     SHOWN.update({("Xbar-R", "B5"): "5", ("Xbar-R", "B6"): "%.2f" % grand, ("Xbar-R", "B7"): "%.2f" % rbar,
                   ("Xbar-R", "B8"): "0.577", ("Xbar-R", "B9"): "2.114", ("Xbar-R", "B10"): "0.000",
                   ("Xbar-R", "B11"): "%.2f  /  %.2f" % (grand + 0.577 * rbar, grand - 0.577 * rbar)})
@@ -1902,8 +1908,12 @@ def control_charts():
     ws.cell(row=13, column=14, value="g median").font = F_NOTE
     spc_chart(ws, "g-chart — contacts handled between incidents", cats, [
         (Reference(ws, min_col=6, min_row=14, max_row=37), "Contacts between", "6B4FA0", False, True),
+        # The median is within half a percent of the mean on any realistic
+        # data, so plotting both draws one line on top of the other — and it
+        # was drawn in amber, which this workbook reserves for run-rule
+        # warnings. The run rule still uses the median; the stats band reports
+        # it; the chart shows one centre line.
         (Reference(ws, min_col=7, min_row=14, max_row=37), "Mean", "3F8F5A", False, False),
-        (Reference(ws, min_col=14, min_row=14, max_row=37), "Median", "B45309", False, False),
         (Reference(ws, min_col=13, min_row=14, max_row=37), "UCL", "C0392B", True, False),
     ], "Q22", height=7,
         ylim=bounds(vol, [0, sum(vol) / len(vol) + 3 * ((sum(vol) / len(vol)) ** 2) ** 0.5],),

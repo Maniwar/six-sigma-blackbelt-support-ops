@@ -550,7 +550,10 @@ def calculators(wb) -> int:
         r = 21 + i
         sh.put(r, 1, f"=MAX(0,$B$6-4*$B$7)+({i}/40)*(8*$B$7)", fmt="0.00")
         sh.put(r, 2, f"=IFERROR(NORMDIST(A{r},$B$6,$B$7,FALSE),\"\")", fmt="0.0000")
-        sh.put(r, 3, f"=IF(ABS(A{r}-$B$5)<=(8*$B$7)/80,MAX($B$21:$B$61),0)", fmt="0.0000")
+        # 0 everywhere except the spike drew a RED LINE along the entire
+        # baseline, and red is this repo's colour for a limit or a breach — so
+        # the chart carried two red references. NA() leaves a gap instead.
+        sh.put(r, 3, f"=IF(ABS(A{r}-$B$5)<=(8*$B$7)/80,MAX($B$21:$B$61),NA())", fmt="0.0000")
     _line(sh.ws, "Where you sit against the SLA — area past the red line is a breach",
           Reference(sh.ws, min_col=1, min_row=21, max_row=61),
           [(Reference(sh.ws, min_col=2, min_row=21, max_row=61), "Your process", BLUE, False, False),

@@ -15,30 +15,15 @@
 
 ---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## 1. VOC collection plan
 
 | Method | Population | Sample plan | n | Who | When | Known bias |
 |---|---|---|---|---|---|---|
-| Survey verbatims | | | | | | Non-response; bimodal responders |
-| Contact transcripts | | | | | | Only contacts that happened |
-| Customer interviews | | | | | | Selection; social desirability |
-| Complaint / escalation review | | | | | | Extreme cases only |
-| Churn exit reasons | | | | | | Post-hoc rationalization |
+| Survey verbatims | *CSAT free text, billing reasons* | *12 weeks* | *n=2,180* | *Only 14% respond — survivorship* |  | Non-response; bimodal responders |
+| Contact transcripts | *Chat and email, billing queue* | *4 weeks* | *n=8,400* | *Topic-modelled, then read 200 by hand* |  | Only contacts that happened |
+| Customer interviews | *Disputed-charge customers* | *6 sessions* | *n=6* | *Recruited from reopens, so biased to failure* |  | Selection; social desirability |
+| Complaint / escalation review | *Formal complaints, billing* | *12 weeks* | *n=61* | *Small n, high signal* |  | Extreme cases only |
+| Churn exit reasons | *Cancellation survey* | *12 weeks* | *n=340* | *Free text, self-reported* |  | Post-hoc rationalization |
 | Internal (VOB / VOE) | *Agent forum and QA notes* | *ongoing* | *n/a* | *Agents name the same posting delay* |  |  |
 
 ## 2. Affinity themes

@@ -15,21 +15,6 @@
 
 ---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 **Complete and circulate this BEFORE the pilot starts. Pre-registration is what stops
 post-hoc metric-shopping, which is the single largest source of inflated benefits in
 support improvement programs.**

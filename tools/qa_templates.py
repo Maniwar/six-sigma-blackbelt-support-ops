@@ -49,7 +49,8 @@ ERR_VALUES = ("#REF!", "#VALUE!", "#DIV/0!", "#NAME?", "#N/A", "#NULL!", "#NUM!"
 NA_BY_DESIGN = {
     # the ROI horizon: years beyond "Years to model" are NA() so the line stops
     # rather than dropping to zero under a title promising it crosses zero
-    "19-black-belt-calculators.xlsx": {"9 ROI and payback": "B:C"},
+    "19-black-belt-calculators.xlsx": {"9 ROI and payback": "B:C",
+                                      "3 SLA capability": "C:C"},
     "27-control-charts.xlsx": {"I-MR": "AD:AF", "Laney p-prime": "AD:AE",
                                "Laney u-prime": "AD:AE", "Xbar-R": "AD:AF",
                                "EWMA": "AD:AD", "CUSUM": "AD:AD",
