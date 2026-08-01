@@ -652,6 +652,35 @@ def audit_formula_colour(path: Path, wb) -> None:
              f"type over: {bad[:4]}")
 
 
+def audit_note_width(path: Path, wb) -> None:
+    """A paragraph needs a paragraph's width, or it wraps into a column of soup.
+
+    776 characters of test-selection guidance sat in a column 13 wide on the
+    hypothesis log, wrapping about sixty lines tall and pushing the table it
+    introduces off the screen. The content was right and its container was not,
+    which no check looked at: every guidance layer asks whether an explanation
+    EXISTS and none asked whether it is readable where it sits.
+    """
+    book = path.name
+    bad = []
+    for ws in wb.worksheets:
+        anchors = {str(m).split(":")[0] for m in ws.merged_cells.ranges}
+        shadow = merged_shadow(ws)
+        for row in ws.iter_rows():
+            for c in row:
+                v = c.value
+                if not (isinstance(v, str) and len(v) > 200 and not v.startswith("=")):
+                    continue
+                if c.coordinate in anchors or (c.row, c.column) in shadow:
+                    continue
+                w = ws.column_dimensions[c.column_letter].width or 8.43
+                if w < 40:
+                    bad.append(f"{ws.title}!{c.coordinate} ({len(v)} chars in a {w:.0f}-wide column)")
+    if bad:
+        fail(book, "EXAMPLE",
+             f"{len(bad)} note(s) wrapped into a column too narrow to read them: {bad[:3]}")
+
+
 def audit_rowlabel(path: Path, wb) -> None:
     """A label in column A beside a filled value in B has to say what it is.
 
@@ -997,6 +1026,7 @@ def main() -> int:
         audit_jargon(path, wb)
         audit_rowlabel(path, wb)
         audit_formula_colour(path, wb)
+        audit_note_width(path, wb)
         charts += n
         if rubric:
             graded += audit_rubric(path, wb, guidance)

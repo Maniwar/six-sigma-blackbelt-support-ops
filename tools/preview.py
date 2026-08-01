@@ -82,6 +82,23 @@ def shown_from(wb, cells: dict) -> dict:
     return out
 
 
+# Colours the sheet already means something by, which the preview styles itself:
+# the dark header ink, the default body ink, and the blue used for typed numbers.
+# Anything else is an author's deliberate choice and gets carried through.
+_INK_SKIP = {"FF000000", "FFFFFFFF", "FF151B24", "FF1F2937", "FF0000FF", None, ""}
+
+
+def _font_colour(cell) -> str:
+    """The author's own font colour, as #rrggbb, or "" if it is just body text."""
+    try:
+        rgb = cell.font.color.rgb if cell.font and cell.font.color else None
+    except Exception:                                            # noqa: BLE001
+        return ""
+    if not isinstance(rgb, str) or rgb in _INK_SKIP:
+        return ""
+    return "#" + rgb[-6:]
+
+
 def _edge_style(cell) -> str:
     """Diagonals and heavy rules, which is how the fishbone is actually drawn.
 
@@ -191,6 +208,13 @@ def sheet_html(ws, shown: dict) -> str:
                 cls = "x-band x-bandlong"
             if not cls and cell.font and cell.font.bold:
                 cls = "x-b"
+            # Deliberate font colour, carried through. The countermeasure
+            # hierarchy shades its six levels green-amber-red to show at a
+            # glance that most controls sit at the weak end; that signal lives
+            # in the font, because fill in this pack means what you do with the
+            # cell. The preview dropped it, so the gradient existed in the
+            # download and nowhere on the page.
+            ink = _font_colour(cell)
 
             is_formula = isinstance(cell.value, str) and cell.value.startswith("=")
             if is_formula:
@@ -209,6 +233,8 @@ def sheet_html(ws, shown: dict) -> str:
             if cls:
                 attrs += ' class="%s"' % cls
             edge = _edge_style(cell)
+            if ink:
+                edge = (edge or "") + f"color:{ink};"
             if edge:
                 attrs += ' style="%s"' % H.escape(edge, quote=True)
             attrs += title

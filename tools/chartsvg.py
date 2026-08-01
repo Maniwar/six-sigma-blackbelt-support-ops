@@ -372,6 +372,23 @@ def nice_scale(lo: float, hi: float, want: int = 5) -> tuple[float, float, float
     return step * math.floor(lo / step), step * math.ceil(hi / step), step
 
 
+def _cap(text: str, n: int) -> str:
+    """Shorten to n characters, at a word boundary, and say that you did.
+
+    A hard slice reads as a bug rather than as a shortening: the Kano chart
+    showed "Delighters — differentiatio", which looks like the renderer broke
+    rather than like a label too long for its axis. Backing up to the last space
+    and adding an ellipsis makes the truncation legible as a choice.
+    """
+    if len(text) <= n:
+        return text
+    cut = text[:n - 1]
+    space = cut.rfind(" ")
+    if space >= n * 0.6:                    # only if it does not gut the label
+        cut = cut[:space]
+    return cut.rstrip(" \u2014-,;:") + "\u2026"
+
+
 def _esc(s: str) -> str:
     return (str(s).replace("&", "&amp;").replace("<", "&lt;")
             .replace(">", "&gt;").replace('"', "&quot;"))
@@ -623,17 +640,17 @@ def render(spec: dict, cells: dict, width: int = 900) -> str | None:
             x = pad_l + band * (i + 0.5)
             if rotate:
                 o.append(f'<text transform="translate({x:.1f},{base + 13}) rotate(-38)" '
-                         f'class="cl" text-anchor="end">{_esc(c[:CAT_CAP])}</text>')
+                         f'class="cl" text-anchor="end">{_esc(_cap(c, CAT_CAP))}</text>')
             else:
                 o.append(f'<text x="{x:.1f}" y="{base + 17}" class="cl" '
-                         f'text-anchor="middle">{_esc(c[:14])}</text>')
+                         f'text-anchor="middle">{_esc(_cap(c, 14))}</text>')
     elif horizontal:
         for i, c in enumerate(cats):
             if not c:
                 continue
             y = top + (ph / n) * (i + 0.5) + 4
             o.append(f'<text x="{pad_l - 8}" y="{y:.1f}" class="cl" text-anchor="end">'
-                     f'{_esc(c[:30])}</text>')
+                     f'{_esc(_cap(c, 30))}</text>')
     if ax_cat.get("title"):
         o.append(f'<text x="{pad_l + pw / 2:.1f}" y="{top + ph + cat_h + 12:.1f}" '
                  f'class="cat" text-anchor="middle">{_esc(ax_cat["title"])}</text>')

@@ -336,6 +336,55 @@ def _boundary(ws, row: int, span) -> bool:
     return False
 
 
+LONG_NOTE = 200          # characters that need a paragraph's worth of width
+NARROW = 40              # a column below this cannot carry one
+
+
+def widen_long_notes(wb) -> int:
+    """Give a paragraph somewhere to go, instead of a 13-wide column.
+
+    The hypothesis log's test-selection guidance is 776 characters sitting in a
+    column 13 wide, so it wrapped into a single cell about sixty lines tall and
+    pushed the table that follows off the screen. The content was right; it had
+    nowhere to sit. Two more like it across the pack.
+
+    Only merges when every cell to the right of it on that row is empty, so it
+    cannot swallow a neighbour, and sizes the row from the width it ends up
+    with rather than guessing.
+    """
+    from openpyxl.styles import Alignment
+    n = 0
+    for ws in wb.worksheets:
+        anchors = {str(m).split(":")[0] for m in ws.merged_cells.ranges}
+        shadow = {(r, c) for rng in ws.merged_cells.ranges
+                  for r in range(rng.min_row, rng.max_row + 1)
+                  for c in range(rng.min_col, rng.max_col + 1)}
+        last = ws.max_column
+        for row in list(ws.iter_rows()):
+            for cell in row:
+                v = cell.value
+                if not (isinstance(v, str) and len(v) > LONG_NOTE
+                        and not v.startswith("=")):
+                    continue
+                if cell.coordinate in anchors or (cell.row, cell.column) in shadow:
+                    continue
+                if (ws.column_dimensions[cell.column_letter].width or 8.43) >= NARROW:
+                    continue
+                if any(ws.cell(row=cell.row, column=k).value not in (None, "")
+                       for k in range(cell.column + 1, last + 1)):
+                    continue
+                span = sum(ws.column_dimensions[get_column_letter(k)].width or 8.43
+                           for k in range(cell.column, last + 1))
+                ws.merge_cells(start_row=cell.row, start_column=cell.column,
+                               end_row=cell.row, end_column=last)
+                cell.alignment = Alignment(wrap_text=True, vertical="top")
+                lines = 1 + int(len(v) / max(20, span * 0.95))
+                ws.row_dimensions[cell.row].height = max(
+                    ws.row_dimensions[cell.row].height or 0, 13 * lines)
+                n += 1
+    return n
+
+
 def _typed(cell) -> bool:
     """Did a person put this here? A formula did not, and neither did nothing."""
     v = cell.value
@@ -506,7 +555,8 @@ def polish_workbook(wb, landscape: bool = True) -> int:
     whether or not the content did.
     """
     stamp(wb)
-    changed = explain_headers(wb) + mark_examples(wb) + recolour_formulas(wb)
+    changed = (explain_headers(wb) + mark_examples(wb) + recolour_formulas(wb)
+               + widen_long_notes(wb))
     for ws in wb.worksheets:
         before = (ws.page_setup.fitToWidth, ws.page_setup.orientation, ws.freeze_panes)
 
