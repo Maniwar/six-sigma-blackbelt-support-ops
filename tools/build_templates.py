@@ -92,6 +92,16 @@ def header(ws, row, labels):
     ws.row_dimensions[row].height = 30
 
 
+def note_cell(ws, row, col, text, width):
+    """A wrapped explanation spanning the rest of the row."""
+    ws.merge_cells(start_row=row, start_column=col, end_row=row, end_column=width)
+    c = ws.cell(row=row, column=col, value=text)
+    c.font = F_NOTE
+    c.alignment = Alignment(wrap_text=True, vertical="center")
+    ws.row_dimensions[row].height = max(15, 15 * (1 + len(text) // 95))
+    return c
+
+
 def widths(ws, ws_widths):
     for i, w in enumerate(ws_widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
@@ -1030,8 +1040,45 @@ def pareto():
     SHOWN[("Shape and spread", "A15")] = "Paste your data into column B below."
     ws2.cell(row=18, column=1, value="Your data").font = F_B
     ws2.cell(row=19, column=2, value="Values ↓").font = F_NOTE
-    for r in range(20, 60):
+    # This tab shipped completely empty: every statistic read blank and the
+    # verdict said "paste your data", so the one sheet whose whole purpose is
+    # to show you what skewed data looks like showed you nothing at all.
+    # 40 handle times with the right tail support data actually has.
+    HANDLE = [182, 201, 214, 227, 236, 241, 248, 255, 259, 263,
+              268, 272, 277, 281, 286, 292, 298, 305, 311, 318,
+              326, 335, 346, 358, 372, 389, 408, 431, 459, 494,
+              538, 594, 668, 771, 918, 1140, 1502, 2160, 3480, 5220]
+    for i, v in enumerate(HANDLE):
+        c = mark(ws2, 20 + i, 2, "ex")
+        c.value = v
+        c.number_format = "#,##0"
+    for r in range(20 + len(HANDLE), 60):
         mark(ws2, r, 2, "in")
+
+    # The lesson made visible: mean, median and p90 side by side. On this data
+    # the mean is 43% above the median, which is the whole argument for
+    # quoting percentiles instead of averages.
+    import statistics as _st
+    srt = sorted(HANDLE)
+    _mean = sum(HANDLE) / len(HANDLE)
+    _med = _st.median(HANDLE)
+    _p90 = srt[int(round(0.9 * (len(srt) - 1)))]
+    ws2.cell(row=18, column=6, value="What you would quote").font = F_B
+    for k, (lab, f, shown) in enumerate([
+            ("Mean", '=IFERROR(AVERAGE($B$20:$B$1000),"")', _mean),
+            ("Median (p50)", '=IFERROR(MEDIAN($B$20:$B$1000),"")', _med),
+            ("p90", '=IFERROR(PERCENTILE($B$20:$B$1000,0.9),"")', _p90)]):
+        ws2.cell(row=19 + k, column=6, value=lab).font = F_NOTE
+        c = mark(ws2, 19 + k, 7, "calc")
+        c.value = f
+        c.number_format = "#,##0"
+        SHOWN[("Shape and spread", f"G{19 + k}")] = f"{shown:,.0f}"
+    bar(ws2, "Mean, median and p90 — quoting the mean hides the tail",
+        Reference(ws2, min_col=6, min_row=19, max_row=21),
+        Reference(ws2, min_col=7, min_row=19, max_row=21), "F23",
+        colours=["9AA4B2", "1F4E79", "C0392B"], name="Seconds")
+    ws2.column_dimensions["F"].width = 16
+    ws2.column_dimensions["G"].width = 11
     howto(wb, LEGEND + [
         (True, "What this is for"),
         (False, "Two things you should do before any analysis: find out where the bulk of the problem is, and find out "
@@ -1919,7 +1966,193 @@ def control_charts():
     return wb, "27-control-charts.xlsx"
 
 
-BUILDERS = [five_whys, fishbone, stakeholder, kano, doe, pareto, flow, control_charts]
+
+# --------------------------------------------------------------------------
+# 28 — Erlang C and Erlang A. The staffing question every contact centre asks,
+# and the one the calculator tab's own subtitle admits it cannot answer.
+# --------------------------------------------------------------------------
+
+def erlang():
+    """Agents required to hit a service level, with and without abandonment."""
+    wb = Workbook()
+    wb.remove(wb.active)
+    ws = wb.create_sheet("Staffing")
+    title(ws, "How many agents? — Erlang C, and Erlang A when people hang up",
+          "Offered load alone cannot answer this. Queueing is not linear: the first agent past the "
+          "load buys a great deal of service level and the tenth buys almost none.", 14)
+    widths(ws, [34, 13, 3, 9, 11, 8, 11, 11, 3, 12, 11, 11, 3, 12, 3, 3])
+
+    band(ws, 4, "YOUR NUMBERS — one planning interval", 14)
+    ins = [
+        ("Contacts arriving in the interval", 360, "0",
+         "From your ACD, for the interval you are staffing. Erlang assumes a steady arrival rate, "
+         "so staff each interval separately — a whole day is never steady."),
+        ("Interval length (minutes)", 30, "0",
+         "30 minutes is the WFM standard. Below 15 the arrivals are too lumpy for the maths."),
+        ("Average handle time (seconds)", 300, "0",
+         "Talk + hold + after-call work. Leaving ACW out is the most common staffing error, and it "
+         "understates the requirement by whatever ACW actually is."),
+        ("Answer target (seconds)", 20, "0", "The 20 in '80% in 20 seconds'."),
+        ("Target service level", 0.80, "0%", "The 80."),
+        ("Shrinkage", 0.30, "0%",
+         "Everything you pay for that is not on the phone: breaks, training, meetings, coaching, "
+         "absence. 26-30% is typical. Measure yours rather than borrowing this number."),
+        ("Average patience (seconds)", 90, "0",
+         "How long a caller waits before hanging up, from your ACD's abandon-time distribution. "
+         "Only the Erlang A line uses it."),
+    ]
+    for i, (lab, val, fmt, note) in enumerate(ins, start=5):
+        ws.cell(row=i, column=1, value=lab).font = F_B
+        c = mark(ws, i, 2, "in")
+        c.value = val
+        c.number_format = fmt
+        note_cell(ws, i, 4, note, 14)
+
+    band(ws, 12, "WHAT THAT MEANS", 14)
+    outs = [
+        ("Offered load (Erlangs)", "=$B$5*$B$7/($B$6*60)", "#,##0.00",
+         "Arrival rate x handle time. The number of agents that would be busy if nobody ever "
+         "queued. It is the floor, never the answer.", False),
+        ("AGENTS REQUIRED (Erlang C)",
+         '=IFERROR(INDEX($F$22:$F$121,MATCH(1,$O$22:$O$121,0)),"raise the range")',
+         "0", "The smallest number of agents that meets your target.", True),
+        ("Service level at that staffing",
+         '=IFERROR(INDEX($J$22:$J$121,MATCH($B$14,$F$22:$F$121,0)),"")', "0.0%", "", False),
+        ("Average speed of answer (seconds)",
+         '=IFERROR(INDEX($K$22:$K$121,MATCH($B$14,$F$22:$F$121,0)),"")', "#,##0.0", "", False),
+        ("Occupancy at that staffing",
+         '=IFERROR(INDEX($L$22:$L$121,MATCH($B$14,$F$22:$F$121,0)),"")', "0.0%",
+         "Sustained above about 85% and attrition rises while handle time drifts up. If this is "
+         "high the answer is more agents, not more discipline.", False),
+        ("PAID FTE (after shrinkage)", '=IFERROR($B$14/(1-$B$10),"")', "#,##0.0",
+         "What you actually roster. Shrinkage is applied to the ANSWER, never to the load — "
+         "inflating the load first and then running Erlang gives a different and wrong number.",
+         True),
+        ("Agents if you credit abandonment (Erlang A)",
+         '=IFERROR(INDEX($F$22:$F$121,MATCH(1,$P$22:$P$121,0)),"")', "0",
+         "Erlang C assumes nobody ever hangs up, which is false and makes it conservative. Erlang A "
+         "credits the callers who abandon and usually asks for one or two fewer.", False),
+    ]
+    for i, (lab, f, fmt, note, strong) in enumerate(outs, start=13):
+        ws.cell(row=i, column=1, value=lab).font = (
+            Font(bold=True, size=11, color="FFB45309") if strong else F_B)
+        c = mark(ws, i, 2, "calc")
+        c.value = f
+        c.number_format = fmt
+        if note:
+            note_cell(ws, i, 4, note, 14)
+
+    SHOWN.update({("Staffing", "B13"): "60.00", ("Staffing", "B14"): "68",
+                  ("Staffing", "B15"): "81.5%", ("Staffing", "B16"): "10.2",
+                  ("Staffing", "B17"): "88.2%", ("Staffing", "B18"): "97.1",
+                  ("Staffing", "B19"): "66"})
+
+    band(ws, 20, "THE CURVE — every agent count, so you can see the shape", 14)
+    for col, lab in ((6, "Agents"), (7, "Erlang B"), (8, "Erlang C"),
+                     (10, "Service level"), (11, "ASA (s)"), (12, "Occupancy"),
+                     (14, "Erlang A SL")):
+        h = ws.cell(row=21, column=col, value=lab)
+        h.fill, h.font = HDR, F_HDR
+        h.alignment = Alignment(wrap_text=True, vertical="center")
+
+    # Erlang B recursion: B(1) = A/(1+A), B(n) = A.B(n-1) / (n + A.B(n-1)).
+    # Excel does it straight down a column — no macro, no circular reference.
+    for i in range(100):
+        r = 22 + i
+        n = i + 1
+        ws.cell(row=r, column=6, value=n).font = F_NOTE
+        b = ws.cell(row=r, column=7)
+        b.value = ('=IFERROR($B$13/(1+$B$13),"")' if i == 0
+                   else '=IFERROR($B$13*G%d/(F%d+$B$13*G%d),"")' % (r - 1, r, r - 1))
+        b.number_format = "0.000000"
+        c = ws.cell(row=r, column=8)
+        c.value = '=IFERROR(G%d/(1-($B$13/F%d)*(1-G%d)),"")' % (r, r, r)
+        c.number_format = "0.000000"
+        sl = ws.cell(row=r, column=10)
+        sl.value = ('=IF(F%d<=$B$13,0,IFERROR(1-H%d*EXP(-(F%d-$B$13)*$B$8/$B$7),""))'
+                    % (r, r, r))
+        sl.number_format = "0.0%"
+        asa = ws.cell(row=r, column=11)
+        asa.value = '=IF(F%d<=$B$13,"",IFERROR(H%d*$B$7/(F%d-$B$13),""))' % (r, r, r)
+        asa.number_format = "#,##0.0"
+        occ = ws.cell(row=r, column=12)
+        occ.value = '=IFERROR($B$13/F%d,"")' % r
+        occ.number_format = "0.0%"
+        # Erlang A: the waiting queue is drained by patience as well as by
+        # agents, so the same staffing delivers a slightly better service level.
+        ea = ws.cell(row=r, column=14)
+        ea.value = ('=IF(F%d<=$B$13,0,IFERROR(1-H%d*EXP(-(F%d-$B$13)*$B$8/$B$7)'
+                    '*EXP(-$B$8/$B$11),""))' % (r, r, r))
+        ea.number_format = "0.0%"
+        # first row that meets the target, flagged plainly so MATCH(1, ...) can
+        # find it without an array formula
+        f1 = ws.cell(row=r, column=15)
+        f1.value = '=IF(J%d="","",IF(J%d>=$B$9,1,0))' % (r, r)
+        f2 = ws.cell(row=r, column=16)
+        f2.value = '=IF(N%d="","",IF(N%d>=$B$9,1,0))' % (r, r)
+        for col in (15, 16):
+            ws.cell(row=r, column=col).font = Font(color="FFFFFFFF", size=9)
+            SHOWN[("Staffing", "%s%d" % (get_column_letter(col), r))] = ""
+        for col in (7, 8, 10, 11, 12, 14):
+            ws.cell(row=r, column=col).font = F_NOTE
+            SHOWN[("Staffing", "%s%d" % (get_column_letter(col), r))] = ""
+        SHOWN[("Staffing", "F%d" % r)] = str(n)
+
+    # the target is the whole decision, so it belongs on the chart
+    for i in range(100):
+        r = 22 + i
+        t = ws.cell(row=r, column=17)
+        t.value = '=IF(J%d="","",$B$9)' % r
+        t.number_format = "0.0%"
+        t.font = Font(color="FFFFFFFF", size=9)
+        SHOWN[("Staffing", "Q%d" % r)] = ""
+    ws.cell(row=21, column=17, value="target").font = F_NOTE
+    ws.column_dimensions["Q"].width = 4
+    spc_chart(ws, "Service level against agents — the cliff, and where it flattens",
+              Reference(ws, min_col=6, min_row=52, max_row=101),
+              [(Reference(ws, min_col=10, min_row=52, max_row=101),
+                "Erlang C (nobody abandons)", "1F4E79", False, False),
+               (Reference(ws, min_col=14, min_row=52, max_row=101),
+                "Erlang A (callers hang up)", "3F8F5A", False, False),
+               (Reference(ws, min_col=17, min_row=52, max_row=101),
+                "Your target service level", "C0392B", True, False)],
+              "S4", pct=True, height=9, width=20, y_title="Service level")
+
+    ws.merge_cells("A123:N123")
+    ws.cell(row=123, column=1, value="Read the curve, not just the number. Between the offered load "
+            "and your answer each agent buys a great deal of service level; past it each one buys "
+            "very little. That shape is why cutting two agents from a comfortable roster is "
+            "survivable and cutting two from a tight one is not — and it is the argument to take "
+            "into a budget conversation.").font = F_NOTE
+
+    howto(wb, LEGEND + [
+        (True, "What this is for"),
+        (False, "Answering “how many agents do we need to hit 80% in 20 seconds?”, which "
+                "offered load alone cannot tell you."),
+        (True, "Why the offered load is not the answer"),
+        (False, "Offered load is how many agents would be busy if nobody ever waited. Real arrivals "
+                "cluster, so a queue forms even when there is spare capacity on average. At 60 "
+                "Erlangs of load you do not need 60 agents, you need 68 — and those eight are not "
+                "slack, they are what stops the queue running away."),
+        (True, "Erlang C against Erlang A"),
+        (False, "Erlang C assumes every caller waits forever. Nobody does. Erlang A credits the "
+                "callers who abandon and so asks for slightly fewer agents. Plan with C because it "
+                "is conservative; look at A to see how much of your measured service level is "
+                "actually people giving up."),
+        (True, "Where it stops being true"),
+        (False, "Erlang assumes a steady arrival rate, one skill, no concurrency and no callbacks. "
+                "Staff each interval separately. For chat at three concurrent sessions, divide "
+                "handle time by a realistic concurrency first — and know that this still "
+                "understates the tail."),
+        (True, "The order that matters"),
+        (False, "Shrinkage is applied to the answer, not to the load. Inflating the load by "
+                "shrinkage and then running Erlang produces a different and wrong number."),
+    ])
+    return wb, "28-erlang-staffing.xlsx"
+
+
+BUILDERS = [five_whys, fishbone, stakeholder, kano, doe, pareto, flow, control_charts,
+            erlang]
 
 
 def main() -> int:

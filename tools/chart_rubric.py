@@ -55,6 +55,8 @@ INTENT = {
     ("23-kano-analysis.xlsx", "Where your requirements fall"): RANK,
     ("24-doe-design-matrix.xlsx", "Effect size"): RANK,
     ("25-pareto-and-distribution.xlsx", "Pareto —"): RANK,
+    ("25-pareto-and-distribution.xlsx", "Mean, median and p90"): COMPARE,
+    ("28-erlang-staffing.xlsx", "Service level against agents"): THRESHOLD,
     ("26-kanban-and-wip.xlsx", "Where you are against"): COMPARE,
     ("27-control-charts.xlsx", "Individuals —"): TREND,
     ("27-control-charts.xlsx", "Moving range —"): TREND,

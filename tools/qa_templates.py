@@ -208,6 +208,36 @@ def audit_charts(path: Path, wb) -> int:
                              "Excel will label it 'Series1'")
             if ch.height and ch.height < 5:
                 warn(book, "CHARTS", f"{label} is only {ch.height}cm tall — labels will collide")
+    # Per-SHEET, not just per-workbook. A workbook passed the "has charts" rule
+    # on the strength of one chart while another of its tabs shipped completely
+    # empty — every statistic blank and a verdict reading "paste your data".
+    for ws in wb.worksheets:
+        low = ws.title.lower()
+        if low.startswith(("how to", "start here", "pick your", "category prompts",
+                           "countermeasure", "scoring guide", "which chart",
+                           "six-trap", "raci", "fishbone diagram", "5 whys")):
+            continue
+        # Not "few numbers" — a calculator tab legitimately has three inputs
+        # and that is the whole tab. The signature is formulas with NOTHING
+        # driving them: every statistic blank and a verdict reading "paste your
+        # data in", which is how the distribution tab shipped.
+        def _drives(c):
+            if isinstance(c.value, (int, float)):
+                return True
+            try:                                   # a green worked-example cell
+                return (c.fill and c.fill.patternType
+                        and str(c.fill.fgColor.rgb) == "FFECFAEF"
+                        and c.value not in (None, ""))
+            except Exception:                      # noqa: BLE001
+                return False
+        nums = sum(1 for row in ws.iter_rows() for c in row if _drives(c))
+        forms = sum(1 for row in ws.iter_rows() for c in row
+                    if isinstance(c.value, str) and c.value.startswith("="))
+        if forms >= 5 and nums < 2:
+            fail(book, "CHARTS",
+                 f"sheet {ws.title!r} has {forms} formulas and {nums} numbers to drive them — "
+                 "it ships blank, so nothing on it demonstrates the point of the tab")
+
     if total == 0 and book not in NO_CHART_OK:
         fail(book, "CHARTS", "no charts at all — the numbers are there but nobody can see the shape")
     return total
