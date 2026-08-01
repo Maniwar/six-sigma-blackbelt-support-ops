@@ -418,6 +418,24 @@ def test_sync() -> None:
     check(total_cards == len(tpls),
           f"a card for every registered template ({len(tpls)})", f"cards={total_cards}")
 
+    # Nested explainers. An explainer that leans on three more undefined terms
+    # is not an explanation, so #pop is glossed too — which needs a self-link
+    # guard, a back trail, and one code path for pointer and keyboard. Enter
+    # used to navigate without recording the trail, so the back button never
+    # appeared for keyboard users.
+    check("function openTerm(" in src, "pointer and keyboard share one openTerm() path")
+    # "openTerm(g);" with the semicolon, so the definition itself is not counted
+    check(src.count("openTerm(g);") == 2,
+          "both the click and the keydown handler go through openTerm()",
+          f"found {src.count('openTerm(g);')} call sites")
+    check("autoGloss(pop, key)" in src, "the explainer's own text is glossed")
+    check("if(selfKey && key === selfKey) continue;" in src,
+          "an explainer never links to the term it is explaining")
+    check("n.id==='pop'&&!POP_OPEN" in src,
+          "#pop is glossed only when showPop asks, not on document-wide passes")
+    check(src.count("POP_TRAIL.length = 0") >= 2,
+          "the back trail is cleared when the explainer closes and on a fresh term")
+
     for dead in ("parseCSV", "renderCSV"):
         check(dead not in src, f"dead {dead}() removed")
     check("function esc2(" in src, "esc2() retained (renderMD depends on it)")

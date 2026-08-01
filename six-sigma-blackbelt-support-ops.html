@@ -226,6 +226,8 @@ td.mono,th.mono{font-family:var(--mono);font-size:12.5px}
 #pop p{margin:0 0 2px}
 #pop .x{position:absolute;top:8px;right:11px;cursor:pointer;color:var(--faint);font-size:17px;
   line-height:1;border:0;background:none;padding:2px}
+#pop .pback{right:auto;left:8px;font-size:15px;line-height:1}
+#pop .pt{padding-left:22px}
 #pop .x:hover{color:var(--ink)}
 
 /* ---- tool library ---- */
@@ -3478,13 +3480,18 @@ function skipNode(n){
       // tplPrev used to be skipped because it is empty at load; now that the
       // preview is glossed explicitly after it renders, skipping it would
       // block every template preview from ever getting a single link.
-      if(n.id==='pop'||n.id==='nav'||n.id==='glList') return true;
+      // #pop is skipped on document-wide passes, but an explainer that uses
+      // three more undefined terms is not an explanation. showPop lifts this
+      // for its own content only.
+      if(n.id==='pop'&&!POP_OPEN) return true;
+      if(n.id==='nav'||n.id==='glList') return true;
     }
     n=n.parentNode;
   }
   return false;
 }
-function autoGloss(root){
+var POP_OPEN = false;      // set only while glossing the explainer's own body
+function autoGloss(root, selfKey){
   var seen = {};
   var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode: function(n){
@@ -3505,6 +3512,7 @@ function autoGloss(root){
                 glMap[term.replace(/s$/,'').toLowerCase()];   // SLAs -> SLA
 
       if(!key) continue;
+      if(selfKey && key === selfKey) continue;   // do not link a card to itself
       seen[key] = (seen[key]||0) + 1;
       if(seen[key] > 3) continue;            // at most 3 links per term per page section
       hit = true;
@@ -3535,19 +3543,43 @@ var pop = el('div'); pop.id='pop'; document.body.appendChild(pop);
 pop.setAttribute('role','dialog');
 pop.setAttribute('aria-label','Explanation');
 var popOpener = null;                 // so focus can go back where it came from
+var POP_TRAIL = [];        // [{key, target}] so nested terms can be walked back
+var POP_ANCHOR = null;     // keep the card where the reader's eye already is
+// Pointer and keyboard both come through here. When they did not, Enter
+// navigated without recording the trail and the back button never appeared.
+function openTerm(g){
+  var key = g.getAttribute('data-gl');
+  var inPop = g.closest('#pop');
+  if(inPop){
+    if(pop.dataset.key && pop.dataset.key !== key)
+      POP_TRAIL.push({ key: pop.dataset.key, target: POP_ANCHOR || g });
+  } else {
+    POP_TRAIL.length = 0;
+    POP_ANCHOR = g;
+  }
+  showPop(inPop ? (POP_ANCHOR || g) : g, key);
+}
 function showPop(target, key, extraHtml, title){
   var g = GLOSS[key];
+  var back = POP_TRAIL.length
+    ? '<button class="x pback" data-back title="Back to ' +
+      esc(POP_TRAIL[POP_TRAIL.length-1].key) + '">&larr;</button>' : '';
   if(extraHtml){
-    pop.innerHTML = '<button class="x" data-close>&times;</button>'
+    pop.innerHTML = back + '<button class="x" data-close>&times;</button>'
       + '<div class="pt">'+(title||'')+'</div>'
       + '<div class="ph">Where this number comes from</div><p>'+extraHtml+'</p>';
   } else if(g){
-    pop.innerHTML = '<button class="x" data-close>&times;</button>'
+    pop.innerHTML = back + '<button class="x" data-close>&times;</button>'
       + '<div class="pt">'+key+'</div><div class="pf">'+g.full+'</div>'
       + '<p>'+g.plain+'</p>'
       + '<div class="ph">Why it matters</div><p>'+g.why+'</p>'
       + '<div class="ph">How you get this number</div><p>'+g.how+'</p>';
   } else return;
+  // Gloss the explainer's own text. Without this an explainer that leans on
+  // three more pieces of jargon is just more jargon.
+  POP_OPEN = true;
+  try { autoGloss(pop, key); } finally { POP_OPEN = false; }
+  pop.dataset.key = key || '';
   pop.classList.add('on');
   var r = target.getBoundingClientRect(), pw = pop.offsetWidth, phh = pop.offsetHeight;
   var left = r.left + window.scrollX;
@@ -3564,11 +3596,19 @@ function hidePop(){
   if(pop.classList.contains('on') && back && document.contains(back)
      && pop.contains(document.activeElement)) back.focus();
   pop.classList.remove('on');
+  POP_TRAIL.length = 0;
+  POP_ANCHOR = null;
 }
 document.addEventListener('click', function(e){
+  if(e.target.closest('[data-back]')){
+    e.preventDefault();
+    var prev = POP_TRAIL.pop();
+    if(prev) showPop(prev.target, prev.key);
+    return;
+  }
   if(e.target.closest('[data-close]')){ hidePop(); return; }
   var g = e.target.closest('.gl');
-  if(g){ e.preventDefault(); showPop(g, g.getAttribute('data-gl')); return; }
+  if(g){ e.preventDefault(); openTerm(g); return; }
   var q = e.target.closest('.qm');
   if(q){ e.preventDefault();
     showPop(q, null, q.getAttribute('data-help'), q.getAttribute('data-label')); return; }
@@ -3583,7 +3623,7 @@ document.addEventListener('keydown', function(e){
   var g = e.target.closest && e.target.closest('.gl');
   if(!g) return;
   e.preventDefault();
-  showPop(g, g.getAttribute('data-gl'));
+  openTerm(g);
 });
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') hidePop(); });
 window.addEventListener('scroll', hidePop, {passive:true});
