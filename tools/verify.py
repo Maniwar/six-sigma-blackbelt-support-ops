@@ -184,6 +184,32 @@ def test_bok() -> None:
                   f"cited in {plain.strip()[:70]!r} but no such section exists")
 
 
+def test_export_charts() -> None:
+    """The email / standalone export has to carry the charts and the legend.
+
+    It walked the preview's tables and never its charts, so a workbook whose
+    whole point is a control chart exported as a wall of numbers — and the
+    closing note still described only yellow and blue, having never learned
+    that green now means the worked example you replace.
+
+    Checked at the source, because the export is built in the browser: the
+    behaviour itself was confirmed by opening it and counting two SVGs in the
+    Pareto's export body where there had been none.
+    """
+    src = HTML.read_text(encoding="utf-8")
+    i = src.find("function tplEmailHTML")
+    body = src[i:src.find("\n}", i)] if i >= 0 else ""
+    check(bool(body), "the email export builder is present")
+    check("svg.xchart" in body,
+          "the email export carries the charts",
+          "tplEmailHTML walks the preview's tables only, so every chart is "
+          "dropped from the export and the standalone page")
+    for colour in ("Green cells", "Yellow cells", "Blue cells"):
+        check(colour in body, f"the export legend explains {colour.lower()}",
+              "the note tells the reader what a colour means; leaving one out "
+              "is how the pack ended up with a legend nobody could trust")
+
+
 def test_deterministic() -> None:
     """Every shipped workbook carries frozen timestamps, so a diff means something.
 
@@ -1289,6 +1315,8 @@ def main() -> int:
     fast = "--fast" in sys.argv
     print("BOK        every cited certification section exists")
     test_bok()
+    print("EXPORT-CH  the email export carries charts and the legend")
+    test_export_charts()
     print("BUILD      workbooks are byte-reproducible")
     test_deterministic()
     print("STRUCTURE  merged-cell reference audit")

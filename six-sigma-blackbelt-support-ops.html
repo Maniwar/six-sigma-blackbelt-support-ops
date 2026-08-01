@@ -6529,9 +6529,22 @@ function tplEmailHTML(slug){
         out += '</tr>';
       });
       out += '</table>';
+      // The charts belong to the sheet they sit in, and the export used to drop
+      // them: a workbook whose whole point is a control chart exported as a
+      // wall of numbers. The SVG carries its own <style>, so it survives being
+      // pasted anywhere. Some mail clients strip inline SVG, in which case this
+      // degrades to what the export already did — nothing — rather than
+      // breaking, and the standalone page keeps them.
+      [].slice.call(sh.querySelectorAll('svg.xchart')).forEach(function(g){
+        var c = g.cloneNode(true);
+        c.removeAttribute('class');
+        c.setAttribute('style', 'display:block;width:100%;max-width:900px;height:auto;margin:14px auto');
+        out += '<div style="margin:16px 0">'+c.outerHTML+'</div>';
+      });
     });
-    out += '<div style="'+EM.note+'">Yellow cells are yours to fill in. Blue cells calculate themselves; the '+
-           'formula is printed under each one. Download the .xlsx for the working version.</div>';
+    out += '<div style="'+EM.note+'">Green cells are a worked example &mdash; replace them with your own. '+
+           'Yellow cells are yours to fill in. Blue cells calculate themselves; the formula is printed '+
+           'under each one. Download the .xlsx for the working version.</div>';
   }
   return out;
 }
