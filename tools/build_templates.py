@@ -3510,8 +3510,620 @@ def regression():
     return wb, "30-regression.xlsx"
 
 
+# --------------------------------------------------------------- 31 multi-vari
+#
+# A balanced nested sample: two sites, two billing teams in each, three agents on
+# each team, two consecutive contacts from each agent. Balance is not decoration
+# — the mean squares below only carry the variance components they are supposed
+# to when every cell holds the same number of observations, which is why the
+# sheet refuses to let a reader quietly delete a row.
+#
+# The handle times are the same billing-adjustment case the rest of the pack
+# runs on: grand mean 429 seconds against the 412 the baseline document quotes
+# for the whole queue, because adjustments are the slow end of it.
+MV_DATA = [
+    ("Manchester", "Billing A", "R. Okonjo",  (312, 377)),
+    ("Manchester", "Billing A", "P. Adeyemi", (478, 415)),
+    ("Manchester", "Billing A", "S. Novak",   (356, 410)),
+    ("Manchester", "Billing B", "T. Iqbal",   (527, 462)),
+    ("Manchester", "Billing B", "M. Chen",    (341, 398)),
+    ("Manchester", "Billing B", "L. Haddad",  (401, 459)),
+    ("Kraków",     "Billing C", "J. Barros",  (438, 375)),
+    ("Kraków",     "Billing C", "D. Wexler",  (552, 487)),
+    ("Kraków",     "Billing C", "A. Ferreira", (329, 388)),
+    ("Kraków",     "Billing D", "K. Nowak",   (495, 433)),
+    ("Kraków",     "Billing D", "E. Duarte",  (368, 424)),
+    ("Kraków",     "Billing D", "N. Osei",    (571, 505)),
+]
+
+
+def multi_vari():
+    wb = Workbook(); wb.remove(wb.active)
+    ws = wb.create_sheet("Multi-vari study")
+    W = 8
+    title(ws, "Multi-vari study — which family of variation owns the problem",
+          "Before you improve anything, find out where the variation lives: between sites, "
+          "between teams, between agents, or inside one agent from one contact to the next. "
+          "Improving the wrong family is the most expensive mistake in the Measure phase. "
+          "The green block is a worked example — replace it with your own extract.", W)
+    # Column A carries site names and the long statistic labels; B carries team
+    # names, agent names and a column of sums of squares. Both are sized for the
+    # longest thing that lands in them rather than for one block.
+    widths(ws, [34, 20, 18, 15, 17, 14, 50, 12])
+
+    band(ws, 4, "THE QUESTION — what you are partitioning, and how the contacts were drawn", W)
+    MIN_ROW = 8
+    for r, (lab, val, hint) in enumerate([
+        ("What you are measuring",
+         "Handle time in seconds, CRM open to CRM close",
+         "One measurement, with its start and stop written down. A multi-vari study on "
+         "'productivity' partitions an opinion."),
+        ("The families you sampled, outer to inner",
+         "Site → team → agent → contact",
+         "Each family has to sit INSIDE the one before it. Agents belong to one team, teams "
+         "to one site. If a family cuts across the others — shift, say, or contact type — it "
+         "is not nested and this sheet will mis-attribute it."),
+        ("How the contacts were drawn",
+         "Two consecutive contacts per agent, same week",
+         "Consecutive and close together on purpose: the innermost family is meant to capture "
+         "contact-to-contact variation, not the drift between March and June."),
+        ("Smallest difference worth chasing (seconds)",
+         30,
+         "The gap you would actually change something for. Set it before you look at the "
+         "answer, or you will set it to whatever the answer turned out to be."),
+    ], start=5):
+        ws.cell(row=r, column=1, value=lab).font = F_B
+        c = mark(ws, r, 2, "in")
+        c.value = val
+        if r == MIN_ROW:
+            c.number_format = "#,##0"
+        note_cell(ws, r, 3, hint, W)
+        note(ws, r, 2, hint)
+
+    band(ws, 10, "THE DATA — one row per contact, nested: site, then team, then agent", W)
+    HDR = 11
+    header(ws, HDR, ["Site", "Team", "Agent", "Contact ref", "Handle time (seconds)",
+                     "", "", ""])
+    FIRST = HDR + 1
+    r = FIRST
+    for site, team, agent, obs in MV_DATA:
+        for o in obs:
+            for col, v in ((1, site), (2, team), (3, agent),
+                           (4, f"BA-{3000 + r - FIRST + 1}"), (5, o)):
+                c = mark(ws, r, col, "ex")
+                c.value = v
+                if col == 5:
+                    c.number_format = "#,##0"
+            r += 1
+    LAST = r - 1
+    note_cell(ws, LAST + 1, 1,
+              "Twenty-four contacts: 2 sites × 2 teams × 3 agents × 2 contacts each. Keep it "
+              "balanced. The arithmetic below splits the variation using the mean square of "
+              "each family, and a mean square only means what it is supposed to when every "
+              "cell holds the same number of contacts. Add an agent and you add two rows, not "
+              "one; drop a contact and the partition below is no longer a partition.", W)
+
+    # ------------------------------------------------ the averages, bottom up
+    AB = LAST + 3
+    band(ws, AB, "STEP 1 — the averages, from the bottom up", W)
+    AH = AB + 1
+    header(ws, AH, ["Level", "Name", "Mean handle time (s)", "Contacts behind it",
+                    "Gap to its parent (s)", "Spread inside (s)", "", ""])
+    A0 = AH + 1                       # first agent row
+    T0 = A0 + 12                      # first team row
+    S0 = T0 + 4                       # first site row
+    GR = S0 + 2                       # the grand mean
+    for i, (site, team, agent, _) in enumerate(MV_DATA):
+        d1, d2 = FIRST + 2 * i, FIRST + 2 * i + 1
+        ws.cell(row=A0 + i, column=1, value="Agent")
+        ws.cell(row=A0 + i, column=2, value=f"{agent} · {team}")
+        for col, f, fmt in (
+            (3, f"=AVERAGE(E{d1}:E{d2})", "#,##0"),
+            (4, f"=COUNT(E{d1}:E{d2})", "0"),
+            (5, f"=C{A0 + i}-C{T0 + i // 3}", "+#,##0;−#,##0;0"),
+            # Signed, because the sum of squares below squares it. The reader
+            # sees how far apart one agent's two contacts were; the partition
+            # needs the same number with its sign kept.
+            (6, f"=E{d1}-E{d2}", "+#,##0;−#,##0;0"),
+        ):
+            c = mark(ws, A0 + i, col, "calc")
+            c.value, c.number_format = f, fmt
+    for j, (site, team) in enumerate([(MV_DATA[k * 3][0], MV_DATA[k * 3][1])
+                                      for k in range(4)]):
+        d1, d2 = FIRST + 6 * j, FIRST + 6 * j + 5
+        ws.cell(row=T0 + j, column=1, value="Team")
+        ws.cell(row=T0 + j, column=2, value=f"{team} · {site}")
+        for col, f, fmt in ((3, f"=AVERAGE(E{d1}:E{d2})", "#,##0"),
+                            (4, f"=COUNT(E{d1}:E{d2})", "0"),
+                            (5, f"=C{T0 + j}-C{S0 + j // 2}", "+#,##0;−#,##0;0")):
+            c = mark(ws, T0 + j, col, "calc")
+            c.value, c.number_format = f, fmt
+    for k, site in enumerate([MV_DATA[0][0], MV_DATA[6][0]]):
+        d1, d2 = FIRST + 12 * k, FIRST + 12 * k + 11
+        ws.cell(row=S0 + k, column=1, value="Site")
+        ws.cell(row=S0 + k, column=2, value=site)
+        for col, f, fmt in ((3, f"=AVERAGE(E{d1}:E{d2})", "#,##0"),
+                            (4, f"=COUNT(E{d1}:E{d2})", "0"),
+                            (5, f"=C{S0 + k}-C{GR}", "+#,##0;−#,##0;0")):
+            c = mark(ws, S0 + k, col, "calc")
+            c.value, c.number_format = f, fmt
+    ws.cell(row=GR, column=1, value="All contacts").font = F_B
+    ws.cell(row=GR, column=2, value="Grand mean").font = F_B
+    for col, f, fmt in ((3, f"=AVERAGE(E{FIRST}:E{LAST})", "#,##0"),
+                        (4, f"=COUNT(E{FIRST}:E{LAST})", "0")):
+        c = mark(ws, GR, col, "calc")
+        c.value, c.number_format = f, fmt
+    note_cell(ws, GR + 1, 1,
+              "Read the GAP column, not the means. Every gap is measured against the level "
+              "that contains it — an agent against their own team, a team against its own "
+              "site — so the four families never claim the same second twice. SPREAD INSIDE "
+              "is the difference between one agent's two contacts, and it is the only column "
+              "here that owes nothing to who or where they are.", W)
+
+    # ------------------------------------------------------ the partition
+    VB = GR + 3
+    band(ws, VB, "STEP 2 — which family owns the variation", W)
+    VH = VB + 1
+    header(ws, VH, ["Family", "Sum of squares", "Degrees of freedom", "Mean square",
+                    "Variance component", "Share of total", "What this family means", ""])
+    ws.row_dimensions[VH].height = 42
+    V0 = VH + 1                                             # site row
+    VT, VA, VE, VTOT = V0 + 1, V0 + 2, V0 + 3, V0 + 4
+    for i, (fam, ss, df, comp, why) in enumerate([
+        ("Between sites", f"=12*SUMSQ(E{S0}:E{S0 + 1})", 1,
+         f"=MAX(0,(D{V0}-D{VT})/12)",
+         "Manchester against Kraków, once the teams and agents inside them are accounted "
+         "for. A big share here means the two sites are running different processes."),
+        ("Between teams, within a site", f"=6*SUMSQ(E{T0}:E{T0 + 3})", 2,
+         f"=MAX(0,(D{VT}-D{VA})/6)",
+         "One billing team against another in the same building — different team leader, "
+         "different coaching, same everything else."),
+        ("Between agents, within a team", f"=2*SUMSQ(E{A0}:E{A0 + 11})", 8,
+         f"=MAX(0,(D{VA}-D{VE})/2)",
+         "One agent against their own team-mates. A big share here is a training, tooling "
+         "or method problem, and it is the family a site-level project cannot touch."),
+        ("Within one agent, contact to contact", f"=SUMSQ(F{A0}:F{A0 + 11})/2", 12,
+         f"=D{VE}",
+         "The same agent, two contacts, one week. Whatever is left after everything you can "
+         "name — contact mix, system waits, luck. It sets the floor on what any of the "
+         "families above can be measured against."),
+    ]):
+        r = V0 + i
+        ws.cell(row=r, column=1, value=fam).font = F_B
+        for col, v, fmt in ((2, ss, "#,##0.0"), (3, df, "0"), (4, f"=B{r}/C{r}", "#,##0.0"),
+                            (5, comp, "#,##0.0"),
+                            (6, f"=IFERROR(E{r}/SUM($E${V0}:$E${VE}),\"\")", "0.0%")):
+            c = mark(ws, r, col, "calc")
+            c.value, c.number_format = v, fmt
+        note_cell(ws, r, 7, why, W)
+    ws.cell(row=VTOT, column=1, value="TOTAL").font = F_B
+    for col, v, fmt in ((2, f"=DEVSQ(E{FIRST}:E{LAST})", "#,##0.0"), (3, 23, "0"),
+                        (6, f"=IFERROR(SUM(F{V0}:F{VE}),\"\")", "0.0%")):
+        c = mark(ws, VTOT, col, "calc")
+        c.value, c.number_format = v, fmt
+    note_cell(ws, VTOT, 7,
+              "The four sums of squares add up to this one exactly. If they ever do not, the "
+              "design has stopped being balanced.", W)
+    note_cell(ws, VTOT + 1, 1,
+              "A VARIANCE COMPONENT can come out negative, and one has here: the teams "
+              "component is showing zero because the arithmetic produced a number below zero "
+              "and there is no such thing as negative variance. It does not mean the teams "
+              "are identical. It means this sample cannot tell teams apart from the agents "
+              "sitting inside them — the agent-to-agent spread is wide enough to swallow any "
+              "team effect. Report it as zero, say why, and if the team question matters, go "
+              "back with more agents per team rather than more contacts per agent.", W)
+    note_cell(ws, VTOT + 2, 1,
+              "SUM OF SQUARES says how much of the raw spread each family accounts for; the "
+              "VARIANCE COMPONENT is what is left after removing the variation the families "
+              "underneath already explain, and it is the one to quote. They rank differently "
+              "on purpose. Share of total is computed on the components.", W)
+
+    # ----------------------------------------------------------- the verdict
+    DB = VTOT + 4
+    band(ws, DB, "STEP 3 — what it tells you to do next", W)
+    for i, (lab, f, fmt, hint) in enumerate([
+        ("Look here first",
+         f'=IFERROR(INDEX($A${V0}:$A${VE},MATCH(MAX($F${V0}:$F${VE}),$F${V0}:$F${VE},0)),"")',
+         None,
+         "The family holding the largest share. Scope your project to this family — an "
+         "improvement aimed anywhere else is competing with variation it cannot reach."),
+        ("Biggest gap between two agents (s)",
+         f"=IFERROR(MAX(C{A0}:C{A0 + 11})-MIN(C{A0}:C{A0 + 11}),\"\")", "#,##0",
+         "Fastest agent against slowest, in seconds of handle time. This is the number to "
+         "take to the process owner, because it is one they can picture."),
+        ("Is that gap worth chasing?",
+         f'=IF(B{DB + 2}="","",IF(B{DB + 2}>=$B${MIN_ROW},'
+         f'"YES — larger than the difference you said would matter",'
+         f'"NO — smaller than the difference you said would matter"))', None,
+         "Measured against the threshold you set at the top, before you saw the data."),
+        ("Contacts per agent needed to halve the noise",
+         f"=IFERROR(ROUNDUP(4*E{VE}/(($B${MIN_ROW}/2)^2),0),\"\")", "#,##0",
+         "If the answer above is too close to call, this is roughly how many contacts per "
+         "agent the next study needs to resolve half your threshold. It grows with the "
+         "square, which is why precision gets expensive quickly."),
+    ]):
+        r = DB + 1 + i
+        ws.cell(row=r, column=1, value=lab).font = F_B
+        c = mark(ws, r, 2, "calc")
+        c.value = f
+        if fmt:
+            c.number_format = fmt
+        note_cell(ws, r, 3, hint, W)
+
+    bar(ws, "Where the variation lives — share of the total",
+        Reference(ws, min_col=1, min_row=V0, max_row=VE),
+        Reference(ws, min_col=6, min_row=V0, max_row=VE),
+        "J4", horizontal=True, pct=True, name="Share of total variation",
+        colours=["6B4FA0", "3F8F5A", "C0392B", "B45309"])
+    agch = bar(ws, "Mean handle time by agent — the multi-vari picture",
+               Reference(ws, min_col=2, min_row=A0, max_row=A0 + 11),
+               Reference(ws, min_col=3, min_row=A0, max_row=A0 + 11),
+               "J20", name="Mean handle time (s)")
+    # Left to itself Excel starts this axis just under the fastest agent, and a
+    # 344-against-538 gap then draws as though one agent were four times the
+    # other. A bar says "this much, measured from nothing" whether or not the
+    # axis agrees, and handle time genuinely starts at nothing — so the bound is
+    # a fact about the measurement rather than a framing of this example, which
+    # is the only kind of axis this pack fixes.
+    agch.y_axis.scaling.min = 0
+
+    dv = DataValidation(type="whole", operator="greaterThan", formula1=0, allow_blank=True)
+    ws.add_data_validation(dv)
+    dv.add(f"E{FIRST}:E{LAST}")
+    dv.add(f"B{MIN_ROW}")
+
+    howto(wb, LEGEND + [
+        (True, "What this workbook is for"),
+        (False, "A multi-vari study is the cheapest thing you can run in Measure, and the tool "
+                "library had nowhere to record one. It answers a single question before you "
+                "spend anything: of all the variation in your metric, how much sits between "
+                "sites, how much between teams, how much between agents, and how much inside "
+                "one agent from one contact to the next. You cannot improve a family you have "
+                "not found, and every hour spent improving the wrong one is gone."),
+        (True, "Why the design has to be balanced"),
+        (False, "Two sites, two teams in each, three agents on each team, two contacts from "
+                "each agent. The same number everywhere. The partition works by comparing "
+                "mean squares, and a mean square carries the variance components it is "
+                "supposed to only when the cells are equal in size. An unbalanced extract "
+                "still produces numbers; they are just not the numbers on the label."),
+        (True, "Nested, not crossed"),
+        (False, "Each family must sit inside the one before it. Agent R. Okonjo belongs to "
+                "Billing A and Billing A belongs to Manchester, so 'agent' is nested in "
+                "'team' and 'team' in 'site'. Shift and contact type are NOT nested — every "
+                "shift happens at every site — and putting one of them in this sheet would "
+                "hand its variation to whichever column you happened to type it in. For a "
+                "crossed factor, use 24-doe-design-matrix.xlsx or stratify and run "
+                "13-hypothesis-test-log.xlsx."),
+        (True, "What the worked example found"),
+        (False, "Sixty-three per cent of the variation is between agents on the same team, and "
+                "another thirty-two is inside one agent from one contact to the next. Sites "
+                "hold four and a half per cent, teams none that this sample can see. Read "
+                "that as an instruction: the fastest agent averages 344 seconds and the "
+                "slowest 538, on the same queue, at the same site, under the same team "
+                "leader. Whatever the difference between those two people is, it is worth "
+                "more than any site-level programme in the plan."),
+        (True, "The trap"),
+        (False, "A family with a large share is where the variation IS, not where the CAUSE "
+                "is. 'Between agents' does not mean the agents are the problem — in the "
+                "worked case it turned out to be which of them had been shown the deferred-"
+                "close rule. The study tells you which door to open. What is behind it is "
+                "still a root cause investigation."),
+        (True, "Where the numbers go next"),
+        (False, "The family shares and the agent-to-agent gap belong in "
+                "14-root-cause-evidence-pack.md as the evidence for where you scoped. If the "
+                "answer was 'within one agent', the next step is usually "
+                "29-msa-gage-rr.xlsx — measurement error lands in exactly that family and "
+                "looks identical to it. If it was 'between agents', 30-regression.xlsx will "
+                "tell you which of their measurable differences tracks the gap."),
+    ])
+    return wb, "31-multi-vari.xlsx"
+
+
+# -------------------------------------------------------------- 32 system hop
+#
+# Six billing adjustments, observed at the desk, every move between systems
+# timed. Four of the six run the same four-hop loop; one detours through the
+# knowledge base; the seconds differ because real observations do.
+CRM, BILL, PAY, KB = ("Case tool", "Billing platform",
+                      "Payment gateway", "Knowledge base")
+HOP_LOOP = [(CRM, BILL, "Find the adjustment on the account", "Account number"),
+            (BILL, PAY, "Check whether the refund has actually posted", "Transaction ID"),
+            (PAY, BILL, "Record the posting reference against the adjustment",
+             "Posting reference"),
+            (BILL, CRM, "Write the case note and close", "Adjustment amount")]
+HOP_ROWS = [
+    ("BA-2201", [(HOP_LOOP[0], 34), (HOP_LOOP[1], 41), (HOP_LOOP[2], 22), (HOP_LOOP[3], 27)]),
+    ("BA-2202", [(HOP_LOOP[0], 31), (HOP_LOOP[1], 38), (HOP_LOOP[2], 19), (HOP_LOOP[3], 24)]),
+    ("BA-2203", [((CRM, KB, "Check whether this adjustment type needs a manager", ""), 46),
+                 ((KB, CRM, "Back to the case", ""), 11),
+                 (HOP_LOOP[0], 36), (HOP_LOOP[3], 29)]),
+    ("BA-2204", [(HOP_LOOP[0], 33), (HOP_LOOP[1], 44), (HOP_LOOP[2], 21), (HOP_LOOP[3], 26)]),
+    ("BA-2205", [(HOP_LOOP[0], 29), (HOP_LOOP[1], 52), (HOP_LOOP[2], 24), (HOP_LOOP[3], 31)]),
+    ("BA-2206", [(HOP_LOOP[0], 35), (HOP_LOOP[1], 39), (HOP_LOOP[2], 20), (HOP_LOOP[3], 25)]),
+]
+HOP_PAIRS = [(CRM, BILL), (BILL, PAY), (PAY, BILL), (BILL, CRM), (CRM, KB), (KB, CRM)]
+
+
+def system_hop():
+    wb = Workbook(); wb.remove(wb.active)
+    ws = wb.create_sheet("Hop log")
+    W = 8
+    title(ws, "System-hop log — what the swivel chair costs",
+          "One row per move between systems, timed at the desk. Handle time hides this: the "
+          "contact takes seven minutes and nobody can say how much of it was the agent "
+          "waiting for a second screen to load and typing the account number into it again. "
+          "The green block is a worked example — replace it with your own observations.", W)
+    widths(ws, [30, 20, 22, 22, 34, 12, 14, 26])
+
+    band(ws, 4, "THE QUESTION — what you watched, and what counts", W)
+    Q0 = 5
+    R_AHT, R_VOL, R_COST = Q0 + 2, Q0 + 3, Q0 + 4
+    for r, (lab, val, fmt, hint) in enumerate([
+        ("Process observed", "Billing adjustment, end to end", None,
+         "One contact type. Hop counts are not comparable across contact types, and averaging "
+         "them together produces a number that describes nothing anybody does."),
+        ("What counts as a hop", "Any move to a different application window", None,
+         "Write the rule down before you start counting, because the borderline cases decide "
+         "the answer. Tabs inside the same application: your call — but make the same call "
+         "every time, and record which way you called it."),
+        ("Mean handle time for this contact type (seconds)", 412, "#,##0",
+         "From the platform, over the same period you observed. It is the denominator for "
+         "everything below, so take it from a report rather than from the six contacts you "
+         "happened to watch."),
+        ("Contacts of this type per year", 11592, "#,##0",
+         "The population the hops apply to. Adjustments here, not the whole billing queue — "
+         "annualising against a population you did not observe is how a swivel-chair saving "
+         "becomes a number Finance rejects."),
+        ("Loaded cost per agent hour", 38, '"$"#,##0.00',
+         "Salary, employer costs, benefits and paid non-productive time, divided by paid "
+         "hours. Your Finance partner has this figure; do not build one."),
+    ], start=Q0):
+        ws.cell(row=r, column=1, value=lab).font = F_B
+        c = mark(ws, r, 2, "in")
+        c.value = val
+        if fmt:
+            c.number_format = fmt
+        note_cell(ws, r, 3, hint, W)
+        note(ws, r, 2, hint)
+
+    LB = R_COST + 2
+    band(ws, LB, "THE LOG — one row per move, in the order the agent made them", W)
+    LH = LB + 1
+    header(ws, LH, ["Contact ref", "Step", "From system", "To system",
+                    "Why the agent moved", "Seconds", "Data re-keyed?",
+                    "Which fields were re-keyed"])
+    LF = LH + 1
+    r = LF
+    for ref, hops in HOP_ROWS:
+        for step, ((frm, to, why, fields), secs) in enumerate(hops, start=1):
+            for col, v in ((1, ref), (2, step), (3, frm), (4, to), (5, why),
+                           (6, secs), (7, "Y" if fields else "N"), (8, fields or "—")):
+                c = mark(ws, r, col, "ex")
+                c.value = v
+                if col == 6:
+                    c.number_format = "#,##0"
+            r += 1
+    LL = r - 1
+    note_cell(ws, LL + 1, 1,
+              "Time the hop, not the task. The seconds here are the ones between leaving one "
+              "screen and being able to work in the next — the load, the second login, the "
+              "search that finds the account again. The work the agent does once they arrive "
+              "is not a hop and belongs in the handle time above. DATA RE-KEYED means the "
+              "agent typed something into the second system that the first one already knew, "
+              "which is both the waste and the defect: every re-key is a chance to mistype an "
+              "account number.", W)
+
+    # ------------------------------------------------------ contact by contact
+    CB = LL + 3
+    band(ws, CB, "STEP 1 — how much of each contact went on moving between systems", W)
+    CH = CB + 1
+    header(ws, CH, ["Level", "Contact ref", "Seconds in hops", "Share of handle time",
+                    "Hops", "Hops that re-keyed data", "", ""])
+    C0 = CH + 1
+    for i, (ref, _) in enumerate(HOP_ROWS):
+        r = C0 + i
+        ws.cell(row=r, column=1, value="Contact")
+        c = mark(ws, r, 2, "ex")
+        c.value = ref
+        for col, f, fmt in (
+            (3, f"=SUMIF($A${LF}:$A${LL},$B{r},$F${LF}:$F${LL})", "#,##0"),
+            (4, f'=IFERROR(C{r}/$B${R_AHT},"")', "0.0%"),
+            (5, f"=COUNTIF($A${LF}:$A${LL},$B{r})", "0"),
+            (6, f'=COUNTIFS($A${LF}:$A${LL},$B{r},$G${LF}:$G${LL},"Y")', "0"),
+        ):
+            c = mark(ws, r, col, "calc")
+            c.value, c.number_format = f, fmt
+    CL = C0 + len(HOP_ROWS) - 1
+    note_cell(ws, CL + 1, 1,
+              "Look at the spread before you quote the average. If one contact carries most of "
+              "the hopping you have found an exception to investigate, not a process to "
+              "redesign — and a business case built on the mean would be wrong in the "
+              "direction that gets it withdrawn.", W)
+
+    # -------------------------------------------------------------- the totals
+    TB = CL + 3
+    band(ws, TB, "STEP 2 — what the hopping costs across a year", W)
+    T0 = TB + 1
+    R_N, R_HOPS, R_HPC, R_SPC = T0, T0 + 1, T0 + 2, T0 + 3
+    R_SHARE, R_REKEY, R_HRS, R_CASH = T0 + 4, T0 + 5, T0 + 6, T0 + 7
+    for r, (lab, f, fmt, hint) in enumerate([
+        ("Contacts observed", f"=COUNTA($B${C0}:$B${CL})", "0",
+         "Six is enough to size a problem and nowhere near enough to price one. Treat "
+         "everything below as an order of magnitude until you have watched thirty."),
+        ("Hops logged", f"=SUM($E${C0}:$E${CL})", "0",
+         "Every move, across every contact you watched."),
+        ("Hops per contact", f'=IFERROR(B{R_HOPS}/B{R_N},"")', "0.0",
+         "The number people remember. It is also the one that makes a process owner "
+         "uncomfortable enough to look at the log."),
+        ("Seconds per contact spent hopping", f'=IFERROR(SUM($C${C0}:$C${CL})/B{R_N},"")', "0",
+         "Total hop time divided by contacts observed."),
+        ("Share of handle time", f'=IFERROR(B{R_SPC}/B{R_AHT},"")', "0.0%",
+         "Against the platform's mean handle time above, not against the contacts you "
+         "watched — an observed agent works faster, and the share would flatter you."),
+        ("Share of hops that re-key data", f'=IFERROR(SUM($F${C0}:$F${CL})/B{R_HOPS},"")',
+         "0.0%",
+         "The part of the waste that is also a defect risk. A hop that carries data across by "
+         "hand can carry it across wrong."),
+        ("Agent hours a year spent hopping",
+         f'=IFERROR(B{R_SPC}*B{R_VOL}/3600,"")', "#,##0",
+         "Seconds per contact times contacts a year. This is capacity, not cash."),
+        ("What that time costs a year", f'=IFERROR(B{R_HRS}*B{R_COST},"")', '"$"#,##0',
+         "Hours at the loaded rate. It becomes a saving only when something is harvested — "
+         "01-project-charter.md will not accept it without a named mechanism."),
+    ], start=T0):
+        ws.cell(row=r, column=1, value=lab).font = F_B
+        c = mark(ws, r, 2, "calc")
+        c.value, c.number_format = f, fmt
+        note_cell(ws, r, 3, hint, W)
+    note_cell(ws, R_CASH + 1, 1,
+              "The tool library says to expect 15-30% of handle time here. Treat that as a "
+              "rule of thumb to test, not a published benchmark to be judged against: it is "
+              "the range the method usually turns up, and it is not evidence about your "
+              "queue. What decides whether there is a project is the cost on the line above "
+              "and how many of these hops somebody who knows the systems believes are "
+              "avoidable. A queue at a fifth of handle time where every hop is unavoidable "
+              "has nothing in it; one at eight per cent where half the hops exist only "
+              "because two systems were never joined up has a great deal.", W)
+
+    # --------------------------------------------------------- which hop hurts
+    PB = R_CASH + 3
+    band(ws, PB, "STEP 3 — which hop to attack", W)
+    PH = PB + 1
+    header(ws, PH, ["From system", "To system", "The pair", "Hops", "Total seconds",
+                    "Seconds per contact", "Share of hop time", "Any re-keying?"])
+    ws.row_dimensions[PH].height = 30
+    P0 = PH + 1
+    for i, (frm, to) in enumerate(HOP_PAIRS):
+        r = P0 + i
+        for col, v in ((1, frm), (2, to)):
+            c = mark(ws, r, col, "ex")
+            c.value = v
+        for col, f, fmt in (
+            # The pair is spelled out in one cell because a chart needs a single
+            # label per bar, and a reader deserves to see the same thing the
+            # chart is showing rather than a column that only makes sense to it.
+            (3, f'=IF($A{r}="","",$A{r}&" → "&$B{r})', None),
+            (4, f"=COUNTIFS($C${LF}:$C${LL},$A{r},$D${LF}:$D${LL},$B{r})", "0"),
+            (5, f"=SUMIFS($F${LF}:$F${LL},$C${LF}:$C${LL},$A{r},$D${LF}:$D${LL},$B{r})",
+             "#,##0"),
+            (6, f'=IFERROR(E{r}/$B${R_N},"")', "0.0"),
+            (7, f'=IFERROR(E{r}/SUM($E${P0}:$E${P0 + len(HOP_PAIRS) - 1}),"")', "0.0%"),
+            (8, f'=IF(COUNTIFS($C${LF}:$C${LL},$A{r},$D${LF}:$D${LL},$B{r},'
+                f'$G${LF}:$G${LL},"Y")>0,"yes","no")', None),
+        ):
+            c = mark(ws, r, col, "calc")
+            c.value = f
+            if fmt:
+                c.number_format = fmt
+    PL = P0 + len(HOP_PAIRS) - 1
+    note_cell(ws, PL + 1, 1,
+              "One row per direction, because they are different problems: leaving the case "
+              "tool for the billing platform is a lookup, and coming back is a write-up. Add "
+              "a pair by inserting a row inside this block — the formulas above and below it "
+              "will follow. Sort the block by total seconds if you want the chart ranked; it "
+              "plots the order you typed.", W)
+
+    VB = PL + 3
+    band(ws, VB, "STEP 4 — the verdict", W)
+    for i, (lab, f, fmt, hint) in enumerate([
+        ("The pair costing the most time",
+         f'=IFERROR(INDEX($C${P0}:$C${PL},MATCH(MAX($E${P0}:$E${PL}),$E${P0}:$E${PL},0)),"")',
+         None,
+         "Where an integration, a deep link or a copied field would buy the most. It is not "
+         "always the slowest single hop — a fast hop made on every contact beats a slow one "
+         "made on a tenth of them."),
+        ("What that one pair costs a year",
+         f'=IFERROR(MAX($E${P0}:$E${PL})/B{R_N}*B{R_VOL}/3600*B{R_COST},"")', '"$"#,##0',
+         "Seconds per contact on that pair, annualised at the loaded rate. Take this to the "
+         "system owner, not the contact-centre manager — it is their backlog it belongs in."),
+        ("Does that pair re-key data?",
+         f'=IFERROR(INDEX($H${P0}:$H${PL},MATCH(MAX($E${P0}:$E${PL}),$E${P0}:$E${PL},0)),"")',
+         None,
+         "If yes, the case is stronger than the time alone: you are also arguing about "
+         "accuracy, and a mistyped account number costs far more than the forty seconds it "
+         "took to type."),
+    ]):
+        r = VB + 1 + i
+        ws.cell(row=r, column=1, value=lab).font = F_B
+        c = mark(ws, r, 2, "calc")
+        c.value = f
+        if fmt:
+            c.number_format = fmt
+        note_cell(ws, r, 3, hint, W)
+    note_cell(ws, VB + 4, 1,
+              "Removing a hop does not return all of its seconds. Some of that time is the "
+              "agent thinking, and thinking moves to whatever is on the screen next. Halve the "
+              "figure above before you put it in a charter, say in the charter that you "
+              "halved it, and then prove the real number in a pilot (16-pilot-protocol.md) "
+              "against a control group.", W)
+
+    pch = bar(ws, "Where the hop time goes — total seconds by system pair",
+              Reference(ws, min_col=3, min_row=P0, max_row=PL),
+              Reference(ws, min_col=5, min_row=P0, max_row=PL),
+              "J4", horizontal=True, name="Total seconds observed")
+    pch.width = 19          # a pair name is two system names and an arrow
+    cch = bar(ws, "Seconds spent hopping, contact by contact",
+              Reference(ws, min_col=2, min_row=C0, max_row=CL),
+              Reference(ws, min_col=3, min_row=C0, max_row=CL),
+              "J20", name="Seconds in system hops")
+    # Same reason as the multi-vari agent chart: left alone the axis starts just
+    # under the quickest contact, and 112 seconds against 136 draws as a sliver
+    # against a tower. Seconds start at zero whatever the data says.
+    cch.y_axis.scaling.min = 0
+
+    dvs = DataValidation(type="whole", operator="greaterThan", formula1=0, allow_blank=True)
+    ws.add_data_validation(dvs)
+    dvs.add(f"F{LF}:F{LL}")
+    dvyn = DataValidation(type="list", formula1='"Y,N"', allow_blank=True)
+    ws.add_data_validation(dvyn)
+    dvyn.add(f"G{LF}:G{LL}")
+
+    howto(wb, LEGEND + [
+        (True, "What this workbook is for"),
+        (False, "The tool library tells you to map swivel-chair waste with a system-hop "
+                "diagram and then gave you nowhere to record one. This is that place. It "
+                "turns 'the agents are always jumping between screens', which nobody can act "
+                "on, into a number of seconds per contact, a cost per year, and a named pair "
+                "of systems with an owner."),
+        (True, "How to collect it"),
+        (False, "Sit beside the agent with a stopwatch and this sheet, and watch whole "
+                "contacts end to end — never a sampled minute. Log every move as it happens; "
+                "reconstructing it afterwards produces the loop people believe they run "
+                "rather than the one they ran. Watch at least ten contacts and more than one "
+                "agent: the multi-vari study in 31-multi-vari.xlsx exists because agent-to-"
+                "agent variation is usually the largest family there is, and hopping is no "
+                "different."),
+        (True, "Tell the agent what you are doing"),
+        (False, "Say plainly that you are timing the systems and not the person, and show "
+                "them the finished sheet. An observation that feels like an audit produces a "
+                "performance, and you will have carefully timed the performance."),
+        (True, "What the worked example found"),
+        (False, "Six billing adjustments, 24 hops, about 123 seconds a contact — near enough "
+                "thirty per cent of a 412-second handle time — and 22 of the 24 hops re-typed "
+                "something the previous system already held. The heaviest pair is the billing "
+                "platform to the payment gateway, which is a confirmation the agent should "
+                "never have had to go and fetch."),
+        (True, "The trap"),
+        (False, "Hop time is not free time, and it is not a saving. Removing every hop would "
+                "not hand you the hours back: some of that time is the agent thinking, and "
+                "thinking follows them to the next screen. Take the figure, halve it, say out "
+                "loud that you halved it, and let a pilot tell you the real number. A "
+                "swivel-chair business case that claims the full amount is the classic way to "
+                "lose a Finance partner for the rest of the programme."),
+        (True, "Where the numbers go next"),
+        (False, "The hop time per contact is a wait in 10-value-stream-map.xlsx and drags "
+                "process cycle efficiency down with it. Every re-keyed field is a failure mode "
+                "for 12-fmea.xlsx, with a detection score that is usually terrible because "
+                "nothing checks a hand-typed account number. The named pair of systems becomes "
+                "a candidate in 15-solution-selection-matrix.xlsx, where an integration will "
+                "score badly on effort and well on durability — which is exactly the argument "
+                "worth having."),
+    ])
+    return wb, "32-system-hop.xlsx"
+
+
 BUILDERS = [five_whys, fishbone, stakeholder, kano, doe, pareto, flow, control_charts,
-            erlang, gage_rr, regression]
+            erlang, gage_rr, regression, multi_vari, system_hop]
 
 
 def main() -> int:

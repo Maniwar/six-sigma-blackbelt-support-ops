@@ -59,6 +59,11 @@ class Sheet:
             c.number_format = fmt
         if bold:
             c.font = F_B
+            # A bold label is not a calculated cell. These workbooks are patched
+            # in place, so a header written over a cell that used to hold a
+            # formula inherits the blue fill that formula was given and reads as
+            # a number the reader must not touch.
+            c.fill = PatternFill()
         if note:
             c.font = F_MICRO
         elif not bold and isinstance(value, str) and value.startswith("="):

@@ -677,10 +677,23 @@ def test_sync() -> None:
            if isinstance(e.get(f), str) and re.search(r"&(\w+|#\d+);", e[f])]
     check(not ent, "no template title or description carries a raw HTML entity",
           ", ".join(ent[:4]))
-    check(len(tpls) == 30, f"30 templates registered (found {len(tpls)})")
+    check(len(tpls) == 32, f"32 templates registered (found {len(tpls)})")
 
     exts = [e.get("ext") for e in tpls.values()]
-    check(exts.count("xlsx") == 19, f"19 Excel workbooks (found {exts.count('xlsx')})")
+    check(exts.count("xlsx") == 21, f"21 Excel workbooks (found {exts.count('xlsx')})")
+
+    # The page counts itself out loud, in the schema block, the meta description
+    # and the download button. Those numbers had been stale by two since the
+    # regression and Gage R&R workbooks landed: the registry said 30 and 19, the
+    # prose said 28 and 17, and nothing compared them.
+    said = re.findall(r"(\d+) downloadable templates including (\d+) Excel workbooks", src)
+    check(said and all((int(a), int(b)) == (len(tpls), exts.count("xlsx")) for a, b in said),
+          f"the page's own template count matches the registry ({len(tpls)}/"
+          f"{exts.count('xlsx')})", f"the prose says {sorted(set(said))}")
+    btn = re.findall(r"Download all (\d+) templates", src)
+    check(btn and all(int(n) == len(tpls) for n in btn),
+          "the download-all button counts the templates it downloads",
+          f"the button says {sorted(set(btn))}")
     check(exts.count("md") == 11, f"11 Markdown templates (found {exts.count('md')})")
 
     for slug, entry in tpls.items():

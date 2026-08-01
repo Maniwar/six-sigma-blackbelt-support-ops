@@ -532,7 +532,8 @@ def audit_example(path: Path, wb) -> None:
                 if isinstance(v, str) and len(v) > 30 and not v.startswith("="):
                     percol.setdefault(c.column, {}).setdefault(v, []).append(c.row)
         for col, seen in percol.items():
-            dup = sorted(((v, rs) for v, rs in seen.items() if len(rs) >= 3),
+            dup = sorted(((v, rs) for v, rs in seen.items()
+                          if len(rs) >= 3 and not _mirrored(ws, col, rs)),
                          key=lambda x: -len(x[1]))
             if dup:
                 v, rs = dup[0]
@@ -540,6 +541,38 @@ def audit_example(path: Path, wb) -> None:
                      f"{ws.title}!{get_column_letter(col)} rows {rs[:4]} — the same "
                      f"note is repeated on {len(rs)} rows ({v[:44]!r}…); boilerplate "
                      "that cannot be about any particular row is not guidance")
+
+
+def _mirrored(ws, col, rows) -> bool:
+    """Does another column repeat in exactly the same step as this one?
+
+    Repetition is not automatically boilerplate. An observation log records the
+    same event on every occasion it happened — the system-hop sheet says "find
+    the adjustment on the account" once per contact because every contact made
+    that hop — and there the repetition IS the finding.
+
+    What separates the two is whether the rest of the row repeats with it. On a
+    log, "why the agent moved" varies in lockstep with "from system" and "to
+    system": same hop, same reason. A sentence pasted onto five rows repeats
+    while the rows underneath it stay different, which is the defect this check
+    was written for and the shape the mutant reproduces.
+
+    The mirroring column has to vary somewhere across the span, or a column
+    holding one word all the way down would excuse anything beside it.
+    """
+    lo, hi = min(rows), max(rows)
+    if hi - lo + 1 <= len(rows):          # a solid run mirrors nothing useful
+        return False
+    for other in range(1, ws.max_column + 1):
+        if other == col:
+            continue
+        here = {ws.cell(row=r, column=other).value for r in rows}
+        if len(here) != 1 or next(iter(here)) in (None, ""):
+            continue
+        span = {ws.cell(row=r, column=other).value for r in range(lo, hi + 1)}
+        if len(span) > 1:
+            return True
+    return False
 
 
 def audit_jargon(path: Path, wb) -> None:

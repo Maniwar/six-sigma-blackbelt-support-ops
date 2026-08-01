@@ -487,7 +487,16 @@ def render(spec: dict, cells: dict, width: int = 900) -> str | None:
         lo = 0.0 if lo >= 0 and lo <= hi * 0.55 else lo
         hi = 0.0 if hi <= 0 and hi >= lo * 0.55 else hi
         lo, hi, step = nice_scale(lo, hi)
-        if ax.get("min") is not None:
+        if ax.get("min") is not None and ax.get("max") is None:
+            # Re-fit the ticks to the axis we are actually drawing. Keeping the
+            # step chosen for the data's own range and then stretching the floor
+            # down to a forced minimum put twenty-eight gridlines between 0 and
+            # 140 on the system-hop chart. The forced bound itself is restored
+            # afterwards, because snapping it to the step would move it.
+            forced = float(ax["min"])
+            _, hi, step = nice_scale(forced, hi)
+            lo = forced
+        elif ax.get("min") is not None:
             lo = float(ax["min"])
         if ax.get("max") is not None:
             hi = float(ax["max"])
