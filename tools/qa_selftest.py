@@ -238,6 +238,22 @@ def _fill(c) -> str:
         return ""
 
 
+def m_green_formula(wb):
+    """Paint a computed cell as a worked example — "replace this" on a formula."""
+    green = PatternFill("solid", fgColor="FFECFAEF")
+    for ws in wb.worksheets:
+        shadow = Q.merged_shadow(ws)
+        for row in ws.iter_rows():
+            for c in row:
+                if (c.row, c.column) in shadow:
+                    continue
+                if isinstance(c.value, str) and c.value.startswith("=") \
+                        and _fill(c) == Q.FILL_CALC:
+                    c.fill = green
+                    return f"painted the formula at {ws.title}!{c.coordinate} as an example"
+    return None
+
+
 def m_bare_row(wb):
     """A name and a number, and nothing telling the reader what it is."""
     for ws in wb.worksheets:
@@ -298,6 +314,7 @@ MUTANTS = [
     ("chart wired to an emptied block", m_empty_series, "CHARTS"),
     ("chart with no title", m_untitled_chart, "CHARTS"),
     ("entry grid repainted as example data", m_paint_over_the_inputs, "GUIDED"),
+    ("formula cell painted as a worked example", m_green_formula, "GUIDED"),
     ("label and number, no explanation", m_bare_row, "ROWLABEL"),
     ("explanation stripped off a calculated row", m_strip_row_note, "ROWLABEL"),
 ]
@@ -546,6 +563,7 @@ def audit_to_set(path: Path) -> set[str]:
     Q.audit_guided(path, wb)
     Q.audit_example(path, wb)
     Q.audit_rowlabel(path, wb)
+    Q.audit_formula_colour(path, wb)
     return set(Q.fails)
 
 

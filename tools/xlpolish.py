@@ -313,7 +313,8 @@ def save_workbook(wb, path) -> None:
 
 
 FILL_IN = "FFFFF9E3"        # "you fill this in"
-FILL_EX = "FFECFAEF"        # "a worked example — delete it when you start"
+FILL_EX = "FFECFAEF"        # "a worked example — replace it with your own"
+FILL_CALC = "FFF2F7FF"      # "calculated — do not type over it"
 FILL_BAND = "FFEEF1F6"      # a section band: the table above it has ended
 FILL_HDR = "FF333C49"
 
@@ -333,6 +334,67 @@ def _boundary(ws, row: int, span) -> bool:
         if rng.min_row == row and (rng.max_col - rng.min_col + 1) >= max(2, len(span) - 1):
             return True
     return False
+
+
+def _typed(cell) -> bool:
+    """Did a person put this here? A formula did not, and neither did nothing."""
+    v = cell.value
+    return v not in (None, "") and not (isinstance(v, str) and v.startswith("="))
+
+
+def _index_columns(ws, hrow: int, span) -> set:
+    """Columns that are just a pre-printed row number: 1, 2, 3 down the block.
+
+    Every entry grid in this pack numbers its rows in advance so the reader can
+    refer to "row 14" in a meeting. Those numbers are furniture, not data, and a
+    row that holds nothing else is blank however filled it looks.
+    """
+    out = set()
+    for c in span:
+        seen = []
+        for r in range(hrow + 1, min(hrow + 40, ws.max_row) + 1):
+            v = ws.cell(row=r, column=c).value
+            if v in (None, ""):
+                break
+            if not isinstance(v, int) or isinstance(v, bool):
+                seen = []
+                break
+            seen.append(v)
+        if len(seen) >= 3 and seen == list(range(seen[0], seen[0] + len(seen))):
+            out.add(c)
+    return out
+
+
+def recolour_formulas(wb) -> int:
+    """A cell holding a formula is blue, wherever it sits.
+
+    The legend gives each colour one job: yellow is yours to type, green is the
+    worked example you replace, blue is calculated and must not be typed over.
+    55 formula cells across six workbooks were painted green or yellow — the
+    Pareto's own Share and Rank on the example row among them — which tells the
+    reader to overwrite a formula and lose the calculation.
+
+    Runs after mark_examples on purpose. Example colouring only ever repaints
+    literals, so it cannot create this, but the hand-authored sheets already had
+    it and nothing looked.
+    """
+    from openpyxl.styles import PatternFill
+    blue = PatternFill("solid", fgColor=FILL_CALC)
+    wrong = {FILL_IN, FILL_EX}
+    n = 0
+    for ws in wb.worksheets:
+        for row in ws.iter_rows():
+            for c in row:
+                if not (isinstance(c.value, str) and c.value.startswith("=")):
+                    continue
+                try:
+                    rgb = str(c.fill.fgColor.rgb) if c.fill and c.fill.patternType else ""
+                except Exception:                                # noqa: BLE001
+                    continue
+                if rgb in wrong:
+                    c.fill = blue
+                    n += 1
+    return n
 
 
 def mark_examples(wb) -> int:
@@ -375,10 +437,20 @@ def mark_examples(wb) -> int:
                   if (r, c) != (rng.min_row, rng.min_col)}
         for hrow, cols in _header_rows(ws).items():
             span = sorted(cols)
+            index_cols = _index_columns(ws, hrow, span)
+            body = [c for c in span if c not in index_cols]
             r = hrow + 1
             while r <= ws.max_row:
                 row_cells = [ws.cell(row=r, column=c) for c in span]
-                if all(c.value in (None, "") for c in row_cells):
+                # A row is part of the example only if somebody TYPED something
+                # into it. Two things otherwise make an empty row look full:
+                # the index column, pre-numbered down the whole block so the
+                # reader can say "row 14" in a meeting, and the computed columns,
+                # which carry a formula on every row whether or not it has data.
+                # Counting either made the hypothesis log's rows 16-33 a worked
+                # example on the strength of the numbers 6 to 23 and a column of
+                # IF(...,"") that returns blank.
+                if not any(_typed(ws.cell(row=r, column=c)) for c in (body or span)):
                     break
                 # A table also ends at the next section band, the next header,
                 # or a merged note spanning it. Walking only to the first blank
@@ -434,7 +506,7 @@ def polish_workbook(wb, landscape: bool = True) -> int:
     whether or not the content did.
     """
     stamp(wb)
-    changed = explain_headers(wb) + mark_examples(wb)
+    changed = explain_headers(wb) + mark_examples(wb) + recolour_formulas(wb)
     for ws in wb.worksheets:
         before = (ws.page_setup.fitToWidth, ws.page_setup.orientation, ws.freeze_panes)
 

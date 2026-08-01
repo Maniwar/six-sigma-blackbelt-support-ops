@@ -620,6 +620,38 @@ def _speaks_for_itself(cell) -> bool:
     return max((len(s) for s in lits), default=0) >= 25
 
 
+def audit_formula_colour(path: Path, wb) -> None:
+    """A formula cell must be blue — never yellow, never green.
+
+    Each colour has exactly one job, and these two are instructions: yellow says
+    type here, green says this is the example, replace it. Both are wrong on a
+    cell the workbook computes, and following either destroys the calculation.
+    55 cells across six workbooks carried one of them, including the Share and
+    Rank on the Pareto's own worked-example row.
+
+    Nothing caught it because every colour check so far asked what a cell's fill
+    means for guidance, never whether the fill contradicts the cell's contents.
+    """
+    book = path.name
+    bad = []
+    for ws in wb.worksheets:
+        for row in ws.iter_rows():
+            for c in row:
+                if not (isinstance(c.value, str) and c.value.startswith("=")):
+                    continue
+                try:
+                    rgb = str(c.fill.fgColor.rgb) if c.fill and c.fill.patternType else ""
+                except Exception:                                # noqa: BLE001
+                    continue
+                if rgb in (FILL_INPUT, FILL_EXAMPLE):
+                    which = "yellow (type here)" if rgb == FILL_INPUT else "green (replace this)"
+                    bad.append(f"{ws.title}!{c.coordinate} is {which}")
+    if bad:
+        fail(book, "GUIDED",
+             f"{len(bad)} formula cell(s) painted as something the reader should "
+             f"type over: {bad[:4]}")
+
+
 def audit_rowlabel(path: Path, wb) -> None:
     """A label in column A beside a filled value in B has to say what it is.
 
@@ -964,6 +996,7 @@ def main() -> int:
         audit_example(path, wb)
         audit_jargon(path, wb)
         audit_rowlabel(path, wb)
+        audit_formula_colour(path, wb)
         charts += n
         if rubric:
             graded += audit_rubric(path, wb, guidance)

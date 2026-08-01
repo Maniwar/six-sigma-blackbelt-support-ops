@@ -517,6 +517,45 @@ def patch_plain(wb, wbname: str) -> int:
     return n
 
 
+# The per-sheet legend on the seven hand-authored workbooks. It said "Row 1
+# example" and "delete it", which was true of none of them — the worked example
+# runs to nine rows on the value stream map and twenty-four on a control chart,
+# and deleting it on a seeded sheet leaves an empty chart.
+LEGEND_FIX: list[tuple[str, str, str, object]] = [
+    ("05-data-collection-plan.xlsx", "Collection plan", "A7", "Green cells"),
+    ("05-data-collection-plan.xlsx", "Collection plan", "B7",
+     "A realistic worked example, so you can see the expected format and the sheet is not "
+     "blank when you open it. Replace it with your own."),
+    ("10-value-stream-map.xlsx", "Value stream", "A7", "Green cells"),
+    ("10-value-stream-map.xlsx", "Value stream", "B7",
+     "A realistic worked example, so you can see the expected format and the sheet is not "
+     "blank when you open it. Replace it with your own."),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "A7", "Green cells"),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "B7",
+     "A realistic worked example, so you can see the expected format and the sheet is not "
+     "blank when you open it. Replace it with your own."),
+    ("12-fmea.xlsx", "FMEA", "A7", "Green cells"),
+    ("12-fmea.xlsx", "FMEA", "B7",
+     "A realistic worked example, so you can see the expected format and the sheet is not "
+     "blank when you open it. Replace it with your own."),
+    ("13-hypothesis-test-log.xlsx", "Test log", "A7", "Green cells"),
+    ("13-hypothesis-test-log.xlsx", "Test log", "B7",
+     "A realistic worked example, so you can see the expected format and the sheet is not "
+     "blank when you open it. Replace it with your own."),
+    ("15-solution-selection-matrix.xlsx", "Solution selection", "A7", "Green cells"),
+    ("15-solution-selection-matrix.xlsx", "Solution selection", "B7",
+     "A realistic worked example, so you can see the expected format and the sheet is not "
+     "blank when you open it. Replace it with your own."),
+    ("17-control-plan.xlsx", "Control plan", "A7", "Green cells"),
+    ("17-control-plan.xlsx", "Control plan", "B7",
+     "A realistic worked example, so you can see the expected format and the sheet is not "
+     "blank when you open it. Replace it with your own."),
+    ("12-fmea.xlsx", "How to use this", "B6",
+     "1.  Open the FMEA tab. The green rows are a worked example — read them, then "
+     "overwrite them with your own failure modes."),
+]
+
+
 def patch_notes(wb, wbname: str) -> int:
     """Write the explanations above, styled as the notes already on the sheet.
 
@@ -574,6 +613,8 @@ def patch_formulas(verbose: bool = True) -> int:
         by_file.setdefault(wbname, [])
     for wbname, *_ in PLAIN:
         by_file.setdefault(wbname, [])
+    for wbname, sheet, cell, value in LEGEND_FIX:
+        by_file.setdefault(wbname, []).append((sheet, cell, value))
 
     changed = 0
     for wbname in sorted(by_file):
