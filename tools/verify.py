@@ -104,13 +104,11 @@ def test_citations() -> None:
     check(qa_citations.checked[0] > 100,
           f"the citation check walked the pack ({qa_citations.checked[0]} references)",
           "it found almost nothing to resolve — the reference format has changed")
-    # NOT a check yet, deliberately. Six references do not resolve and two of
-    # those six look like artefacts of the figure extraction rather than real
-    # breaks. Turning this into check() before they are triaged would fail the
-    # build on the tool's own bugs, which is how a harness loses its authority.
-    # Triage the six, fix the real ones, then make this a check().
-    for f in qa_citations.fails:
-        print(f"           TODO {f}")
+    for w in qa_citations.warns:
+        print(f"           warn {w}")
+    check(not qa_citations.fails,
+          "every cross-reference resolves to a line that carries the figure",
+          "; ".join(qa_citations.fails[:4]))
 
 
 def test_bok() -> None:
@@ -1426,6 +1424,8 @@ def main() -> int:
     test_toollib()
     print("GLOSSARY   jargon coverage and dynamic linking")
     test_glossary()
+    print("CITATIONS  every file.md:NN lands on a line that carries the figure")
+    test_citations()
     print("EXPORT     business case HTML + live-formula workbook")
     test_export()
     if fast:

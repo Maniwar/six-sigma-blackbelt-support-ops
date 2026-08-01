@@ -34,11 +34,30 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATES = ROOT / "templates"
 
-# `09-baseline-document.md:106`, and ranges like `:112-118`
-RE_CITE = re.compile(r"\b([0-9A-Za-z][0-9A-Za-z._-]*\.md):(\d+)(?:[-–](\d+))?")
-# Any self-reference, including the ones this check cannot resolve — the page
-# and the workbooks. Their line numbers are not figures either.
-RE_ANY_CITE = re.compile(r"\b[0-9A-Za-z][0-9A-Za-z._-]*\.(?:md|html|xlsx):(\d+)(?:[-–]\d+)?")
+# A citation RUN, not a single reference. The pack points at several lines of
+# one document at once, in two shapes, and both are load-bearing:
+#
+#     02-sipoc.md:48,49,51          three bullets, deliberately skipping :50
+#     01-project-charter.md:52, and :213 in its revision history
+#     06-data-lineage.md:31, :70
+#
+# Reading only the first reference of a run is what made this check's own first
+# two findings. `,49,51` left behind by a half-done mask reads as the figure
+# 4951, and a bare `, and :213` reads as 213 — so the check went hunting for a
+# line number in the cited document and reported the citation broken. Both
+# citations were correct. A checker that fails on its own parser is worse than
+# no checker, so the run is matched as one unit and masked as one unit.
+#
+# The two continuation shapes are matched at different tightness on purpose. A
+# bare number may continue a run only with no space (`,49`), because `, 966
+# contacts` would otherwise be swallowed as a line number. A colon continuation
+# is unambiguous, so it may carry spaces and an `and`.
+RE_RUN = re.compile(
+    r"\b([0-9A-Za-z][0-9A-Za-z._-]*\.(?:md|html|xlsx))"      # the document
+    r"((?::\d+(?:[-–]\d+)?)"                                 # first line or range
+    r"(?:,\d+(?:[-–]\d+)?|\s*,\s*(?:and\s+)?:\d+(?:[-–]\d+)?)*)"
+)
+RE_SPAN = re.compile(r"(\d+)(?:[-–](\d+))?")
 # A figure a reader could look for: 14.2%, $38.60, 11,592, 966, 0.85
 RE_FIG = re.compile(r"\$?\d[\d,]*(?:\.\d+)?%?")
 
@@ -79,54 +98,69 @@ def check_file(path: Path, cache: dict[str, list[str]]) -> None:
     lines = path.read_text(encoding="utf-8").split("\n")
     here = path.name
     for i, line in enumerate(lines, start=1):
-        for m in RE_CITE.finditer(line):
-            target, lo = m.group(1), int(m.group(2))
-            hi = int(m.group(3)) if m.group(3) else lo
-            checked[0] += 1
+        # Strip every citation out of the line first. A neighbouring
+        # `charter.md:173` otherwise reads as the figure 173, and the check
+        # then goes hunting for a line number in the cited document.
+        # Blank the references BEFORE splitting into clauses, not after:
+        # the dot in "01-project-charter.md:173" is a sentence boundary to
+        # a naive splitter, which leaves a bare 173 behind and sends the
+        # check hunting for a line number in the cited file.
+        masked = RE_RUN.sub(lambda x: " " * len(x.group(0)), line)
+        for m in RE_RUN.finditer(line):
+            target = m.group(1)
+            if not target.endswith(".md"):
+                continue          # the page and the workbooks have no line map
             where = f"{here}:{i}"
             tp = TEMPLATES / target
+            spans = [(int(s.group(1)), int(s.group(2) or s.group(1)))
+                     for s in RE_SPAN.finditer(m.group(2))]
+            checked[0] += len(spans)
             if not tp.exists():
                 fails.append(f"{where} cites {target}, which does not exist")
                 continue
             if target not in cache:
                 cache[target] = tp.read_text(encoding="utf-8").split("\n")
             body = cache[target]
-            if hi > len(body):
-                fails.append(f"{where} cites {target}:{lo}"
-                             f"{'-' + str(hi) if hi != lo else ''} — that file ends at "
-                             f"line {len(body)}")
+            # Every line of the run has to exist and say something. The FIGURE,
+            # though, is checked against the run as a whole: "see :48, :49 and
+            # :51" is one citation a reader follows collectively, and demanding
+            # the number on all three would fail every list the pack writes.
+            text, broke = [], False
+            for lo, hi in spans:
+                if hi > len(body):
+                    fails.append(f"{where} cites {target}:{lo}"
+                                 f"{'-' + str(hi) if hi != lo else ''} — that file ends "
+                                 f"at line {len(body)}")
+                    broke = True
+                    continue
+                if not "\n".join(body[lo - 1:hi]).strip():
+                    fails.append(f"{where} cites {target}:{lo} — that line is blank")
+                    broke = True
+                    continue
+                text.append("\n".join(body[lo - 1:hi]))
+            if broke or not text:
                 continue
-            span = "\n".join(body[lo - 1:hi])
-            if not span.strip():
-                fails.append(f"{where} cites {target}:{lo} — that line is blank")
-                continue
-            # Strip every citation out of the clause first. A neighbouring
-            # `charter.md:173` otherwise reads as the figure 173, and the check
-            # then goes hunting for a line number in the cited document.
-            # Blank the references BEFORE splitting into clauses, not after:
-            # the dot in "01-project-charter.md:173" is a sentence boundary to
-            # a naive splitter, which leaves a bare 173 behind and sends the
-            # check hunting for a line number in the cited file.
-            masked = RE_ANY_CITE.sub(lambda x: " " * len(x.group(0)), line)
             want = figures(sentence_around(masked, m.start()))
             if not want:
                 continue                      # cites a section, not a figure
-            got = {norm(x.group(0)) for x in RE_FIG.finditer(span)}
+            got = {norm(x.group(0)) for x in RE_FIG.finditer("\n".join(text))}
             if want & got:
                 continue
             # A cited row often carries the figure one line down when the table
             # wraps, so widen once before calling it wrong — and say that the
             # pointer is off by a line rather than that the claim is false.
-            near = "\n".join(body[max(0, lo - 3):min(len(body), hi + 2)])
+            near = "\n".join("\n".join(body[max(0, lo - 3):min(len(body), hi + 2)])
+                             for lo, hi in spans)
             nearby = {norm(x.group(0)) for x in RE_FIG.finditer(near)}
             hit = sorted(want & nearby)
+            shown = m.group(0)
             if hit:
-                warns.append(f"{where} cites {target}:{lo} for {hit[0]} — that line does "
+                warns.append(f"{where} cites {shown} for {hit[0]} — that line does "
                              f"not carry it, but a line within two of it does")
             else:
-                fails.append(f"{where} cites {target}:{lo} for "
+                fails.append(f"{where} cites {shown} for "
                              f"{', '.join(sorted(want)[:3])} — the line reads "
-                             f"{span.strip()[:72]!r}")
+                             f"{text[0].strip()[:72]!r}")
 
 
 def main() -> int:
