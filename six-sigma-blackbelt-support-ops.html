@@ -3451,6 +3451,20 @@ Object.keys(GLOSS).forEach(function(k){
   if(!NOAUTO[k]) glTerms.push([k,k]);
   (GLOSS[k].aka||[]).forEach(function(a){ glTerms.push([a,k]); });
 });
+// The matcher is case-sensitive, deliberately: an "i" flag would let short
+// acronyms swallow ordinary words — IT, OR, US, AND would match everywhere.
+// But ordinary-word terms are routinely written lower-case mid-sentence
+// ("verified at the gemba"), and those never matched at all — "gemba" appears
+// more often in this document than "Gemba" did. So a word-shaped term gets an
+// explicit lower-case variant; acronym-shaped ones do not.
+glTerms.slice().forEach(function(p){
+  var t = p[0];
+  if(/^[A-Z0-9][A-Z0-9'\u2032&-]{1,7}$/.test(t)) return;   // acronym: leave it
+  if(/[A-Z]/.test(t.charAt(0)) && t !== t.toUpperCase()){
+    var lower = t.charAt(0).toLowerCase() + t.slice(1);
+    if(lower !== t) glTerms.push([lower, p[1]]);
+  }
+});
 glTerms.sort(function(a,b){ return b[0].length-a[0].length; });
 
 function esc(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }

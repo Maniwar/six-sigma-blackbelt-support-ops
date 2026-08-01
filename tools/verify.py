@@ -529,6 +529,18 @@ def test_sync() -> None:
     check(src.count("POP_TRAIL.length = 0") >= 2,
           "the back trail is cleared when the explainer closes and on a fresh term")
 
+    # Case. The matcher is deliberately case-sensitive — an "i" flag would let
+    # short acronyms swallow ordinary words (IT, OR, US, AND). But ordinary-word
+    # terms are routinely written lower-case mid-sentence, and those matched
+    # nothing at all: "gemba" appears more often in this document than "Gemba"
+    # did, and only the capitalised form was ever clickable.
+    check("if(/^[A-Z0-9][A-Z0-9'\\u2032&-]{1,7}$/.test(t)) return;" in src,
+          "acronym-shaped terms get no lower-case variant, so IT/OR/US stay safe")
+    check("var lower = t.charAt(0).toLowerCase() + t.slice(1);" in src,
+          "word-shaped glossary terms also match when written lower-case")
+    for term in ("Gemba", "Kaizen", "Poka-yoke"):
+        check(f'"{term}"' in src, f"{term} is still a glossary entry")
+
     for dead in ("parseCSV", "renderCSV"):
         check(dead not in src, f"dead {dead}() removed")
     check("function esc2(" in src, "esc2() retained (renderMD depends on it)")
