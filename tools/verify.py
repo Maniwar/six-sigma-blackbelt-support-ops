@@ -315,6 +315,28 @@ def test_numeric_other() -> None:
               "'share explained by the top three' means the top three by rank",
               repr(_read(sol, src.name, "Pareto", "C29")))
 
+    # Every chart that claims a ranking must actually rank. These plotted rows
+    # in the order somebody typed them, which makes the reader do the ranking
+    # the chart was supposed to do — and on an FMEA, whose whole method is
+    # "work the highest RPN first", buries the worst failure mode wherever it
+    # happened to be entered.
+    for book, sheet, cat_col, val_col, first, n in [
+            ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "M", "N", 15, 8),
+            ("15-solution-selection-matrix.xlsx", "Solution selection", "Q", "R", 14, 6),
+            ("12-fmea.xlsx", "FMEA", "V", "W", 11, 6)]:
+        src = TEMPLATES / book
+        sol = _engine(src).calculate()
+        vals = []
+        for i in range(n):
+            v = _read(sol, book, sheet, f"{val_col}{first + i}")
+            try:
+                vals.append(float(v))
+            except (TypeError, ValueError):
+                pass
+        check(len(vals) == n and vals == sorted(vals, reverse=True),
+              f"{book}: the chart plots its ranking in rank order",
+              f"got {vals}")
+
     # VSM: "% of lead time" must divide by lead time, not by waiting time.
     src = TEMPLATES / "10-value-stream-map.xlsx"
     with tempfile.TemporaryDirectory() as td:

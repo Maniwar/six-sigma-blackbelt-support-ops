@@ -23,6 +23,7 @@ from openpyxl.chart.label import DataLabelList
 from openpyxl.chart.marker import Marker
 from openpyxl.packaging.custom import StringProperty
 from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
 
 CALC = PatternFill("solid", fgColor="FFF2F7FF")
 F_MICRO = Font(italic=True, size=9, color="FF6B7280")
@@ -110,6 +111,49 @@ def _bar(ws, title, cats, vals, anchor, colours=None, horizontal=False,
         ser.invertIfNegative = False
     ws.add_chart(ch, anchor)
     return ch
+
+
+def ranked_block(sh, first, last, sort_col, carry, dest, label, fmts=None):
+    """Sort a scoring table by value, in formulas, with no macro and no re-typing.
+
+    A chart titled "the tall bars are where to look" that plots rows in the
+    order somebody typed them makes the reader do the ranking the chart was
+    supposed to do. Worse on an FMEA, where the whole method is "work the
+    highest RPN first" — burying it in row four defeats the tool.
+
+    Writes a tie-broken rank beside the source table, then resolves each
+    position with INDEX/MATCH into a block the chart reads. Re-ranks itself the
+    moment a score changes.
+
+    sort_col : column holding the value to sort by, descending
+    carry    : columns to carry across, in chart order (first is the category)
+    dest     : first column of the ranked block
+    """
+    L = get_column_letter
+    rank_col = dest - 1
+    sc = L(sort_col)
+    for r in range(first, last + 1):
+        c = sh.ws.cell(row=r, column=rank_col)
+        c.value = (f'=IF({sc}{r}="","",RANK({sc}{r},${sc}${first}:${sc}${last},0)'
+                   f'+COUNTIF(${sc}${first}:{sc}{r},{sc}{r})-1)')
+        c.number_format = "0"
+        c.font = F_MICRO
+    sh.put(first - 1, rank_col, "rank", note=True)
+    sh.put(first - 1, dest, "#", bold=True)
+    for i, src in enumerate(carry):
+        sh.put(first - 1, dest + 1 + i, label[i] if i < len(label) else "", bold=True)
+    rk = L(rank_col)
+    for i, r in enumerate(range(first, last + 1)):
+        sh.put(r, dest, i + 1, fmt="0")
+        for j, src in enumerate(carry):
+            col = dest + 1 + j
+            sh.put(r, col,
+                   f'=IFERROR(INDEX(${L(src)}${first}:${L(src)}${last},'
+                   f'MATCH({L(dest)}{r},${rk}${first}:${rk}${last},0)),"")',
+                   fmt=(fmts or {}).get(j))
+    return {"cats": Reference(sh.ws, min_col=dest + 1, min_row=first, max_row=last),
+            "vals": [Reference(sh.ws, min_col=dest + 2 + j, min_row=first, max_row=last)
+                     for j in range(len(carry) - 1)]}
 
 
 def _overlay(ch, ws, ref, name, colour=RED):
@@ -260,14 +304,16 @@ def xy_matrix(wb) -> int:
     """Which candidate causes actually drive the CTQs."""
     ws = wb["X-Y matrix"]
     sh = Sheet(ws)
-    sh.put(14, 10, "Mean", bold=True)
+    blk = ranked_block(sh, 15, 36, sort_col=8, carry=[1, 8], dest=12,
+                       label=["Candidate cause", "Weighted total"],
+                       fmts={1: "#,##0"})
     for r in range(15, 37):
-        sh.put(r, 10, f'=IF(H{r}="","",AVERAGE($H$15:$H$36))', fmt="#,##0")
-    ch = _bar(ws, "Weighted total by candidate cause — the tall bars are where to look",
-              Reference(ws, min_col=1, min_row=15, max_row=36),   # 37 is the note banner
-              Reference(ws, min_col=8, min_row=15, max_row=36),
-              "L14", horizontal=True, height=11, width=17, labels=False)
-    _overlay(ch, ws, Reference(ws, min_col=10, min_row=15, max_row=36), "Mean score")
+        sh.put(r, 15, f'=IF(N{r}="","",AVERAGE($N$15:$N$36))', fmt="#,##0")
+    sh.put(14, 15, "Mean", bold=True)
+    ch = _bar(ws, "Weighted total by candidate cause — ranked, tallest first",
+              blk["cats"], blk["vals"][0],
+              "Q14", horizontal=True, height=11, width=17, labels=False)
+    _overlay(ch, ws, Reference(ws, min_col=15, min_row=15, max_row=36), "Mean score")
     return sh.changed
 
 
@@ -278,15 +324,20 @@ def fmea(wb) -> int:
     """RPN before and after the action — the only view that shows whether it worked."""
     ws = wb["FMEA"]
     sh = Sheet(ws)
-    sh.put(10, 20, "Act above", bold=True)
+    # The method is "work the highest RPN first". Plotting in entry order buries
+    # the worst failure mode wherever it happened to be typed.
+    blk = ranked_block(sh, 11, 36, sort_col=10, carry=[2, 10, 18], dest=21,
+                       label=["Failure mode", "RPN now", "RPN after"],
+                       fmts={1: "#,##0", 2: "#,##0"})
     for r in range(11, 37):
-        sh.put(r, 20, f'=IF(J{r}="","",100)', fmt="#,##0")
-    ch = _grouped(ws, "Risk priority number — did the action actually reduce it?",
-                  Reference(ws, min_col=2, min_row=11, max_row=36),   # 37 is the banner
-                  [(Reference(ws, min_col=10, min_row=11, max_row=36), "RPN now", RED),
-                   (Reference(ws, min_col=18, min_row=11, max_row=36), "RPN after", GREEN)],
-                  "V10", height=10, width=22)
-    _overlay(ch, ws, Reference(ws, min_col=20, min_row=11, max_row=36),
+        sh.put(r, 25, f'=IF(W{r}="","",100)', fmt="#,##0")
+    sh.put(10, 25, "Act above", bold=True)
+    ch = _grouped(ws, "Risk priority number — ranked, and did the action reduce it?",
+                  blk["cats"],
+                  [(blk["vals"][0], "RPN now", RED),
+                   (blk["vals"][1], "RPN after", GREEN)],
+                  "AA10", height=10, width=22)
+    _overlay(ch, ws, Reference(ws, min_col=25, min_row=11, max_row=36),
              "Act above this (RPN 100)", AMBER)
     return sh.changed
 
@@ -316,14 +367,16 @@ def hypothesis_log(wb) -> int:
 def solution_selection(wb) -> int:
     ws = wb["Solution selection"]
     sh = Sheet(ws)
-    sh.put(13, 15, "Mean", bold=True)
+    blk = ranked_block(sh, 14, 33, sort_col=10, carry=[2, 10], dest=16,
+                       label=["Solution", "Weighted score"],
+                       fmts={1: "#,##0"})
     for r in range(14, 34):
-        sh.put(r, 15, f'=IF(J{r}="","",AVERAGE($J$14:$J$33))', fmt="#,##0")
-    ch = _bar(ws, "Weighted score by solution — and remember the hierarchy level",
-              Reference(ws, min_col=2, min_row=14, max_row=33),   # 34 is the note banner
-              Reference(ws, min_col=10, min_row=14, max_row=33),
-              "Q13", horizontal=True, height=11, width=17, labels=False)
-    _overlay(ch, ws, Reference(ws, min_col=15, min_row=14, max_row=33), "Mean score")
+        sh.put(r, 19, f'=IF(R{r}="","",AVERAGE($R$14:$R$33))', fmt="#,##0")
+    sh.put(13, 19, "Mean", bold=True)
+    ch = _bar(ws, "Weighted score by solution — ranked, best first",
+              blk["cats"], blk["vals"][0],
+              "U13", horizontal=True, height=11, width=17, labels=False)
+    _overlay(ch, ws, Reference(ws, min_col=19, min_row=14, max_row=33), "Mean score")
     return sh.changed
 
 
