@@ -1463,10 +1463,11 @@ def control_charts():
           7930, 8260, 7810, 8150, 8470, 7860, 8030, 8340, 7900, 8180, 7770, 8240]
     ks = [5610, 5990, 5570, 6120, 5410, 5880, 6210, 5490, 6050, 5380, 5940, 6180,
           5520, 6010, 5480, 5860, 6240, 5600, 5760, 6090, 5710, 5900, 5450, 6020]
-    pbar, sigs, zs, sz = _laney(ns[:BASE_PTS], ks[:BASE_PTS])
-    # per-point sigma still needs every point, only the centre is baselined
-    _, sigs, _, _ = _laney(ns, ks)
+    # The centre is baselined; the per-point sigma and z still need every
+    # plotted point, or the preview runs out of values before the rows do.
+    pbar, _, _, sz = _laney(ns[:BASE_PTS], ks[:BASE_PTS])
     sigs = [((pbar * (1 - pbar) / n) ** 0.5) for n in ns]
+    zs = [((ks[i] / float(ns[i])) - pbar) / sigs[i] for i in range(len(ns))]
     SHOWN.update({("Laney p-prime", "B5"): "%.2f%%" % (100 * pbar),
                   ("Laney p-prime", "B6"): "%.3f" % _mrbar(zs),
                   ("Laney p-prime", "B7"): "%.3f" % sz,

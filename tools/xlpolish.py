@@ -16,7 +16,7 @@ somebody uses and one they close again.
 """
 from __future__ import annotations
 
-from openpyxl.utils import range_boundaries
+from openpyxl.utils import get_column_letter, range_boundaries
 from openpyxl.worksheet.properties import PageSetupProperties
 
 # openpyxl writes <c:delete val="1"/> unless told otherwise on some paths, and
@@ -112,7 +112,27 @@ def polish_workbook(wb, landscape: bool = True) -> int:
             if hr and hr < 30:
                 ws.freeze_panes = f"A{hr + 1}"
 
-        # --- charts ---
+        # --- charts: never on top of the data they explain ---
+        # Thirteen charts were anchored over populated cells, several over the
+        # very block they read from. Fixing them one at a time is how the last
+        # three rounds of this went, so it is done here for the class: every
+        # chart is pushed clear of the rightmost populated column on its sheet,
+        # and stacked vertically in anchor order so two charts never collide.
+        charts = list(getattr(ws, "_charts", []))
+        if charts:
+            last_col = 0
+            for row in ws.iter_rows():
+                for c in row:
+                    if c.value not in (None, ""):
+                        last_col = max(last_col, c.column)
+            free = get_column_letter(last_col + 2)
+            row_at = 3
+            for ch in charts:
+                ch.anchor = f"{free}{row_at}"
+                row_at += max(16, int((ch.height or 7.5) / 0.5) + 3)
+                changed += 1
+
+
         for ch in getattr(ws, "_charts", []):
             # Charts skip hidden cells by default. Several templates keep their
             # reference columns hidden — a quadrant divider, a noise floor —
