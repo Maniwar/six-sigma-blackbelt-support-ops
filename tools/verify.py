@@ -337,6 +337,41 @@ def test_numeric_other() -> None:
               f"{book}: the chart plots its ranking in rank order",
               f"got {vals}")
 
+    # A reference line that contradicts the sheet it sits on destroys trust in
+    # the whole file. The FMEA drew its action line at 100 while its own summary
+    # counted ">=200 (act now)"; the hypothesis log hardcoded alpha 0.05 while
+    # the sheet has a validated alpha input, and keyed the line on the p-value
+    # column so it stopped at the last completed test.
+    src = TEMPLATES / "12-fmea.xlsx"
+    sol = _engine(src).calculate()
+    thr = _read(sol, src.name, "FMEA", "D45")
+    line = _read(sol, src.name, "FMEA", "Y11")
+    check(approx(thr, line), "FMEA: the chart's action line is the sheet's action threshold",
+          f"threshold={thr!r} line={line!r}")
+    check(approx(_read(sol, src.name, "FMEA", "D40"), 4),
+          "FMEA: the count above the threshold follows that same cell",
+          repr(_read(sol, src.name, "FMEA", "D40")))
+
+    src = TEMPLATES / "13-hypothesis-test-log.xlsx"
+    with tempfile.TemporaryDirectory() as td:
+        tmp = Path(td) / src.name
+        shutil.copyfile(src, tmp)
+        wb = load_workbook(tmp)
+        wb["Test log"]["B8"] = 0.01          # the user tightens alpha
+        wb.save(tmp)
+        sol = _engine(tmp).calculate()
+        drawn = []
+        for r in range(11, 36):
+            v = _read(sol, src.name, "Test log", f"T{r}")
+            if isinstance(v, (int, float)):
+                drawn.append(float(v))
+        check(drawn and all(abs(v - 0.01) < 1e-9 for v in drawn),
+              "the alpha line follows the alpha the sheet validates",
+              f"values {sorted(set(drawn))[:3]}")
+        check(len(drawn) >= 20,
+              "the alpha line spans the log, not just the rows already filled in",
+              f"drawn on {len(drawn)} of 25 rows")
+
     # VSM: "% of lead time" must divide by lead time, not by waiting time.
     src = TEMPLATES / "10-value-stream-map.xlsx"
     with tempfile.TemporaryDirectory() as td:

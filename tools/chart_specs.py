@@ -27,6 +27,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 CALC = PatternFill("solid", fgColor="FFF2F7FF")
+IN = PatternFill("solid", fgColor="FFFFF9E3")   # "you fill this in"
 F_MICRO = Font(italic=True, size=9, color="FF6B7280")
 F_B = Font(bold=True, size=10)
 
@@ -344,16 +345,39 @@ def fmea(wb) -> int:
     blk = ranked_block(sh, 11, 36, sort_col=10, carry=[2, 10, 18], dest=21,
                        label=["Failure mode", "RPN now", "RPN after"],
                        fmts={1: "#,##0", 2: "#,##0"})
+    # The chart drew its action line at 100 while the sheet's own summary
+    # counted ">=200 (act now)". Two thresholds on one screen, and a reviewer
+    # who spots that stops trusting the rest of the file. One live input drives
+    # both now, and the summary label reads it rather than restating it.
+    sh.put(45, 1, "Act above this RPN", bold=True)
+    thr = sh.ws.cell(row=45, column=4)
+    if thr.value != 200:
+        thr.value = 200
+        sh.changed += 1
+    thr.fill = IN
+    thr.number_format = "#,##0"
+    sh.put(45, 5, "The conventional line is 100-200. Whatever you set here drives "
+                  "the chart line and the count above.", note=True)
     for r in range(11, 37):
-        sh.put(r, 25, f'=IF(W{r}="","",100)', fmt="#,##0")
+        sh.put(r, 25, f'=IF(W{r}="","",$D$45)', fmt="#,##0")
     sh.put(10, 25, "Act above", bold=True)
+    # keep the summary honest against the same cell
+    lab = sh.ws.cell(row=40, column=1)
+    if lab.value != "Above the action threshold (act now)":
+        lab.value = "Above the action threshold (act now)"
+        sh.changed += 1
+    cnt = sh.ws.cell(row=40, column=4)
+    want = '=COUNTIF(J11:J35,">="&$D$45)'
+    if cnt.value != want:
+        cnt.value = want
+        sh.changed += 1
     ch = _grouped(ws, "Risk priority number — ranked, and did the action reduce it?",
                   blk["cats"],
                   [(blk["vals"][0], "RPN now", RED),
                    (blk["vals"][1], "RPN after", GREEN)],
                   "AA10", height=10, width=22)
     _overlay(ch, ws, Reference(ws, min_col=25, min_row=11, max_row=36),
-             "Act above this (RPN 100)", AMBER)
+             "Act above this threshold", AMBER)
     return sh.changed
 
 
@@ -365,8 +389,13 @@ def hypothesis_log(wb) -> int:
     ws = wb["Test log"]
     sh = Sheet(ws)
     LAST = 35                    # row 36 is the merged note banner
+    # Two bugs in one line. It hardcoded 0.05 while the sheet has a validated
+    # alpha input at B8, so changing alpha moved every verdict and not the line
+    # you judge them against. And it keyed on the p-value column, so the
+    # standard stopped dead at the last completed test — absent across four
+    # fifths of the axis. Key on the row number instead.
     for r in range(11, LAST + 1):
-        sh.put(r, 20, f'=IF(J{r}="","",0.05)', fmt="0.000")
+        sh.put(r, 20, f'=IF(A{r}="","",$B$8)', fmt="0.000")
     sh.put(10, 20, "alpha", bold=True)
     _line(ws, "p-value by test, against alpha = 0.05",
           Reference(ws, min_col=1, min_row=11, max_row=LAST),
