@@ -29,7 +29,7 @@
 | *Billing platform vendor, who runs the 02:00 posting batch* | *Approved adjustments queued to the batch; the posting file and its run log* | 4. *The nightly batch posts the adjustment and the agent verifies it landed* | *A posted credit and a posting confirmation, or a failure line in the batch log* | *The verifying Tier 1 agent; the customer, whose bill changes* |
 | *Tier 1 agent; contact platform (outbound call, chat or email)* | *Posting confirmation, the customer's contact preference, the closure rubric* | 5. *Agent confirms the posting with the customer and closes the case* | *A closed case, a confirmed customer, and a QA-checkable "resolution confirmed" record* | *The customer; QA and Billing Ops for reopen reporting; Finance* |
 
-<!-- If you need more than 7 steps, your scope is too wide. Split the project. -->
+*If you need more than 7 steps, your scope is too wide. Split the project.*
 
 ## Scope boundaries
 

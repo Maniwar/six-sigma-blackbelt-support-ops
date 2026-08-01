@@ -460,6 +460,63 @@ NOTES: list[tuple[str, str, str, str]] = [
 ]
 
 
+# Ranges where a fill has to go because it collides with the legend.
+#
+# The countermeasure hierarchy shades its six levels as a traffic light, which
+# is the right idea — the whole point of the hierarchy is to see at a glance
+# that most of your controls sit at the weak end. The problem is the palette it
+# reached for: the greens on levels 1-3 are FFECFAEF and the amber on level 4 is
+# FFFFF9E3, byte-identical to the two colours every legend in this pack reserves
+# for "a worked example, delete it when you start" and "you fill this in". So a
+# fixed definition of the hierarchy read as a cell to type into, three rows that
+# must never be deleted read as disposable, and the colour checks agreed with
+# the reader's misreading because they key on exactly those bytes.
+#
+# Fill in this pack means one thing: what you do with the cell. The durability
+# signal moves to the font instead, where it cannot be confused with either —
+# and column D already says "Permanent / Moderate / Weak" in words, so nothing
+# is lost if a reader ignores colour entirely.
+PLAIN: list[tuple[str, str, str]] = [
+    ("15-solution-selection-matrix.xlsx", "Countermeasure hierarchy", "A5:D10"),
+]
+
+# (workbook, sheet, row) -> font colour carrying the traffic light.
+TRAFFIC: dict[tuple[str, str, int], str] = {
+    ("15-solution-selection-matrix.xlsx", "Countermeasure hierarchy", 5): "FF1D6F42",
+    ("15-solution-selection-matrix.xlsx", "Countermeasure hierarchy", 6): "FF1D6F42",
+    ("15-solution-selection-matrix.xlsx", "Countermeasure hierarchy", 7): "FF1D6F42",
+    ("15-solution-selection-matrix.xlsx", "Countermeasure hierarchy", 8): "FFB45309",
+    ("15-solution-selection-matrix.xlsx", "Countermeasure hierarchy", 9): "FFB91C1C",
+    ("15-solution-selection-matrix.xlsx", "Countermeasure hierarchy", 10): "FFB91C1C",
+}
+
+
+def patch_plain(wb, wbname: str) -> int:
+    """Clear fills that collide with the legend, and re-signal in the font."""
+    from openpyxl.styles import PatternFill
+    none_fill = PatternFill(fill_type=None)
+    n = 0
+    for name, sheet, ref in PLAIN:
+        if name != wbname:
+            continue
+        for row in wb[sheet][ref]:
+            for c in row:
+                if c.fill and c.fill.patternType:
+                    c.fill = none_fill
+                    n += 1
+    for (name, sheet, r), rgb in TRAFFIC.items():
+        if name != wbname:
+            continue
+        ws = wb[sheet]
+        for col in range(2, 5):                  # the words, not the level number
+            c = ws.cell(row=r, column=col)
+            if getattr(c.font.color, "rgb", None) == rgb and c.font.bold:
+                continue                          # already done; do not churn
+            c.font = Font(name=c.font.name, size=c.font.sz, bold=True, color=rgb)
+            n += 1
+    return n
+
+
 def patch_notes(wb, wbname: str) -> int:
     """Write the explanations above, styled as the notes already on the sheet.
 
@@ -515,6 +572,8 @@ def patch_formulas(verbose: bool = True) -> int:
         by_file.setdefault(wbname, []).append((sheet, cell, value))
     for wbname, *_ in NOTES:
         by_file.setdefault(wbname, [])
+    for wbname, *_ in PLAIN:
+        by_file.setdefault(wbname, [])
 
     changed = 0
     for wbname in sorted(by_file):
@@ -530,6 +589,7 @@ def patch_formulas(verbose: bool = True) -> int:
                 local += 1
         _style_new_cells(wb)
         local += patch_notes(wb, wbname)
+        local += patch_plain(wb, wbname)
         local += _add_validations(wb, wbname)
         local += add_examples(wb, wbname)
         local += add_charts(wb, wbname)

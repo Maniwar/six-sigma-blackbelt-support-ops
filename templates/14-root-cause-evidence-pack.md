@@ -70,7 +70,7 @@ Name: ____________  Agrees this cause is real and plausible: Yes / No  Date: ___
 
 ---
 
-<!-- Duplicate the block above for each accepted root cause. -->
+*Duplicate the block above for each accepted root cause.*
 
 ## Summary
 

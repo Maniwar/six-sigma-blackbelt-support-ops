@@ -389,9 +389,26 @@ def md_break_shares(text: str):
     return None, None
 
 
+def md_bury_in_comment(text: str):
+    """Hide a line of guidance inside an HTML comment, where nobody reads it.
+
+    Four real rules shipped this way — a markdown viewer hides the comment and
+    the page escaped it into visible body text, so the same sentence was both
+    invisible in the file and printed raw, angle brackets and all.
+    """
+    for i, line in enumerate(text.split("\n")):
+        s = line.strip()
+        if s.startswith("*") and s.endswith("*") and 25 <= len(s) <= 120:
+            lines = text.split("\n")
+            lines[i] = f"<!-- {s.strip('*')} -->"
+            return "\n".join(lines), f"buried {s[:34]!r} in an HTML comment"
+    return None, None
+
+
 MD_MUTANTS = [("markdown: empty declared column", md_empty_column),
               ("markdown: arithmetic with no method", md_strip_method),
-              ("markdown: shares that do not add up", md_break_shares)]
+              ("markdown: shares that do not add up", md_break_shares),
+              ("markdown: guidance buried in an HTML comment", md_bury_in_comment)]
 
 
 def run_markdown() -> tuple[int, int, list[str]]:

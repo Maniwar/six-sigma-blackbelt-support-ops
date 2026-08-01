@@ -789,6 +789,7 @@ def audit_rubric(path: Path, wb, guidance: int) -> list[dict]:
 # in a workbook, sitting in a file the audit did not glob.
 
 
+MD_MARKER = "<!-- guidance -->"   # md_guidance.py's idempotency marker
 RE_MD_ROW = re.compile(r"^\s*\|(.+)\|\s*$")
 # The dash is required. `[\s:|-]+` also matches `| | | |`, so a row that was
 # empty in EVERY column read as a second header rule and was dropped from the
@@ -836,6 +837,24 @@ def audit_markdown(path: Path) -> None:
     """A document template has to be as fillable-in as a workbook."""
     book = path.name
     text = path.read_text(encoding="utf-8")
+
+    # Guidance written inside an HTML comment reaches nobody. A markdown viewer
+    # hides it, and the page escaped it into visible body text, so four real
+    # rules — "no cause and no solution in the problem statement", "exactly one
+    # A per row", the seven-step SIPOC limit — were simultaneously invisible in
+    # the file and printed raw on the page, angle brackets and all.
+    #
+    # The one comment that stays is the marker md_guidance.py writes to know it
+    # has already run. It is machinery, not prose, and it is named here so that
+    # nothing else can hide behind the same exemption.
+    for m in re.finditer(r"<!--(.*?)-->", text, re.S):
+        if m.group(0) == MD_MARKER:
+            continue
+        line = text[:m.start()].count("\n") + 1
+        fail(book, "MARKDOWN",
+             f"line {line}: guidance is inside an HTML comment and reaches no "
+             f"reader — {' '.join(m.group(1).split())[:60]!r}. Write it as text, "
+             "or delete it")
 
     for head, body, line in md_tables(text):
         if not body:

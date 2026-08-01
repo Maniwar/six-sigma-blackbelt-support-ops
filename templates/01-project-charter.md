@@ -33,8 +33,8 @@
 > estimated `<$ impact>` annualized. The impact is felt by `<who>` in the form of
 > `<consequence>`. **The cause is not yet known.**
 
-<!-- Rule: no cause and no solution in the problem statement. If you already know the
-     answer, this is a project plan, not a DMAIC. -->
+*Rule: no cause and no solution in the problem statement. If you already know the
+answer, this is a project plan, not a DMAIC.*
 
 ## 2. Goal statement
 Reduce / increase `<metric>` from `<baseline>` to `<target>` by `<date>`, while holding
@@ -112,7 +112,7 @@ Signed by WFM:     ____________________  Date: __________
 | *A. Okafor, Billing Ops* | Process owner | R | *4 h a week, one full day in each tollgate week* | *Yes — confirmed 18 Mar, Billing Ops on-call swapped to cover* |
 | *R. Okonjo, Tier 1 team lead* | *Subject matter expert, Tier 1* | *C* | *8 h a week to tollgate 3, then 4 h a week* | *Yes — confirmed 20 Mar, hours backfilled from the flex pool* |
 
-<!-- Exactly one A per row. -->
+*Exactly one A per row.*
 
 ## 7. Metric-impact disclosure (required)
 Which existing team or individual scorecards will this project move, in which
