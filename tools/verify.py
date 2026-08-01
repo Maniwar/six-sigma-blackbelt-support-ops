@@ -431,6 +431,21 @@ def test_numeric() -> None:
     check(out[(S, "B17")].startswith("NOT CAPABLE"),
           "SLA verdict: shipped example still reads NOT CAPABLE", repr(out[(S, "B17")]))
 
+    # --- The workbook must not state two answers to its own question. The ROI
+    #     tab's realised benefit is a yellow input, and rightly so — a generic
+    #     calculator has to accept a benefit from anywhere. But its WORKED
+    #     EXAMPLE was $156,672 while tab 8 computed $172,012.80 from the inputs
+    #     shipped beside it, so one workbook disagreed with itself by $15,340.80
+    #     with nothing to say which was meant. The example now carries tab 8's
+    #     own output, and this keeps the two tied as either changes.
+    out = recalc([], [(R, "B6"), ("8 Benefit — avoided contacts", "B14")])
+    roi_in = float(out[(R, "B6")])
+    tab8 = float(out[("8 Benefit — avoided contacts", "B14")])
+    check(approx(roi_in, tab8, 1e-4),
+          "ROI: the worked example equals the benefit the workbook computes for it",
+          f"tab 9 states {roi_in:,.2f}, tab 8 computes {tab8:,.2f} — "
+          f"{abs(roi_in - tab8):,.2f} apart")
+
     # --- NPV must honour any number of years, matching the HTML card's loop.
     for years in (1, 3, 5, 10):
         out = recalc([(R, "B5", 193000), (R, "B6", 156672), (R, "B7", years), (R, "B8", 0.1)], [(R, "B15")])

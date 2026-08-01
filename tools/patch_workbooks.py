@@ -216,6 +216,36 @@ VALUES: list[tuple[str, str, str, object]] = [
      "tests. Two categorical variables: chi-square test of independence. Comparing spread "
      "rather than centre: Levene's test. Check the shape first on the 'Shape and spread' tab "
      "of 25-pareto-and-distribution.xlsx — it decides which half of that list you are in."),
+    # The ROI tab's worked example carried a realised benefit of $156,672, and
+    # that number reconciles with nothing. The same workbook computes a realised
+    # benefit two tabs earlier — tab 8 lands on $172,012.80 from its own inputs
+    # — so the one workbook stated two answers to its own question, $15,340.80
+    # apart, with nothing to say which was meant. B6 is and stays a yellow input:
+    # a generic calculator must let you type a benefit that came from anywhere.
+    # What it may not do is ship a worked example that contradicts the tab next
+    # to it, so the example is now tab 8's own output and the note says so.
+    ("19-black-belt-calculators.xlsx", "9 ROI and payback", "B6", 172012.80),
+    ("19-black-belt-calculators.xlsx", "9 ROI and payback", "D6",
+     "Validated and realised — not gross, not the pilot rate. Signed by Finance after 90 days "
+     "of control data. The worked example carries tab 8's own realised benefit so this "
+     "workbook agrees with itself; replace it with yours, from whichever tab or source "
+     "produced it."),
+    # The cost basis is where this programme's own worked project went wrong, and
+    # this tab was quietly instructing the same mistake: D6 invites you to reduce
+    # a REOPEN rate, and D8 priced whatever you removed at the cost of an average
+    # contact. A reopen is not an average contact — it carries the investigation
+    # and the redo — and the two rates are 5.7x apart in the pack's own example.
+    ("19-black-belt-calculators.xlsx", "8 Benefit — avoided contacts", "D8",
+     "From Finance: total support cost divided by total contacts, with an agreed definition "
+     "of 'total support cost'. CAREFUL when what you are removing is a REOPEN, an escalation "
+     "or a repeat rather than a first contact: cost to serve an average contact is the wrong "
+     "price for rework, because rework carries the investigation and the redo on top of the "
+     "handling, and Finance usually books it far higher. This programme's worked project uses "
+     "$6.80 to serve a contact and $38.60 for a reopened one — 5.7x apart, and pricing reopens "
+     "at $6.80 is the defect its charter records. Ask Finance which of the two applies to the "
+     "thing you are actually removing, and make sure the rate above and the volume in B5 are "
+     "measured on the SAME population: a rate from one and a volume from a wider one is how a "
+     "benefit case comes out ten times its arithmetic maximum."),
     ("19-black-belt-calculators.xlsx", "9 ROI and payback", "A17",
      "Under 18 months payback is generally an easy sell. Net present value is calculated across all the years "
      "you model; the three rows above show the first three. And set year-one expectations honestly: a Black Belt "
