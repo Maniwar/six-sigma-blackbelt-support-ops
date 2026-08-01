@@ -625,6 +625,28 @@ def test_sync() -> None:
         check(body.count("*") > 6,
               f"{md.name}: carries a worked example", "no italic example entries found")
 
+    # Discoverability. A single-file page with no metadata is invisible to both
+    # search engines and the AI assistants people increasingly ask first.
+    import json as _json
+    for tag in ('name="description"', 'rel="canonical"', 'property="og:title"',
+                'name="twitter:card"', 'name="robots"', 'application/ld+json'):
+        check(tag in src, f"page carries {tag}")
+    m = re.search(r'<script type="application/ld\+json">(.*?)</script>', src, re.S)
+    check(bool(m), "structured data is present")
+    if m:
+        try:
+            data = _json.loads(m.group(1))
+            types = [x.get("@type") for x in data.get("@graph", [])]
+        except Exception:                                        # noqa: BLE001
+            types = []
+        check("Course" in types, "structured data declares a Course", str(types))
+        check("FAQPage" in types, "structured data carries an FAQ", str(types))
+        faq = next((x for x in data.get("@graph", []) if x.get("@type") == "FAQPage"), {})
+        check(len(faq.get("mainEntity", [])) >= 5,
+              "the FAQ answers at least five real questions")
+    check((ROOT / "docs" / "robots.txt").exists(), "docs/robots.txt exists")
+    check((ROOT / "docs" / "sitemap.xml").exists(), "docs/sitemap.xml exists")
+
     for dead in ("parseCSV", "renderCSV"):
         check(dead not in src, f"dead {dead}() removed")
     check("function esc2(" in src, "esc2() retained (renderMD depends on it)")

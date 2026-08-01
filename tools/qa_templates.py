@@ -210,6 +210,27 @@ def audit_charts(path: Path, wb) -> int:
                         fail(book, "CHARTS",
                              f"{label} series {si} has no name but the chart has a legend — "
                              "Excel will label it 'Series1'")
+            # Does the chart sit on top of content? A chart anchored over the
+            # block it reads from hides the very table it is explaining, and
+            # nothing in the file records the collision — you only see it when
+            # you open the sheet.
+            anc = getattr(ch, "anchor", None)
+            frm = getattr(anc, "_from", None)
+            if frm is not None:
+                c0, r0 = frm.col, frm.row              # zero-based
+                # roughly 0.65 cm per column, 0.5 cm per row at default sizes
+                c1 = c0 + int((ch.width or 15) / 0.65)
+                r1 = r0 + int((ch.height or 7.5) / 0.5)
+                covered = []
+                for rr in range(r0 + 1, min(r1 + 1, ws.max_row) + 1):
+                    for cc in range(c0 + 1, min(c1 + 1, ws.max_column) + 1):
+                        cell = ws.cell(row=rr, column=cc)
+                        if cell.value not in (None, "") and cell.__class__.__name__ != "MergedCell":
+                            covered.append(cell.coordinate)
+                if len(covered) > 4:
+                    fail(book, "CHARTS",
+                         f"{label} is anchored over {len(covered)} populated cells "
+                         f"(e.g. {covered[:4]}) — it hides the data it explains")
             if ch.height and ch.height < 5:
                 warn(book, "CHARTS", f"{label} is only {ch.height}cm tall — labels will collide")
     # Per-SHEET, not just per-workbook. A workbook passed the "has charts" rule

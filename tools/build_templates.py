@@ -940,8 +940,8 @@ def pareto():
         for col, f, fmt in [
             (8, f'=IFERROR(INDEX($A$5:$A$24,MATCH(G{r},$D$5:$D$24,0)),"")', "General"),
             (9, f'=IFERROR(INDEX($B$5:$B$24,MATCH(G{r},$D$5:$D$24,0)),"")', "#,##0"),
-            (10, f'=IF(I{r}="","",SUM($I$5:I{r})/SUM($I$5:$I$24))', "0.0%"),
-            (11, f'=IF(I{r}="","",0.8)', "0%"),
+            (10, f'=IF(I{r}="",NA(),SUM($I$5:I{r})/SUM($I$5:$I$24))', "0.0%"),
+            (11, f'=IF(I{r}="",NA(),0.8)', "0%"),
         ]:
             c = mark(ws, r, col, "calc"); c.value = f; c.number_format = fmt
         if i < len(data):
@@ -995,7 +995,8 @@ def pareto():
     line.y_axis.title = "Cumulative share"
     line.y_axis.crosses = "max"
     pc += line
-    ws.add_chart(pc, "G4")
+    pc.height, pc.width = 11, 26
+    ws.add_chart(pc, "N3")
     ws.merge_cells("A31:E31")
     ws.cell(row=31, column=1, value="A Pareto inherits the quality of your categories. Disposition codes are chosen "
             "by agents under time pressure, so a Pareto of them ranks your data-entry habits as much as your problems. "
