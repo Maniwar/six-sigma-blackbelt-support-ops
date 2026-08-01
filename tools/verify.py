@@ -522,6 +522,7 @@ def test_sync() -> None:
             check(entry.get("b64") == want, f"{entry['file']}: embedded base64 matches the file on disk")
             _check_preview(entry, path)
             _check_preview_charts(entry, path)
+            _check_preview_generated(entry, path)
         else:
             check(entry.get("content") == path.read_text(encoding="utf-8"),
                   f"{entry['file']}: embedded markdown matches the file on disk")
@@ -653,6 +654,24 @@ def test_sync() -> None:
     check("function esc2(" in src, "esc2() retained (renderMD depends on it)")
     check(src.count("-year net<") == 0 and "'-year NPV</th>" in src,
           "wizard sensitivity column is labelled NPV, not 'net'")
+
+
+def _check_preview_generated(entry: dict, path: Path) -> None:
+    """A generated preview in the page must be the one the builder generated.
+
+    tools/build_templates.py rebuilds these from the workbook on every run and
+    writes them to previews.json — and for a long time nothing carried them into
+    the page, so any preview change that was not a plain text edit was written
+    to disk and silently dropped. Nothing compared the two, so nothing said so.
+    """
+    from sync_html import GENERATED, RE_CHARTS
+    want = GENERATED.get(path.name)
+    if want is None:
+        return
+    got = RE_CHARTS.sub("", entry["preview"])
+    check(got == want,
+          f"{path.name}: the page carries the preview the builder generated",
+          f"differs by {abs(len(got) - len(want))} chars — run tools/sync_html.py")
 
 
 def _check_preview_charts(entry: dict, path: Path) -> None:

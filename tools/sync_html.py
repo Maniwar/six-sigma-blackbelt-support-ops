@@ -54,6 +54,13 @@ RE_SHEET = re.compile(
 # markup reads `</figure><figure`, so the non-greedy match cannot stop early.
 RE_CHARTS = re.compile(r'<div class="xcharts">.*?</figure></div>', re.S)
 RE_SHEET_END = re.compile(r"</table></div>")
+
+# Previews that tools/build_templates.py generates from the workbook. For these
+# the generated markup IS the preview; for the older workbooks there is no
+# generator and the shipped markup is patched in place instead.
+_PREVIEWS = ROOT / "tools" / "previews.json"
+GENERATED: dict[str, str] = (
+    json.loads(_PREVIEWS.read_text(encoding="utf-8")) if _PREVIEWS.exists() else {})
 RE_ROW = re.compile(r"(<tr>)(.*?)(</tr>)", re.S)
 RE_TD = re.compile(r"<td([^>]*)>(.*?)</td>", re.S)
 
@@ -215,7 +222,7 @@ def main() -> int:
     src = HTML.read_text(encoding="utf-8")
     start, end, tpls = extract_tpls(src)
     stats = {"title_changed": 0, "title_added": 0, "text_changed": 0, "b64": 0,
-             "md": 0, "charts": 0}
+             "md": 0, "charts": 0, "regenerated": 0}
 
     for slug, entry in tpls.items():
         path = TEMPLATES / entry["file"]
@@ -230,8 +237,19 @@ def main() -> int:
             # to find the end of a sheet, and a chart block sitting between
             # those two tags makes that walk run on into the next sheet.
             bare = RE_CHARTS.sub("", entry["preview"])
-            entry["preview"] = inject_charts(
-                rebuild_preview(bare, path, stats), path, stats)
+            if entry["file"] in GENERATED:
+                # tools/build_templates.py regenerates these previews from the
+                # workbook itself on every build — and until now nothing carried
+                # the result into the page, so a preview could only ever be
+                # updated in the cells rebuild_preview happens to rewrite. Any
+                # new row, column or computed value was written to
+                # previews.json and then quietly dropped. Take it wholesale.
+                if bare != GENERATED[entry["file"]]:
+                    stats["regenerated"] += 1
+                bare = GENERATED[entry["file"]]
+            else:
+                bare = rebuild_preview(bare, path, stats)
+            entry["preview"] = inject_charts(bare, path, stats)
         else:
             text = path.read_text(encoding="utf-8")
             if text != entry.get("content"):
@@ -250,6 +268,7 @@ def main() -> int:
     print(f"  markdown re-embedded  : {stats['md']}")
     print(f"  tooltips rewritten    : {stats['title_changed']} (added {stats['title_added']})")
     print(f"  preview text updated  : {stats['text_changed']}")
+    print(f"  previews regenerated  : {stats['regenerated']}")
     print(f"  charts drawn in preview: {stats['charts']}"
           f" (cache pruned {chartsvg.prune_cache(sorted(TEMPLATES.glob('*.xlsx')))})")
     print(f"  docs/index.html synced ({DOCS.stat().st_size:,} bytes)")

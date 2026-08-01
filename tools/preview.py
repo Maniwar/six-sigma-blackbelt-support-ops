@@ -15,6 +15,10 @@ import html as H
 
 from openpyxl.utils import get_column_letter, range_boundaries
 
+# A recalculation can legitimately produce these — NA() is how a chart is told
+# to leave a gap — and printing "#N/A" into a preview cell helps nobody.
+ERRORS = ("#REF!", "#VALUE!", "#DIV/0!", "#NAME?", "#N/A", "#NULL!", "#NUM!")
+
 # Fill colour -> preview class. These are the same colours the legend explains.
 FILL_CLASS = {
     "FF151B24": "x-title",
@@ -27,14 +31,13 @@ FILL_CLASS = {
 }
 
 
-def _fmt(cell):
-    """Render a cell value the way the sheet would show it."""
-    v = cell.value
+def fmt_value(v, number_format: str | None) -> str:
+    """Render a value the way a cell with this number format would show it."""
     if v is None:
         return ""
     if isinstance(v, str):
-        return v
-    nf = (cell.number_format or "").lower()
+        return "" if v.strip() in ERRORS else v
+    nf = (number_format or "").lower()
     try:
         if "%" in nf:
             digits = 1 if ".0" in nf else 0
@@ -52,6 +55,31 @@ def _fmt(cell):
     except (TypeError, ValueError):
         pass
     return str(v)
+
+
+def _fmt(cell):
+    """Render a cell value the way the sheet would show it."""
+    return fmt_value(cell.value, cell.number_format)
+
+
+def shown_from(wb, cells: dict) -> dict:
+    """{(sheet, coord): display text} for every formula cell, from real results.
+
+    The preview leaves a formula cell blank unless something supplies its
+    displayed value, and that something used to be a dict maintained by hand.
+    Anything added after the fact showed as an empty blue box with a little
+    "fx" on it — a declared column with nothing in it, which is the exact
+    defect the EXAMPLE layer fails a workbook for. These come from a real
+    recalculation instead, so a new formula cannot ship blank.
+    """
+    out = {}
+    for ws in wb.worksheets:
+        for row in ws.iter_rows():
+            for c in row:
+                if isinstance(c.value, str) and c.value.startswith("="):
+                    out[(ws.title, c.coordinate)] = fmt_value(
+                        cells.get((ws.title, c.row, c.column)), c.number_format)
+    return out
 
 
 def _edge_style(cell) -> str:

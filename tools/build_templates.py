@@ -28,7 +28,8 @@ from openpyxl.chart.series import SeriesLabel
 from openpyxl.comments import Comment
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from preview import workbook_html  # noqa: E402
+import chartsvg  # noqa: E402
+from preview import shown_from, workbook_html  # noqa: E402
 from xlpolish import polish_workbook  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -2553,8 +2554,17 @@ def main() -> int:
         polish_workbook(wb)
         path = TEMPLATES / name
         wb.save(path)
-        # regenerate from the saved file so the preview describes what ships
-        previews[name] = workbook_html(load_workbook(path), SHOWN)
+        # regenerate from the saved file so the preview describes what ships,
+        # with every formula's real result rather than a value remembered by
+        # hand in SHOWN — which only ever covered the cells someone thought to
+        # add to it, and left the rest as empty blue boxes.
+        saved = load_workbook(path)
+        shown = dict(SHOWN)
+        try:
+            shown.update(shown_from(saved, chartsvg.values_for(path)))
+        except Exception as exc:                                 # noqa: BLE001
+            print(f"    (no recalculation: {exc}; falling back to SHOWN)")
+        previews[name] = workbook_html(saved, shown)
         print(f"  built {name:34s} {path.stat().st_size:>7,} bytes  "
               f"{len(previews[name]):>7,} chars of preview")
     (ROOT / "tools" / "previews.json").write_text(json.dumps(previews), encoding="utf-8")
