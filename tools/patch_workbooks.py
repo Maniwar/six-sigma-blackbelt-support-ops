@@ -137,10 +137,10 @@ SINGLE: list[tuple[str, str, str, str]] = [
     # -- 17 control plan: same treatment, and E32 now references E30/E29 rather
     #    than duplicating the whole SUMPRODUCT.
     ("17-control-plan.xlsx", "Control plan", "E30",
-     '=SUMPRODUCT((A10:A26<>"")*((LEFT(P10:P26&" ",1)="1")+(LEFT(P10:P26&" ",1)="2")'
-     '+(LEFT(P10:P26&" ",1)="3")))'),
+     '=SUMPRODUCT((A10:A27<>"")*((LEFT(P10:P27&" ",1)="1")+(LEFT(P10:P27&" ",1)="2")'
+     '+(LEFT(P10:P27&" ",1)="3")))'),
     ("17-control-plan.xlsx", "Control plan", "E31",
-     '=SUMPRODUCT((A10:A26<>"")*((LEFT(P10:P26&" ",1)="5")+(LEFT(P10:P26&" ",1)="6")))'),
+     '=SUMPRODUCT((A10:A27<>"")*((LEFT(P10:P27&" ",1)="5")+(LEFT(P10:P27&" ",1)="6")))'),
     ("17-control-plan.xlsx", "Control plan", "E32", '=IFERROR(E30/E29,"")'),
 
     # -- 05 data collection: a target rate at or above 100% produced a negative

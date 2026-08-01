@@ -372,6 +372,42 @@ def test_numeric_other() -> None:
               "the alpha line spans the log, not just the rows already filled in",
               f"drawn on {len(drawn)} of 25 rows")
 
+    # A chart must reconcile to the sheet it sits on.
+    src = TEMPLATES / "27-control-charts.xlsx"
+    sol = _engine(src).calculate()
+    lo = float(_read(sol, src.name, "t and g (rare events)", "K14"))
+    hi = float(_read(sol, src.name, "t and g (rare events)", "J14"))
+    cl = float(_read(sol, src.name, "t and g (rare events)", "L14"))
+    check(lo < cl < hi, "t-chart: the centre line sits inside its own limits",
+          f"limits {lo:.1f}..{hi:.1f}, centre {cl:.1f}")
+    # the limits are built on the transformed scale, so the centre of that
+    # construction is the back-transformed mean, not the mean of the raw gaps
+    check(not approx(cl, _read(sol, src.name, "t and g (rare events)", "B6"), 1e-3),
+          "t-chart: the centre line is the back-transformed centre, not the arithmetic mean")
+    ucl = _read(sol, src.name, "t and g (rare events)", "M14")
+    check(approx(ucl, _read(sol, src.name, "t and g (rare events)", "B11")),
+          "g-chart: the UCL the sheet computes is the UCL the chart plots", repr(ucl))
+
+    # Kano's chart has to account for every class its own classifier returns
+    src = TEMPLATES / "23-kano-analysis.xlsx"
+    sol = _engine(src).calculate()
+    counts = [float(_read(sol, src.name, "Kano analysis", f"D{28 + i}")) for i in range(6)]
+    check(sum(counts) == 8,
+          "Kano: the summary accounts for every classified row",
+          f"classes {counts} sum to {sum(counts)}, example has 8 rows")
+    check(counts[4] == 1, "Kano: a Reverse classification is counted, not computed and dropped",
+          f"Reverse count {counts[4]}")
+
+    # the control plan's own durability score and its chart must count the
+    # same rows, or a control appears on one and not the other
+    src = TEMPLATES / "17-control-plan.xlsx"
+    sol = _engine(src).calculate()
+    total = _read(sol, src.name, "Control plan", "E29")
+    feed = sum(float(_read(sol, src.name, "Control plan", f"B{r}")) for r in range(39, 45))
+    check(approx(total, feed),
+          "control plan: the durability score and the chart count the same rows",
+          f"summary {total!r} vs chart feed {feed}")
+
     # VSM: "% of lead time" must divide by lead time, not by waiting time.
     src = TEMPLATES / "10-value-stream-map.xlsx"
     with tempfile.TemporaryDirectory() as td:

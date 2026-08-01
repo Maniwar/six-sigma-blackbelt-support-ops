@@ -573,30 +573,33 @@ def stakeholder():
 
     # Without the dividers this is a scatter of two columns you already have.
     # With them it is the map: the top-left quadrant is who can stop you.
+    # Two endpoints each, pinned to the axis bounds. Drawing the dividers FROM
+    # the stakeholder data made each line span only the range the current data
+    # happened to occupy, and follow row order to get there — so the "high
+    # influence" line stopped at whichever support scores existed instead of
+    # crossing the plot.
     n = len(STAKEHOLDERS)
-    for i in range(n):
-        r = 5 + i
-        ws.cell(row=r, column=9, value=3.5).font = F_NOTE          # influence split
-        ws.cell(row=r, column=10, value="=D%d" % r).font = F_NOTE  # support, for the x
-        ws.cell(row=r, column=11, value=0).font = F_NOTE           # support split
-        ws.cell(row=r, column=12, value="=C%d" % r).font = F_NOTE  # influence, for the y
-        SHOWN[("Stakeholders", f"J{r}")] = str(STAKEHOLDERS[i][3])
-        SHOWN[("Stakeholders", f"L{r}")] = str(STAKEHOLDERS[i][2])
+    for col, vals in ((9, (-2.5, 2.5)), (10, (3.5, 3.5)),      # influence threshold
+                      (11, (0, 0)), (12, (0, 6))):             # support threshold
+        for k, v in enumerate(vals):
+            c = ws.cell(row=5 + k, column=col, value=v)
+            c.font = F_NOTE
+            SHOWN[("Stakeholders", f"{get_column_letter(col)}{5 + k}")] = str(v)
     ws.cell(row=4, column=9, value="quadrant dividers — the chart reads these").font = F_NOTE
     for col in "IJKL":
         ws.column_dimensions[col].width = 6      # narrow, not hidden: a chart
                                                  # will not plot a hidden cell
 
-    hline = Series(Reference(ws, min_col=9, min_row=5, max_row=4 + n),
-                   xvalues=Reference(ws, min_col=10, min_row=5, max_row=4 + n),
+    hline = Series(Reference(ws, min_col=10, min_row=5, max_row=6),
+                   xvalues=Reference(ws, min_col=9, min_row=5, max_row=6),
                    title="High influence threshold")
     hline.marker = Marker(symbol="none")
     hline.graphicalProperties.line.solidFill = "C0392B"
     hline.graphicalProperties.line.dashStyle = "dash"
     sc.series.append(hline)
 
-    vline = Series(Reference(ws, min_col=12, min_row=5, max_row=4 + n),
-                   xvalues=Reference(ws, min_col=11, min_row=5, max_row=4 + n),
+    vline = Series(Reference(ws, min_col=12, min_row=5, max_row=6),
+                   xvalues=Reference(ws, min_col=11, min_row=5, max_row=6),
                    title="Opposed / supportive threshold")
     vline.marker = Marker(symbol="none")
     vline.graphicalProperties.line.solidFill = "C0392B"
@@ -727,22 +730,27 @@ def kano():
     ws.add_data_validation(dv); dv.add("B7:C25")
     band(ws, 27, "WHERE YOUR EFFORT SHOULD GO", 6)
     for i, (label, cat, shown) in enumerate([
-            ("Must-haves — table stakes", "Must-have", "0"),
-            ("Performance — scale with investment", "Performance", "1"),
-            ("Delighters — differentiators", "Delighter", "0"),
-            ("Indifferent — stop spending here", "Indifferent", "0")], start=28):
+            ("Must-haves — table stakes", "Must-have", "2"),
+            ("Performance — scale with investment", "Performance", "2"),
+            ("Delighters — differentiators", "Delighter", "2"),
+            ("Indifferent — stop spending here", "Indifferent", "1"),
+            ("Reverse — you are actively annoying people", "Reverse", "1"),
+            ("Questionable — the answers contradict; re-ask", "Questionable", "0")], start=28):
         ws.cell(row=i, column=1, value=label).font = F_B
         ws.merge_cells(start_row=i, start_column=1, end_row=i, end_column=3)
         mark(ws, i, 4, "calc").value = f'=COUNTIF($D$7:$D$25,"{cat}")'
         SHOWN[("Kano analysis", f"D{i}")] = shown
-    # red = you get no credit for it and all the blame without it;
-    # blue = worth scaling; green = worth a little; grey = worth nothing
+    # The classifier returns six classes; the summary counted four. A feature
+    # classified Reverse — you are actively annoying people — was computed and
+    # then counted nowhere, and the chart could not reconcile to the table
+    # above it. Colour moves with it: CHART-QA says red means a breach, and
+    # Reverse is the only breach here, so Must-have takes amber.
     bar(ws, "Where your requirements fall — and which ones are worth money",
-        Reference(ws, min_col=1, min_row=28, max_row=31),
-        Reference(ws, min_col=4, min_row=28, max_row=31), "G7",
-        colours=["C0392B", "1F4E79", "3F8F5A", "9AA4B2"])
-    ws.merge_cells("A33:F33")
-    ws.cell(row=33, column=1, value="Speed in support is usually a must-have: being twice as fast wins you nothing "
+        Reference(ws, min_col=1, min_row=28, max_row=33),
+        Reference(ws, min_col=4, min_row=28, max_row=33), "G7",
+        colours=["B45309", "1F4E79", "3F8F5A", "9AA4B2", "C0392B", "6B4FA0"])
+    ws.merge_cells("A35:F35")
+    ws.cell(row=35, column=1, value="Speed in support is usually a must-have: being twice as fast wins you nothing "
             "once you are fast enough, while being slow loses you everything. Spending your improvement budget on a "
             "must-have that is already met is the most common way to move a metric and change nothing.").font = F_NOTE
     howto(wb, LEGEND + [
@@ -1597,7 +1605,10 @@ def control_charts():
     widths(ws, [16, 15, 15, 13, 13, 13, 13, 26])
     _spc_stats(ws, [
         ("Events recorded", "=COUNT(B14:B37)", "0", "Ten events is a workable minimum."),
-        ("Average days between (t-chart)", "=AVERAGE(B14:B37)", "#,##0.00", "Rising over time is the improvement you want."),
+        ("Average days between (t-chart)", "=AVERAGE(B14:B37)", "#,##0.00",
+         "Rising over time is the improvement you want. This is the arithmetic mean and is deliberately "
+         "NOT the chart's centre line — these gaps are right-skewed, so the mean sits above the middle "
+         "of the limits."),
         ("Transformed mean", "=AVERAGE(C14:C37)", "#,##0.0000",
          "Gaps between rare events are exponential, not normal. The 1/3.6 power (Nelson) makes them near-normal so ordinary limits apply."),
         ("Transformed MR-bar", "=AVERAGE(D15:D37)", "#,##0.0000", ""),
@@ -1622,6 +1633,13 @@ def control_charts():
         cl = mark(ws, r, 5, "calc"); cl.value = "=IF(B%d=\"\",\"\",$B$7)" % r; cl.number_format = "0.0000"
         v = mark(ws, r, 6, "in" if i else "ex"); v.value = vol[i]; v.number_format = "#,##0"
         gcl = mark(ws, r, 7, "calc"); gcl.value = "=IF(F%d=\"\",\"\",$B$10)" % r; gcl.number_format = "#,##0"
+        # B11 computed a g-chart UCL and nothing ever plotted it
+        gu = ws.cell(row=r, column=13); gu.value = "=IF(F%d=\"\",\"\",$B$11)" % r
+        gu.number_format = "#,##0"; gu.font = F_NOTE
+        gm = ws.cell(row=r, column=14); gm.value = "=IF(F%d=\"\",\"\",MEDIAN($F$14:$F$37))" % r
+        gm.number_format = "#,##0"; gm.font = F_NOTE
+        SHOWN[("t and g (rare events)", "M%d" % r)] = ""
+        SHOWN[("t and g (rare events)", "N%d" % r)] = ""
         sg = mark(ws, r, 8, "calc")
         sg.value = ("=IF(B{r}=\"\",\"\",IF(C{r}>$B$7+2.66*$B$8,\"Longer gap than expected — improvement\","
                     "IF(C{r}<$B$7-2.66*$B$8,\"Shorter gap than expected — investigate\",\"\")))").format(r=r)
@@ -1630,7 +1648,12 @@ def control_charts():
         r = 14 + i
         ws.cell(row=r, column=10, value="=IF(B%d=\"\",\"\",($B$7+2.66*$B$8)^3.6)" % r).number_format = "#,##0.0"
         ws.cell(row=r, column=11, value="=IF(B%d=\"\",\"\",MAX(0,$B$7-2.66*$B$8)^3.6)" % r).number_format = "#,##0.0"
-        ws.cell(row=r, column=12, value="=IF(B%d=\"\",\"\",$B$6)" % r).number_format = "#,##0.0"
+        # The limits are (transformed mean ± 2.66 MR)^3.6, so the centre of
+        # that construction is the back-transformed mean, not the arithmetic
+        # mean of the raw gaps. Gaps between rare events are right-skewed: the
+        # arithmetic mean sits above the centre of its own limits, and the
+        # line was drawn two days off the middle of the band it sat in.
+        ws.cell(row=r, column=12, value="=IF(B%d=\"\",\"\",$B$7^3.6)" % r).number_format = "#,##0.0"
     _tt = [g ** (1 / 3.6) for g in gaps]
     _tm, _tmr = sum(_tt) / float(len(_tt)), _mrbar(_tt)
     _gm = sum(vol) / float(len(vol))
@@ -1648,14 +1671,20 @@ def control_charts():
     cats = Reference(ws, min_col=1, min_row=14, max_row=37)
     spc_chart(ws, "t-chart — days between incidents. Rising is good.", cats, [
         (Reference(ws, min_col=2, min_row=14, max_row=37), "Days between", "1F4E79", False, True),
-        (Reference(ws, min_col=12, min_row=14, max_row=37), "Average", "3F8F5A", False, False),
+        (Reference(ws, min_col=12, min_row=14, max_row=37),
+         "Centre line (back-transformed)", "3F8F5A", False, False),
         (Reference(ws, min_col=10, min_row=14, max_row=37), "UCL", "C0392B", True, False),
         (Reference(ws, min_col=11, min_row=14, max_row=37), "LCL", "C0392B", True, False),
     ], "N4", ylim=bounds(gaps, [0, (_tm + 2.66 * _tmr) ** 3.6]))
+    ws.cell(row=13, column=13, value="g UCL").font = F_NOTE
+    ws.cell(row=13, column=14, value="g median").font = F_NOTE
     spc_chart(ws, "g-chart — contacts handled between incidents", cats, [
         (Reference(ws, min_col=6, min_row=14, max_row=37), "Contacts between", "6B4FA0", False, True),
-        (Reference(ws, min_col=7, min_row=14, max_row=37), "Average", "3F8F5A", False, False),
-    ], "N22", height=7, ylim=bounds(vol, [0]))
+        (Reference(ws, min_col=7, min_row=14, max_row=37), "Mean", "3F8F5A", False, False),
+        (Reference(ws, min_col=14, min_row=14, max_row=37), "Median", "B45309", False, False),
+        (Reference(ws, min_col=13, min_row=14, max_row=37), "UCL", "C0392B", True, False),
+    ], "Q22", height=7,
+        ylim=bounds(vol, [0, sum(vol) / len(vol) + 3 * ((sum(vol) / len(vol)) ** 2) ** 0.5]))
 
     # ---- picker ---------------------------------------------------------
     ws = wb.create_sheet("Pick your chart", 0)

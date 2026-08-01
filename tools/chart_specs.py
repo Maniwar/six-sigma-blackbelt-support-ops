@@ -342,7 +342,15 @@ def fmea(wb) -> int:
     sh = Sheet(ws)
     # The method is "work the highest RPN first". Plotting in entry order buries
     # the worst failure mode wherever it happened to be typed.
-    blk = ranked_block(sh, 11, 36, sort_col=10, carry=[2, 10, 18], dest=21,
+    # A row nobody has re-scored yet had a blank "after" bar, which reads as
+    # zero residual risk — the chart claiming credit for work that has not
+    # happened. An un-re-scored row keeps its original RPN instead.
+    sh.put(10, 19, "RPN after (no re-score = no reduction)", bold=True)
+    for r in range(11, 37):
+        sh.put(r, 19,
+               f'=IF($J{r}="","",IF(COUNT($O{r},$P{r},$Q{r})=3,$R{r},$J{r}))',
+               fmt="#,##0")
+    blk = ranked_block(sh, 11, 36, sort_col=10, carry=[2, 10, 19], dest=21,
                        label=["Failure mode", "RPN now", "RPN after"],
                        fmts={1: "#,##0", 2: "#,##0"})
     # The chart drew its action line at 100 while the sheet's own summary
@@ -374,7 +382,7 @@ def fmea(wb) -> int:
     ch = _grouped(ws, "Risk priority number — ranked, and did the action reduce it?",
                   blk["cats"],
                   [(blk["vals"][0], "RPN now", RED),
-                   (blk["vals"][1], "RPN after", GREEN)],
+                   (blk["vals"][1], "RPN after (no re-score = no reduction)", GREEN)],
                   "AA10", height=10, width=22)
     _overlay(ch, ws, Reference(ws, min_col=25, min_row=11, max_row=36),
              "Act above this threshold", AMBER)
@@ -442,6 +450,9 @@ def control_plan(wb) -> int:
     for i, lvl in enumerate(levels):
         r = r0 + 2 + i
         sh.put(r, 1, lvl)
+        # The sheet's own durability score counted P10:P26 while this counted
+        # P10:P27, so a control in the last row appeared on the chart and was
+        # invisible to the score beside it. Both run to 27 now.
         sh.put(r, 2, f'=COUNTIF($P$10:$P$27,LEFT(A{r},1)&"*")', fmt="0")
     _bar(sh.ws, "Controls by level — lower is more durable",
          Reference(sh.ws, min_col=1, min_row=r0 + 2, max_row=r0 + 7),
