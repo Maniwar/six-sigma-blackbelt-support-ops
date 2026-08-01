@@ -1219,8 +1219,19 @@ def spc_chart(ws, title_, cats, series_defs, anchor, y_title="", pct=False,
         ch.y_axis.title = y_title      # setting this to "" writes the text "None"
     ch.x_axis.delete = False
     ch.y_axis.delete = False
-    if ylim and ylim[0] is not None:
-        ch.y_axis.scaling.min, ch.y_axis.scaling.max = ylim
+    # Deliberately NOT setting explicit bounds any more. OOXML axis bounds are
+    # static values — they cannot follow a formula — so framing the axis on the
+    # shipped example guarantees the chart is wrong for anyone whose data has a
+    # different magnitude. Tripling the inputs put 95 of 97 points outside the
+    # frame, on a tab whose How-to says nothing else needs touching.
+    #
+    # The crushed-axis problem this was solving is real but smaller: it comes
+    # from a renderer choosing a zero-anchored range for data that sits well
+    # above zero. Every one of these charts plots its control limits as series,
+    # so auto-scaling brackets the limits and the data together and lands in
+    # very nearly the same place — and, unlike a constant, it stays right when
+    # the user pastes their own numbers.
+    _ = ylim
     if pct:
         ch.y_axis.numFmt = "0.0%"
     for ref, name, colour in flags:

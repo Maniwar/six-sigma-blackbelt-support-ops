@@ -530,6 +530,8 @@ def calculators(wb) -> int:
                colours=[RED, AMBER, GREEN, BLUE], fmt="0.00", height=8, width=16)
     # kappa runs 0 to 1 by definition; letting it auto-scale to 0.55-0.95 makes
     # a 0.72 look like it is nearly at the top of the scale
+    # 0..1 is the DEFINITION of kappa, not a framing of this example, so this
+    # one bound is safe to fix — it is true for every possible input.
     kch.y_axis.scaling.min, kch.y_axis.scaling.max = 0, 1
     changed += sh.changed
 

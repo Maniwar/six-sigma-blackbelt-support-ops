@@ -221,12 +221,23 @@ def grade(book: str, ch: dict, wb) -> dict:
         val_ax = next((a for a in ch["axes"] if a["kind"] == "valAx"), None)
         vals = [c.value for s in sers for c in _cells(wb, s["ref"])
                 if isinstance(c.value, (int, float))]
-        if vals and val_ax is not None and val_ax["min"] is None:
-            lo, hi = min(vals), max(vals)
-            if lo > 0 and (hi - lo) < lo:
+        # This rule used to be the opposite: it demanded explicit bounds when
+        # the data sat well above zero. That was wrong, and it is the clearest
+        # example of a rubric encoding a rule that is right for the shipped
+        # example and wrong for the template. OOXML axis bounds are static
+        # values — they cannot follow a formula — so framing the axis on my
+        # numbers guarantees the chart is wrong for anyone whose data has a
+        # different magnitude. Tripling the inputs put 95 of 97 points outside
+        # the frame. A static bound is now the defect, unless it is a bound
+        # that is true by definition for every possible input (kappa is 0..1).
+        DEFINITIONAL = {(0.0, 1.0)}
+        if val_ax is not None and val_ax["min"] is not None:
+            pair = (float(val_ax["min"]), float(val_ax["max"] or 0))
+            if pair not in DEFINITIONAL:
                 readable = False
-                notes.append("no axis bounds: the data sits in a band well above zero "
-                             "and will be squashed against the top")
+                notes.append(f"axis pinned to {pair[0]:,.4g}..{pair[1]:,.4g}, which was "
+                             "computed from the shipped example — paste data of a "
+                             "different magnitude and the plot frames nothing")
         cat_ax = next((a for a in ch["axes"] if a["kind"] == "catAx"), None)
         skip = int(cat_ax["skip"]) if cat_ax and cat_ax["skip"] else 1
         if longest > 18 and skip < 2:
