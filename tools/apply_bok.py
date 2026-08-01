@@ -81,7 +81,7 @@ def coverage_section() -> str:
 
 def main() -> int:
     src = HTML.read_text(encoding="utf-8")
-    blocks = re.split(r'(?=<details class="mod">)', src)
+    blocks = re.split(r'(?=<details class="mod"[ >])', src)
     out, written, added = [], 0, 0
     for b in blocks:
         m = RE_MOD.search(b)

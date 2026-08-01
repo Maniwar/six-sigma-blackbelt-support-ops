@@ -107,10 +107,18 @@ def test_bok() -> None:
     # The line on the page is rendered from MODULE_MAP, so drift between the two
     # means somebody typed a mapping by hand again — which is the habit that put
     # six nonexistent sections on the page in the first place.
-    for block in re.split(r'(?=<details class="mod">)', src):
+    # Counted, because this loop silently stopped covering 25 of the 26 modules
+    # once they gained id attributes: the split pattern was the literal
+    # `<details class="mod">`, which after that matched nothing, so the whole
+    # file arrived as one block, the first module id won, and every other
+    # module's line went unchecked. A loop that can quietly examine one item
+    # instead of twenty-six is the same failure as a check that cannot fail.
+    seen = 0
+    for block in re.split(r'(?=<details class="mod"[ >])', src):
         m = re.search(r'<span class="mid">(M\d+)</span>', block)
         if not m:
             continue
+        seen += 1
         want = render(m.group(1))
         got = re.search(r"<h5>BOK mapping</h5>\s*<p>(.*?)</p>", block, re.S)
         check(want is not None, f"{m.group(1)} is declared in MODULE_MAP",
@@ -123,6 +131,10 @@ def test_bok() -> None:
               f"{want[:60]!r} — run tools/apply_bok.py" if got else
               "the module carries no BOK mapping at all")
 
+    check(seen == len(MODULE_MAP), "the BOK check walked every module",
+          f"it examined {seen} of {len(MODULE_MAP)} — the module-block split has "
+          "stopped matching, so most modules are going unchecked")
+
     # The headline coverage claim, checked against what the modules actually
     # map to. It read "the full ASQ CSSBB and IASSC bodies of knowledge" in six
     # places — the lede, three meta descriptions and two JSON-LD blocks — while
@@ -132,12 +144,17 @@ def test_bok() -> None:
     asq_cov, iassc_cov = _coverage()
     a_have = sum(1 for v in asq_cov.values() if v)
     i_have = sum(1 for v in iassc_cov.values() if v)
-    claim = f"{a_have} of the {len(asq_cov)} ASQ CSSBB sections"
+    full = a_have == len(asq_cov)
+    claim = ("the complete ASQ CSSBB" if full
+             else f"{a_have} of the {len(asq_cov)} ASQ CSSBB sections")
     check(claim in src, "the coverage claim matches the modules",
-          f"the page should say {claim!r}; if the modules changed, the claim and "
-          "the coverage table both have to move with them")
+          f"the page should say {claim!r}; the word 'complete' is only allowed "
+          f"while it is true, and {a_have} of {len(asq_cov)} sections are covered")
+    check(full or "complete ASQ" not in src,
+          "the page claims complete ASQ coverage only while it has it",
+          f"{a_have} of {len(asq_cov)} ASQ sections are covered")
     check(i_have == len(iassc_cov) or "complete IASSC" not in src,
-          "the page only claims a complete IASSC mapping while it has one",
+          "the page claims complete IASSC coverage only while it has it",
           f"{i_have} of {len(iassc_cov)} IASSC sections are covered")
 
     # Every chip in the coverage table is a link into the module it names. One
