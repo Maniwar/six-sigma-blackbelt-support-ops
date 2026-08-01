@@ -83,10 +83,10 @@
 | Stratum | n | Metric value | Share of total gap |
 |---|---|---|---|
 | *Raised before 17:00, under $50 — agent approves it, catches the same night's 02:00 batch* | *402* | *7.5% (30 reopens)* | *None — 2 reopens below the 8% target* |
-| *Raised after 17:00, under $50 — misses the batch by one night* | *214* | *18.7% (40 reopens)* | *38% of the 60-reopen gap* |
-| *Over $50, raised before 17:00 — needs a Billing Ops check first* | *168* | *14.3% (24 reopens)* | *18%* |
-| *Over $50, raised after 17:00 — waits for the next Billing Ops run, then the next batch* | *121* | *24.8% (30 reopens)* | *34%* |
-| *Multi-line accounts — the adjustment splits across lines and posts partially* | *61* | *21.3% (13 reopens)* | *14%* |
+| *Raised after 17:00, under $50 — misses the batch by one night* | *214* | *18.7% (40 reopens)* | *37% of the 60-reopen gap* |
+| *Over $50, raised before 17:00 — needs a Billing Ops check first* | *168* | *14.3% (24 reopens)* | *17%* |
+| *Over $50, raised after 17:00 — waits for the next Billing Ops run, then the next batch* | *121* | *24.8% (30 reopens)* | *33%* |
+| *Multi-line accounts — the adjustment splits across lines and posts partially* | *61* | *21.3% (13 reopens)* | *13%* |
 | *All strata (check: 966 contacts, 137 reopens, 14.2%; the gap to 8% is 60 reopens)* | *966* | *14.2%* | *100%* |
 
 ## 6. Context and caveats

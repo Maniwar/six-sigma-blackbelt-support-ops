@@ -183,6 +183,12 @@ def sheet_html(ws, shown: dict) -> str:
                     cls = FILL_CLASS.get(str(cell.fill.fgColor.rgb), "")
             except Exception:
                 pass
+            # A section band is styled as a short upper-case label. Once it also
+            # carries the plain-English key to the columns below it, that
+            # styling turns a full sentence into a shout — the explanation
+            # becomes harder to read than the jargon it explains.
+            if cls == "x-band" and isinstance(cell.value, str) and len(cell.value) > 80:
+                cls = "x-band x-bandlong"
             if not cls and cell.font and cell.font.bold:
                 cls = "x-b"
 

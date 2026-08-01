@@ -20,6 +20,7 @@ Exit status is non-zero if anything failed, so it drops straight into CI.
 """
 from __future__ import annotations
 
+import math
 import re
 import sys
 import warnings
@@ -717,6 +718,44 @@ def audit_markdown(path: Path) -> None:
                      f"line {line}: column {name!r} is declared and then left "
                      f"empty on all {len(got)} rows — a worked example that "
                      "fills none of a column has not shown the reader anything")
+
+    # A share column whose total row claims 100% has to actually sum to 100.
+    # The stratified baseline listed shares of 38 / 18 / 34 / 14 under a total
+    # row asserting 100%, because each had been rounded up on its own. Every
+    # other number in that table reconciled exactly, which is what makes this
+    # worth checking by machine: the one figure a reader would spot-check is the
+    # one a careful author is least likely to re-derive.
+    for head, body, line in md_tables(text):
+        for col in range(len(head)):
+            vals, total = [], None
+            for row, _ in body:
+                if col >= len(row):
+                    continue
+                first = row[0].strip(" *").lower()
+                # The number has to BE the cell, not merely appear in it. A
+                # first pass matched anywhere and read the 8 out of "None — 2
+                # reopens below the 8% target" as that stratum's share.
+                m = re.match(r"\*?\*?(-?\d+(?:\.\d+)?)\s*%", row[col].strip())
+                if not m:
+                    continue
+                v = float(m.group(1))
+                # "Total Gage R&R" is a COMPONENT, not the total of its table —
+                # the total is the last such row, not the first.
+                if first.startswith(("total", "all ", "check")):
+                    total = v
+                else:
+                    vals.append(v)
+            if total is None or abs(total - 100.0) > 0.5 or len(vals) < 3:
+                continue
+            s = sum(vals)
+            # Percentages of a STANDARD DEVIATION combine in quadrature, not by
+            # addition: Gage R&R's 11.2 / 26.1 / 95.9 are right and sum to 133.
+            rss = math.sqrt(sum(v * v for v in vals))
+            if abs(s - 100.0) > 1.01 and abs(rss - 100.0) > 1.01:
+                fail(book, "MARKDOWN",
+                     f"line {line}: column {head[col]!r} is totalled at 100% and its "
+                     f"{len(vals)} rows sum to {s:g}% (and {rss:.1f}% in quadrature) "
+                     "— the shares do not add up either way")
 
     # A number the reader has to derive, with nothing saying how.
     asked = sorted({m.group(0).lower() for m in RE_ARITH.finditer(text)})

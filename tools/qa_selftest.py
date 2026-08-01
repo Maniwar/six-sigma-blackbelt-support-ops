@@ -249,8 +249,64 @@ def md_strip_method(text: str):
     return out, "removed every formula, method and workbook pointer"
 
 
+def md_break_shares(text: str):
+    """Nudge one share so a column totalled at 100% no longer adds up."""
+    import re as _re
+    IS_TOTAL = ("total", "all ", "check")
+    for head, body, line in Q.md_tables(text):
+        for col in range(len(head)):
+            if col >= len(head):
+                continue
+            pct = _re.compile(r"\*?\*?(-?\d+(?:\.\d+)?)\s*%")
+            total = None
+            vals = []
+            for row, _ln in body:
+                if col >= len(row):
+                    continue
+                m = pct.match(row[col].strip())
+                if not m:
+                    continue
+                if row[0].strip(" *").lower().startswith(IS_TOTAL):
+                    total = float(m.group(1))
+                else:
+                    vals.append((row, float(m.group(1))))
+            # Only mutate a column the check actually audits — one totalled at
+            # 100% — and only a row it actually sums. Mutating the total row, or
+            # a column totalled at 14.2%, changes nothing the check claims to
+            # cover, and a survivor there says nothing about the check.
+            if total is None or abs(total - 100.0) > 0.5 or len(vals) < 3:
+                continue
+            vals = [(r, v) for r, v in vals]
+            # Edit the raw line by number. Rebuilding it from md_tables' cells
+            # cannot work — those are stripped, so the reconstructed row never
+            # matches the spacing in the file and the mutant silently no-ops.
+            row, lineno = vals[0][0], None                       # noqa: F841
+            for cells, ln in body:
+                if cells is row:
+                    lineno = ln
+                    break
+            if lineno is None:
+                continue
+            lines = text.splitlines()
+            raw = lines[lineno - 1]
+            parts = raw.split("|")
+            # a leading "|" makes parts[0] empty, so cell N is parts[N+1]
+            target = col + 1
+            if target >= len(parts):
+                continue
+            m = _re.search(r"(-?\d+(?:\.\d+)?)", parts[target])
+            if not m:
+                continue
+            parts[target] = parts[target].replace(
+                m.group(1), str(float(m.group(1)) + 9), 1)
+            lines[lineno - 1] = "|".join(parts)
+            return "\n".join(lines), f"added 9 points to one share in {head[col]!r}"
+    return None, None
+
+
 MD_MUTANTS = [("markdown: empty declared column", md_empty_column),
-              ("markdown: arithmetic with no method", md_strip_method)]
+              ("markdown: arithmetic with no method", md_strip_method),
+              ("markdown: shares that do not add up", md_break_shares)]
 
 
 def run_markdown() -> tuple[int, int, list[str]]:
