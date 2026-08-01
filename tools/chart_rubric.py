@@ -68,6 +68,12 @@ INTENT = {
     # crossing a limit over time; here there is no time, only four sources.
     ("29-msa-gage-rr.xlsx", "Where your measurement error is"): COMPARE,
     ("26-kanban-and-wip.xlsx", "Where you are against"): COMPARE,
+    # Both regression charts answer "how do these two numbers move together?",
+    # which is the one question only a scatter answers. The first lays the
+    # fitted line over the cloud; the second is the residual plot, where the
+    # shape of the cloud IS the finding.
+    ("30-regression.xlsx", "Handle time against transfers"): RELATION,
+    ("30-regression.xlsx", "Residuals against fitted"): RELATION,
     ("27-control-charts.xlsx", "Individuals —"): TREND,
     ("27-control-charts.xlsx", "Moving range —"): TREND,
     ("27-control-charts.xlsx", "Laney p"): TREND,

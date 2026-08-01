@@ -155,6 +155,20 @@ GLOSSES = {
     "AC": "AB, AC, BC = interaction columns: the product of two factor columns, +1 or -1",
     "BC": "AB, AC, BC = interaction columns: the product of two factor columns, +1 or -1",
     "RPN": "RPN = risk priority number, severity x occurrence x detection",
+    "Coefficient": "Coefficient = how far the outcome moves for a one-unit change in that driver, with the other drivers held still",
+    "Std error": "Std error = how much that number would wobble if you drew another sample the same size",
+    "t-stat": "t-stat = the coefficient divided by its own standard error; roughly 2 or more is the usual signal",
+    "VIF": "VIF = variance inflation factor, how much two drivers move together; under 5 is fine, over 10 means drop one",
+    "Residual": "Residual = what the model missed on that row: the value that actually happened minus the fitted one",
+    "Fitted y": "Fitted y = what the model predicts for that row, before you compare it with what actually happened",
+    "R²": "R-squared = the share of the spread in the outcome the model explains; the rest is everything you did not measure",
+    "Adjusted R²": "Adjusted R-squared = R-squared with a penalty for each extra driver, so adding columns cannot flatter the model",
+    "Odds ratio": "Odds ratio = how many times the odds of the outcome multiply when that driver goes up by one",
+    "AUC": "AUC = how well the model ranks a case that happened above one that did not; 0.5 is a coin toss, 0.7 upwards is useful",
+    "Logit": "Logit = the log-odds the model works in, before it is turned back into a probability",
+    "Predicted probability": "Predicted probability = the model's chance that this particular row ends in the outcome",
+    "Sensitivity": "Sensitivity = of the cases that really happened, the share the model flagged",
+    "Specificity": "Specificity = of the cases that did not happen, the share the model correctly left alone",
 }
 _GL_LOW = {k.lower(): v for k, v in GLOSSES.items()}
 

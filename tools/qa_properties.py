@@ -24,16 +24,31 @@ the inputs and assert the invariants still hold.
 
 Needs the `formulas` package.
 
-KNOWN LIMITS of this harness, so nobody reads a pass as proof:
-  * A scatter has two value axes; chart_specs reads the first, so the framing
-    check on 22-stakeholder compares influence values against the support axis
-    and reports a false failure.
-  * Charts that COUNT text categories (17 controls-by-level, 21 causes-per-
-    branch, and the kappa thresholds) do not move when numbers double, because
-    nothing they read is a number. That is correct behaviour reported as a
-    failure.
-Both are harness gaps, not template defects. They are listed here rather than
-suppressed, because a suppressed check is one nobody revisits.
+This harness used to fail on five charts every single run, with the reasons
+written up here as KNOWN LIMITS. That was honest and it was still wrong: a check
+that is permanently red gets read as decoration exactly as fast as one that is
+permanently green, and nobody looks at either again. All five are now fixed —
+four in the harness, one in the workbook — and the distinction matters:
+
+  * 05's sample-size curve hardcoded 1.96 and 0.25, so it was a textbook
+    illustration that never moved whatever the reader typed. A real defect in
+    the workbook, fixed in the workbook: the curve reads their alpha and their
+    baseline rate, and marks where their own study sits on it.
+  * A scatter has two value axes and chart_specs read the first, so the
+    stakeholder map was checked against the SUPPORT axis using its INFLUENCE
+    values. A harness bug.
+  * Doubling every input leaves a ratio unchanged — kappa is scale-invariant,
+    so a uniform perturbation could only ever report it as a dead chart. The
+    shift is distinct per input now.
+  * Charts that COUNT text categories move when a CATEGORY changes, not when a
+    number does, so the perturbation now also switches dropdown values.
+  * That switching took a couple of cells per dropdown rather than the first
+    eight overall, which had been exhausting the budget on the control plan's
+    chart-type column and never reaching the control-LEVEL column the chart
+    actually counts.
+
+tools/qa_selftest.py mutation-tests this file, because a suite that went from
+five failures to none in one sitting is exactly the suite to be suspicious of.
 """
 from __future__ import annotations
 
@@ -94,23 +109,39 @@ def chart_specs(path):
             root = ET.fromstring(z.read(name))
             title = "".join(t.text or "" for t in root.iter(
                 "{http://schemas.openxmlformats.org/drawingml/2006/main}t"))
-            bounds = None
+            # Every value axis, in document order. This used to take the first
+            # one and break — which is right for a bar or a line, and wrong for
+            # a scatter, where the FIRST axis is X and the values collected
+            # below are Y. The stakeholder map was therefore checked against
+            # the support axis (-2.5..2.5) using its influence values (0..6),
+            # and reported as broken for the whole life of this harness.
+            axes = []
             for ax in root.iter(f"{C}valAx"):
                 sc = ax.find(f"{C}scaling")
-                if sc is None:
-                    continue
-                mn, mx = sc.find(f"{C}min"), sc.find(f"{C}max")
-                if mn is not None and mx is not None:
-                    bounds = (float(mn.get("val")), float(mx.get("val")))
-                break
-            refs = []
+                mn = sc.find(f"{C}min") if sc is not None else None
+                mx = sc.find(f"{C}max") if sc is not None else None
+                axes.append((float(mn.get("val")), float(mx.get("val")))
+                            if mn is not None and mx is not None else None)
+            scatter = root.find(f".//{C}scatterChart") is not None
+            yrefs, xrefs = [], []
             for ser in root.iter(f"{C}ser"):
                 f = ser.find(f"{C}val/{C}numRef/{C}f")
                 if f is None:
                     f = ser.find(f"{C}yVal/{C}numRef/{C}f")
                 if f is not None and f.text:
-                    refs.append(f.text)
-            out.append({"title": title[:60], "bounds": bounds, "refs": refs})
+                    yrefs.append(f.text)
+                x = ser.find(f"{C}xVal/{C}numRef/{C}f")
+                if x is not None and x.text:
+                    xrefs.append(x.text)
+            if scatter:
+                # X against the first value axis, Y against the second.
+                if xrefs and axes:
+                    out.append({"title": title[:60] + " (x)",
+                                "bounds": axes[0], "refs": xrefs})
+                ybounds = axes[1] if len(axes) > 1 else None
+            else:
+                ybounds = axes[0] if axes else None
+            out.append({"title": title[:60], "bounds": ybounds, "refs": yrefs})
     return out
 
 
@@ -135,6 +166,56 @@ def plotted_values(sol, refs):
 
 
 # --------------------------------------------------------------- the tests
+
+
+def dropdown_inputs(wb, sheets=None, limit=3):
+    """Yellow cells that hold one of a fixed list, plus a different valid choice.
+
+    Several charts do not plot a number the reader types at all — they COUNT
+    text. The control hierarchy counts controls by level, the fishbone counts
+    causes per branch. Doubling every number on those sheets moves nothing, and
+    the harness reported that correct behaviour as a failure for its whole life.
+    The way to move a counting chart is to change a category, so that is what
+    this offers.
+    """
+    from openpyxl.utils import range_boundaries as rb
+    out = []
+    for ws in wb.worksheets:
+        if sheets and ws.title not in sheets:
+            continue
+        for dv in getattr(ws.data_validations, "dataValidation", []) or []:
+            f = (dv.formula1 or "").strip()
+            if dv.type != "list" or not f.startswith('"'):
+                continue
+            options = [o.strip() for o in f.strip('"').split(",") if o.strip()]
+            if len(options) < 2:
+                continue
+            # A couple of cells per dropdown, not the first N overall. Taking
+            # the first eight exhausted the budget on the control plan's
+            # chart-type column and never reached the control-LEVEL column,
+            # which is the one the chart actually counts.
+            taken = 0
+            for rng in str(dv.sqref).split():
+                try:
+                    c1, r1, c2, r2 = rb(rng)
+                except Exception:                                # noqa: BLE001
+                    continue
+                for r in range(r1, min(r2, r1 + 40) + 1):
+                    for c in range(c1, c2 + 1):
+                        cell = ws.cell(row=r, column=c)
+                        if not isinstance(cell.value, str) or not cell.value.strip():
+                            continue
+                        alt = next((o for o in options if o != cell.value.strip()), None)
+                        if alt:
+                            out.append((ws.title, cell.coordinate, cell.value, alt))
+                            taken += 1
+                        if taken >= limit:
+                            break
+                    if taken >= limit:
+                        break
+                if taken >= limit:
+                    break
+    return out
 
 
 def yellow_inputs(wb, limit=40, sheets=None):
@@ -285,17 +366,25 @@ def test_chart_responds(path):
         for s_ in specs:
             want |= sheets_of(s_["refs"])
         ins = yellow_inputs(wb, limit=6, sheets=want)
-        if not ins:
+        drops = dropdown_inputs(wb, sheets=want)
+        if not ins and not drops:
             return
         moved = False
-        for sheet, coord, v in ins:
+        for i, (sheet, coord, v) in enumerate(ins):
             cap = validated_max(wb[sheet], coord)
-            new = v * 2 if v else 1
+            # A DISTINCT shift per input, not a uniform doubling. Kappa, and any
+            # other ratio, is scale-invariant: double every cell of its table and
+            # it returns the identical answer, which is correct behaviour that
+            # a uniform perturbation can only ever report as a dead chart.
+            new = v * 2 + i + 1 if v else i + 1
             if cap is not None and new > cap:
                 new = cap if v != cap else max(1, cap - 1)   # move inside the rule
             if new != v:
                 wb[sheet][coord] = new
                 moved = True
+        for sheet, coord, _cur, alt in drops:
+            wb[sheet][coord] = alt
+            moved = True
         if not moved:
             return
         wb.save(b)

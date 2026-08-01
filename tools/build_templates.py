@@ -757,7 +757,13 @@ def kano():
               "already meet needs one line saying so; a Must-have you fail is your "
               "project. Rows 7 to 14 are worked examples: delete them and write your "
               "own.", 6)
-    for r in range(8, 26):
+    # Start BELOW the worked example. This loop used to begin at row 8 and paint
+    # every row from there as an empty input, which ran after the example was
+    # written and repainted seven of its eight rows yellow. The legend says
+    # green means "a worked example, delete it when you start" and yellow means
+    # "you fill this in", so the sheet was telling the reader to type over rows
+    # that were there to be read.
+    for r in range(7 + len(EXROWS), 26):
         for cc in [1, 2, 3, 6]:
             mark(ws, r, cc, "in").alignment = Alignment(wrap_text=True, vertical="top")
         for col, f in [(4, CATF.format(r=r)), (5, INVF.format(r=r))]:
@@ -2583,8 +2589,869 @@ def gage_rr():
     return wb, "29-msa-gage-rr.xlsx"
 
 
+# ------------------------------------------------------------- 30 regression
+# Twenty-four billing adjustments drawn at random from the 966 handled in the
+# baseline month, the same month the evidence pack describes: 137 of those 966
+# reopened inside seven days (14.2%) against a target of 8%, and handle time
+# averaged 412 seconds. These twenty-four average 412 seconds and four of them
+# reopened, so every number a reader meets on the tabs below ties back to a
+# figure they have already seen in 14-root-cause-evidence-pack.md.
+#
+#   ref, raised after 17:00, over the $50 authority limit, agent tenure in
+#   months, transfers before resolution, handle time in seconds, reopened
+REG_ROWS = [
+    ("BA-2201 · 17:05", 1, 0,  7, 0, 280, 0),
+    ("BA-2202 · 17:20", 1, 1, 24, 1, 506, 0),
+    ("BA-2203 · 08:15", 0, 1, 39, 1, 344, 0),
+    ("BA-2204 · 17:45", 1, 1, 39, 2, 479, 0),
+    ("BA-2205 · 18:10", 1, 1, 33, 2, 422, 1),
+    ("BA-2206 · 09:05", 0, 0, 11, 3, 452, 1),
+    ("BA-2207 · 09:40", 0, 0, 46, 2, 374, 0),
+    ("BA-2208 · 18:35", 1, 1,  4, 0, 451, 0),
+    ("BA-2209 · 10:20", 0, 0,  4, 0, 360, 0),
+    ("BA-2210 · 11:05", 0, 0,  6, 0, 260, 0),
+    ("BA-2211 · 11:35", 0, 1, 28, 0, 415, 0),
+    ("BA-2212 · 19:00", 1, 1,  3, 2, 555, 1),
+    ("BA-2213 · 12:10", 0, 0,  4, 1, 393, 0),
+    ("BA-2214 · 19:25", 1, 1, 39, 0, 454, 0),
+    ("BA-2215 · 13:25", 0, 0, 18, 0, 257, 0),
+    ("BA-2216 · 19:50", 1, 1, 18, 1, 544, 0),
+    ("BA-2217 · 20:15", 1, 1, 11, 1, 482, 0),
+    ("BA-2218 · 14:00", 0, 0,  2, 1, 403, 0),
+    ("BA-2219 · 20:40", 1, 0,  5, 2, 433, 0),
+    ("BA-2220 · 14:35", 0, 0,  4, 2, 483, 0),
+    ("BA-2221 · 15:10", 0, 0, 11, 0, 261, 0),
+    ("BA-2222 · 15:50", 0, 0, 53, 1, 424, 0),
+    ("BA-2223 · 16:20", 0, 0, 21, 1, 359, 0),
+    ("BA-2224 · 21:10", 1, 1,  5, 1, 505, 1),
+]
+
+# The four candidate drivers, in the order they sit in the data block.
+REG_X = [
+    ("Raised after 17:00 (1 = yes)",
+     "an adjustment raised after 17:00 misses the 02:00 posting batch, so the "
+     "customer sees no credit the next morning"),
+    ("Over the $50 authority limit (1 = yes)",
+     "over $50 the agent cannot approve it themselves and it goes to a queue"),
+    ("Agent tenure in months",
+     "months since the agent finished induction, from the HR extract"),
+    ("Transfers before resolution",
+     "how many times the contact changed hands, counted from the CRM routing log"),
+]
+
+# What a binary logistic fit on all 966 contacts returned. Pasted here, not
+# fitted here — see the honesty note on the tab.
+#   term, coefficient (log-odds), standard error, p-value as the tool printed it
+REG_LOGIT = [
+    ("Intercept", -3.05, 0.24, "<0.0001"),
+    ("Raised after 17:00 (1 = yes)", 1.16, 0.21, "<0.0001"),
+    ("Over the $50 authority limit (1 = yes)", 0.83, 0.22, "0.0002"),
+    ("Agent tenure in months", -0.038, 0.009, "<0.0001"),
+    ("Transfers before resolution", 0.61, 0.12, "<0.0001"),
+]
+
+
+def _reg_data_block(ws, hdr_row, cols, values, fmts):
+    """The shared 24-row example block: first row green, the rest yellow.
+
+    `cols` is the column index of each field, `values` a row-major table. The
+    first row of every data block in this workbook is the worked example, so a
+    reader can see the shape before they delete it.
+    """
+    first = hdr_row + 1
+    for i, row in enumerate(values):
+        r = first + i
+        for col, v, fmt in zip(cols, row, fmts):
+            c = mark(ws, r, col, "ex" if i == 0 else "in")
+            c.value = v
+            if fmt:
+                c.number_format = fmt
+    return first, first + len(values) - 1
+
+
+def regression():
+    wb = Workbook(); wb.remove(wb.active)
+    refs = [r[0] for r in REG_ROWS]
+
+    # =================================================== 1. simple linear ===
+    ws = wb.create_sheet("Simple linear")
+    W = 6
+    title(ws, "Simple linear regression — one driver, one outcome",
+          "Fit a straight line through two columns, then find out how much of the "
+          "outcome that one driver actually explains. Yellow cells are yours; "
+          "everything blue is a formula you can point at.", W)
+    # Column A carries both the long statistic labels and the contact ref, and
+    # column B both a typed answer and the x column, so both are sized for the
+    # longest thing that lands in them rather than for the table alone.
+    widths(ws, [42, 24, 18, 18, 16, 26, 11, 11])
+
+    band(ws, 4, "THE QUESTION — what you are modelling, and where the rows came from", W)
+    for r, (lab, val, hint) in enumerate([
+        ("Outcome (y) — the thing you want to move",
+         "Handle time in seconds",
+         "Name the measurement, not the ambition. 'Handle time from CRM open to "
+         "CRM close, in seconds' is a column you can pull; 'efficiency' is not."),
+        ("Driver (x) — the one thing you are testing",
+         "Transfers per contact",
+         "One column, and one you could actually change. Start with the driver "
+         "the process owner already believes in; you are testing their belief, "
+         "not replacing it."),
+        ("Where the rows come from",
+         "24 of 966 March contacts",
+         "Say the population and the sampling method. A convenience sample of "
+         "the contacts you happened to remember will produce a slope, and the "
+         "slope will be of your memory."),
+    ], start=5):
+        ws.cell(row=r, column=1, value=lab).font = F_B
+        c = mark(ws, r, 2, "in")
+        c.value = val
+        note_cell(ws, r, 3, hint, W)
+        note(ws, r, 2, hint)
+
+    band(ws, 9, "THE DATA — one row per contact, x beside y", W)
+    hdr = 10
+    header(ws, hdr, ["Contact ref", "Transfers before resolution (x)",
+                     "Handle time in seconds (y)", "Fitted y — what the line predicts",
+                     "Residual (y − fitted)",
+                     "Off the line by more than 1.5 standard errors?"])
+    ws.row_dimensions[hdr].height = 46
+    first, last = _reg_data_block(
+        ws, hdr, [1, 2, 3], [(r[0], r[4], r[5]) for r in REG_ROWS],
+        [None, "0", "#,##0"])
+    # The statistics block sits ten rows below the data, and the fitted-value and
+    # outlier columns read three of its cells by address. Named here so a row
+    # added above cannot silently repoint them at the wrong statistic.
+    R_N, R_SLOPE, R_INTER, R_RSQ = last + 5, last + 6, last + 7, last + 8
+    R_STEYX, R_SESL, R_T, R_DF, R_P = (last + 10, last + 11, last + 12,
+                                       last + 13, last + 14)
+    for i in range(len(REG_ROWS)):
+        r = first + i
+        for col, f, fmt in (
+            (4, f'=IF($C{r}="","",$B${R_INTER}+$B${R_SLOPE}*$B{r})', "#,##0"),
+            (5, f'=IF($D{r}="","",$C{r}-$D{r})', "#,##0"),
+            (6, f'=IF($E{r}="","",IF(ABS($E{r})>1.5*$B${R_STEYX},'
+                f'"LOOK AT THIS ONE","on the line"))', None),
+        ):
+            c = mark(ws, r, col, "calc")
+            c.value = f
+            if fmt:
+                c.number_format = fmt
+            if i == 0:
+                c.fill = EX
+    note_cell(ws, last + 1, 1,
+              "The last three columns are the model marking its own homework. Fitted y "
+              "is what the line says this contact should have taken; the residual is "
+              "what it missed by. BA-2216 took 544 seconds on a single transfer, which "
+              "the line cannot explain at all — hold on to it, because the multiple "
+              "regression tab does explain it.", W)
+
+    band(ws, last + 3, "STEP 1 — the line, and whether it is real", W)
+    sh = last + 4
+    header(ws, sh, ["Statistic", "Value", "What it tells you"] + [""] * (W - 3))
+    xr, yr = f"$B${first}:$B${last}", f"$C${first}:$C${last}"
+    stats = [
+        ("Contacts in the model (n)", f"=COUNT({yr})", "0",
+         "COUNT(y). Thirty is where a regression starts to be worth quoting; below "
+         "about fifteen you are describing this sample and nothing beyond it."),
+        ("Slope — seconds per extra transfer", f"=SLOPE({yr},{xr})", "0.00",
+         "SLOPE(y, x). How much y moves for one more transfer. This is the number "
+         "that goes in a business case, not R²."),
+        ("Intercept — seconds at zero transfers", f"=INTERCEPT({yr},{xr})", "0.00",
+         "INTERCEPT(y, x). Only meaningful if zero is inside the range you actually "
+         "observed. Here it is: plenty of these contacts were never transferred."),
+        ("R² — share of the spread the line explains", f"=RSQ({yr},{xr})", "0.0%",
+         "RSQ(y, x). The share of the variation in y this one driver accounts for. "
+         "Everything else is the drivers you did not put in the model."),
+        ("Correlation r", f"=CORREL({yr},{xr})", "0.000",
+         "CORREL(y, x). The square root of R², carrying the sign. Useful for "
+         "direction; do not quote it as if it were a share of anything."),
+        ("Standard error of the estimate", f"=STEYX({yr},{xr})", "0.00",
+         "STEYX(y, x). The typical distance a point sits from the line, in seconds. "
+         "This is the honest width of a prediction from this model."),
+        ("Standard error of the slope", f"=INDEX(LINEST({yr},{xr},TRUE,TRUE),2,1)", "0.00",
+         "INDEX(LINEST(y, x, TRUE, TRUE), 2, 1). LINEST returns a block; row 2 "
+         "column 1 of it is how much the slope would wobble on another sample."),
+        ("t-stat for the slope", f'=IFERROR($B${R_SLOPE}/$B${R_SESL},"")', "0.00",
+         "Slope divided by its own standard error. Two or more and the slope is "
+         "usually distinguishable from a flat line at this sample size."),
+        ("Degrees of freedom", f"=IFERROR(COUNT({yr})-2,\"\")", "0",
+         "n − 2: one for the slope, one for the intercept. Everything about "
+         "significance below depends on this being honest about your row count."),
+        ("p-value for the slope",
+         f'=IFERROR(TDIST(ABS($B${R_T}),$B${R_DF},2),"")', "0.0000",
+         "TDIST(|t|, df, 2). The chance of a slope this far from flat if transfers "
+         "made no difference at all."),
+    ]
+    for i, (lab, f, fmt, why) in enumerate(stats):
+        r = sh + 1 + i
+        ws.cell(row=r, column=1, value=lab).font = F_B
+        c = mark(ws, r, 2, "calc")
+        c.value, c.number_format = f, fmt
+        note_cell(ws, r, 3, why, W)
+    assert [sh + 1 + i for i in (0, 1, 2, 3, 5, 6, 7, 8, 9)] == [
+        R_N, R_SLOPE, R_INTER, R_RSQ, R_STEYX, R_SESL, R_T, R_DF, R_P]
+    eqb = sh + 1 + len(stats) + 1
+
+    band(ws, eqb, "THE MODEL, WRITTEN OUT — the sentence you are allowed to say", W)
+    for r, f in ((eqb + 1,
+                  f'="Handle time in seconds  =  "&TEXT($B${R_INTER},"0.0")&"  +  "'
+                  f'&TEXT($B${R_SLOPE},"0.0")&" × transfers.      One more transfer is '
+                  f'worth about "&TEXT($B${R_SLOPE},"0")&" seconds, and this one driver '
+                  f'explains "&TEXT($B${R_RSQ},"0%")&" of the spread in handle time "'
+                  f'&"(p = "&TEXT($B${R_P},"0.000")&", n = "&TEXT($B${R_N},"0")&")."'),
+                 (eqb + 2,
+                  f'=IF($B${R_P}="","",IF($B${R_P}>=0.05,'
+                  f'"NOT PROVEN — at this sample size the slope is not distinguishable '
+                  f'from a flat line. Collect more rows before you build anything on it.",'
+                  f'IF($B${R_RSQ}<0.3,"REAL BUT PARTIAL — the slope is significant (p = "'
+                  f'&TEXT($B${R_P},"0.000")&") and the line still explains only "'
+                  f'&TEXT($B${R_RSQ},"0%")&" of the spread. Transfers are a genuine driver '
+                  f'AND most of what moves handle time is not in this model.",'
+                  f'"REAL AND STRONG — significant, and the line explains "'
+                  f'&TEXT($B${R_RSQ},"0%")&" of the spread. Rare in support data; check '
+                  f'the sample before you celebrate.")))')):
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=W)
+        c = mark(ws, r, 1, "calc")
+        c.value = f
+        c.alignment = Alignment(wrap_text=True, vertical="center")
+        ws.row_dimensions[r].height = 30
+
+    rb = eqb + 4
+    band(ws, rb, "THE DECISION RULE — read this before you quote the R²", W)
+    for i, txt in enumerate([
+        "How high does R² have to be? Much lower than a manufacturing course will "
+        "tell you. In support you are modelling human behaviour through a CRM, and "
+        "0.20 to 0.40 from a single driver is a normal, useful result. Judge the "
+        "model on whether the SLOPE is big enough to act on and stable enough to "
+        "bet on — not on R². A model that explains 25% of handle time and hands you "
+        "a lever worth 50 seconds a contact is worth more than one explaining 80% "
+        "of something you cannot change.",
+        "A significant coefficient is not the same as one worth acting on. "
+        "Significance says the effect is probably not zero. It says nothing about "
+        "size. With enough rows a 3-second effect becomes significant, and 3 seconds "
+        "will not move your reopen rate. Always read the slope in the units of the "
+        "problem, multiply it by the range you actually see, and compare that to the "
+        "smallest change that would matter to the business.",
+        "Correlation here is not causation, and one driver hides the rest. This "
+        "sheet cannot tell you whether transfers CAUSE longer handle times or "
+        "whether hard cases cause both. Nothing in a regression can. To claim "
+        "cause you need either a mechanism you have watched at the gemba or a "
+        "designed experiment (24-doe-design-matrix.xlsx). Until then this is a "
+        "well-measured association, and you say so out loud.",
+    ]):
+        note_cell(ws, rb + 1 + i, 1, txt, W)
+
+    # ---- scaffolding: the two endpoints the fitted line is drawn between
+    ws.cell(row=hdr, column=7,
+            value="fitted line endpoints — the chart reads these").font = F_NOTE
+    for i, (xf, yf) in enumerate((
+            (f"=IFERROR(MIN({xr}),0)",
+             f'=IFERROR($B${R_INTER}+$B${R_SLOPE}*$G${first},"")'),
+            (f"=IFERROR(MAX({xr}),0)",
+             f'=IFERROR($B${R_INTER}+$B${R_SLOPE}*$G${first + 1},"")'))):
+        ws.cell(row=first + i, column=7, value=xf).number_format = "0.00"
+        ws.cell(row=first + i, column=8, value=yf).number_format = "#,##0"
+
+    sc = ScatterChart()
+    sc.title = ("Handle time against transfers — the line is the model, "
+                "the scatter is what it misses")
+    sc.style = 13
+    sc.height, sc.width = 10, 17
+    sc.scatterStyle = "lineMarker"
+    sc.x_axis.title = "Transfers before resolution"
+    sc.y_axis.title = "Handle time (seconds)"
+    sc.x_axis.delete = False
+    sc.y_axis.delete = False
+    pts = Series(Reference(ws, min_col=3, min_row=first, max_row=last),
+                 xvalues=Reference(ws, min_col=2, min_row=first, max_row=last),
+                 title="Contacts — one dot each")
+    pts.marker = Marker(symbol="circle", size=8)
+    pts.marker.graphicalProperties.solidFill = "1F4E79"
+    pts.graphicalProperties.line.noFill = True
+    sc.series.append(pts)
+    fit = Series(Reference(ws, min_col=8, min_row=first, max_row=first + 1),
+                 xvalues=Reference(ws, min_col=7, min_row=first, max_row=first + 1),
+                 title="Fitted line — the model's average")
+    fit.marker = Marker(symbol="none")
+    fit.graphicalProperties.line.solidFill = "C0392B"
+    fit.graphicalProperties.line.width = 22000
+    sc.series.append(fit)
+    sc.legend = Legend()
+    sc.legend.position = "b"
+    ws.add_chart(sc, "J4")
+
+    # ============================================== 2. multiple regression ===
+    ws2 = wb.create_sheet("Multiple regression")
+    W2 = 9
+    title(ws2, "Multiple regression — four candidate drivers at once",
+          "One driver at a time flatters whichever one you looked at first. This "
+          "fits all four together, prices each one with the others held still, and "
+          "shows you which of them the data cannot actually tell apart.", W2)
+    widths(ws2, [44, 24, 14, 14, 15, 15, 17, 26, 40] + [9] * 14)
+
+    band(ws2, 4, "THE MODEL — the outcome, and the smallest effect worth acting on", W2)
+    for r, (lab, val, fmt, hint) in enumerate([
+        ("Outcome (y) — what the model explains",
+         "Handle time in seconds", None,
+         "One continuous column. If your outcome is yes/no — reopened, escalated, "
+         "breached — this is the wrong tab: go to Logistic regression."),
+        ("Where the rows come from",
+         "24 of 966 March contacts", None,
+         "Population and sampling method. A model fitted on the contacts somebody "
+         "escalated is a model of escalation, whatever you name the outcome."),
+        ("Smallest effect worth acting on (seconds)", 20, "#,##0",
+         "The smallest change in the outcome that would actually change a decision. "
+         "Ask the process owner, before you see the coefficients. Twenty seconds a "
+         "contact across 966 contacts a month is about five and a half hours of "
+         "handling — enough to bother with; two seconds is not."),
+    ], start=5):
+        ws2.cell(row=r, column=1, value=lab).font = F_B
+        c = mark(ws2, r, 2, "in")
+        c.value = val
+        if fmt:
+            c.number_format = fmt
+        note_cell(ws2, r, 3, hint, W2)
+        note(ws2, r, 2, hint)
+
+    band(ws2, 9, "THE DATA — the same 24 contacts, with all four drivers beside y", W2)
+    h2 = 10
+    header(ws2, h2, ["Contact ref"] + [x[0] for x in REG_X]
+           + ["Handle time in seconds (y)", "Fitted y — what the model predicts",
+              "Residual (y − fitted)"])
+    ws2.row_dimensions[h2].height = 46
+    f2, l2 = _reg_data_block(
+        ws2, h2, [1, 2, 3, 4, 5, 6],
+        [(r[0], r[1], r[2], r[3], r[4], r[5]) for r in REG_ROWS],
+        [None, "0", "0", "#,##0", "0", "#,##0"])
+    cb = l2 + 4                              # coefficient block band row
+    hc = cb + 1                              # its header row
+    # The residual degrees of freedom, which every per-coefficient p-value below
+    # divides by, lands seven rows into the goodness-of-fit block. Computed here
+    # because the coefficient table is written first and has to point at it.
+    R_DF2 = hc + 16
+    for i in range(len(REG_ROWS)):
+        r = f2 + i
+        for col, f, fmt in (
+            (7, f'=IF($F{r}="","",$B${hc + 1}+$B${hc + 2}*$B{r}+$B${hc + 3}*$C{r}'
+                f'+$B${hc + 4}*$D{r}+$B${hc + 5}*$E{r})', "#,##0"),
+            (8, f'=IF($G{r}="","",$F{r}-$G{r})', "#,##0"),
+        ):
+            c = mark(ws2, r, col, "calc")
+            c.value, c.number_format = f, fmt
+            if i == 0:
+                c.fill = EX
+    note_cell(ws2, l2 + 1, 1,
+              "Two of the four drivers are 1/0 flags, which is how you put a yes/no "
+              "into a regression: the coefficient is then simply the seconds the flag "
+              "adds. Fitted y and the residual are the model marking its own homework, "
+              "and the residual column is what the second chart plots.", W2)
+
+    band(ws2, cb, "STEP 1 — the coefficients, and which of them you can act on", W2)
+    header(ws2, hc, ["Predictor", "Coefficient", "Std error", "t-stat", "p-value",
+                     "VIF", "Effect across the observed range", "Act on it?",
+                     "What it means"])
+    ws2.row_dimensions[hc].height = 46
+    LN = f"LINEST($F${f2}:$F${l2},$B${f2}:$E${l2},TRUE,TRUE)"
+    # LINEST hands the coefficients back in reverse column order, so the first
+    # predictor (column B) is the LAST of the four it returns. Getting this
+    # backwards is the classic way to publish a model with the labels swapped.
+    rows_c = [("Intercept", 5, None, None)] + [
+        (REG_X[j][0], 4 - j, get_column_letter(2 + j), j) for j in range(4)]
+    means = [
+        "Predicted handle time for a contact with every driver at zero — before "
+        "17:00, under the limit, a brand-new agent, no transfers. Read it as the "
+        "starting point the four effects are added to, not as a prediction.",
+        "Seconds the after-17:00 flag adds once the other three are held still. "
+        "Compare it with the p-value beside it before you repeat it out loud.",
+        "Seconds the $50 authority limit adds once the other three are held still. "
+        "This is the queue, not the money.",
+        "Seconds per extra month of tenure — negative means longer-serving agents "
+        "are quicker. Small per month, so read the range column, not this one.",
+        "Seconds each extra transfer adds once the other three are held still. "
+        "Compare it with the 50.7 seconds the single-driver tab gave you.",
+    ]
+    for i, (lab, ln_col, xcol, j) in enumerate(rows_c):
+        r = hc + 1 + i
+        ws2.cell(row=r, column=1, value=lab).alignment = Alignment(
+            wrap_text=True, vertical="center")
+        for col, f, fmt in (
+            (2, f"=IFERROR(INDEX({LN},1,{ln_col}),\"\")", "0.00"),
+            (3, f"=IFERROR(INDEX({LN},2,{ln_col}),\"\")", "0.00"),
+            (4, f'=IFERROR($B{r}/$C{r},"")', "0.00"),
+            (5, f'=IFERROR(TDIST(ABS($D{r}),$B${R_DF2},2),"")', "0.0000"),
+        ):
+            c = mark(ws2, r, col, "calc")
+            c.value, c.number_format = f, fmt
+            c.alignment = Alignment(vertical="center")
+        if xcol is not None:
+            hcol = get_column_letter(10 + j * 3)
+            hend = get_column_letter(12 + j * 3)
+            v = mark(ws2, r, 6, "calc")
+            v.value = (f"=IFERROR(1/(1-INDEX(LINEST(${xcol}${f2}:${xcol}${l2},"
+                       f"${hcol}${f2}:${hend}${l2},TRUE,TRUE),3,1)),\"\")")
+            v.number_format = "0.00"
+            e = mark(ws2, r, 7, "calc")
+            e.value = (f'=IFERROR($B{r}*(MAX(${xcol}${f2}:${xcol}${l2})'
+                       f'-MIN(${xcol}${f2}:${xcol}${l2})),"")')
+            e.number_format = "#,##0"
+            a = mark(ws2, r, 8, "calc")
+            a.value = (
+                f'=IF($E{r}="","",IF($E{r}>=0.05,'
+                f'"NOT PROVEN — cannot be separated from zero",'
+                f'IF(ABS($G{r})<$B$7,"REAL BUT TOO SMALL — under the "'
+                f'&TEXT($B$7,"0")&" seconds you set","ACT ON IT — real, and big '
+                f'enough to matter")))')
+            a.alignment = Alignment(wrap_text=True, vertical="center")
+        m = mark(ws2, r, 9, "calc")
+        m.value = f'=IF($B{r}="","","{means[i]}")'
+        m.alignment = Alignment(wrap_text=True, vertical="top")
+        # tall enough for the longest sentence in the last column at its width,
+        # or the reader meets a wrapped explanation with its final line cut off
+        ws2.row_dimensions[r].height = 12 * (2 + len(means[i]) // 40)
+    note_cell(ws2, hc + 6, 1,
+              "VIF is the one people skip, and it is why this table disagrees with "
+              "the process owner. Two thirds of the after-17:00 adjustments here are "
+              "also over the $50 limit, so the two columns carry much the same "
+              "information and the model cannot say which of them is doing the work — "
+              "it splits the credit and widens both standard errors. Under 5 is fine, "
+              "5 to 10 is a warning, over 10 means drop one of the pair or combine "
+              "them, and re-fit. Nine of the eleven after-17:00 contacts here are also "
+              "over the limit, which is where these VIFs come from.", W2)
+
+    sb = hc + 8
+    band(ws2, sb, "STEP 2 — the model as a whole", W2)
+    hs = sb + 1
+    header(ws2, hs, ["Statistic", "Value", "What it tells you"] + [""] * (W2 - 3))
+    fit_stats = [
+        ("Contacts in the model (n)", f"=COUNT($F${f2}:$F${l2})", "0",
+         "COUNT(y). Four predictors on 24 rows is already thin. The rule of thumb "
+         "is ten to fifteen rows per predictor before the coefficients settle down."),
+        ("Predictors (k)", "=4", "0",
+         "How many x columns the model is fitting. Every one you add uses up a "
+         "degree of freedom and lifts R² whether or not it means anything."),
+        ("R²", f"=IFERROR(INDEX({LN},3,1),\"\")", "0.0%",
+         "INDEX(LINEST(...), 3, 1). The share of the spread in handle time all four "
+         "drivers explain together."),
+        ("Adjusted R²", None, "0.0%",
+         "R² with a penalty for each predictor: 1 − (1 − R²)(n − 1)/(n − k − 1). If "
+         "this sits well below R², some of your columns are paying their way in "
+         "arithmetic rather than in meaning."),
+        ("Standard error of the estimate", f"=IFERROR(INDEX({LN},3,2),\"\")", "0.00",
+         "INDEX(LINEST(...), 3, 2). The typical miss, in seconds. Quote a prediction "
+         "as fitted ± roughly two of these, or do not quote it."),
+        ("F", f"=IFERROR(INDEX({LN},4,1),\"\")", "0.00",
+         "INDEX(LINEST(...), 4, 1). Tests the whole model at once: is this set of "
+         "four better than no model at all?"),
+        ("Degrees of freedom (residual)", f"=IFERROR(INDEX({LN},4,2),\"\")", "0",
+         "INDEX(LINEST(...), 4, 2). n − k − 1. Every per-coefficient p-value on the "
+         "table above reads this cell."),
+        ("p-value for F", None, "0.0000",
+         "FDIST(F, k, df). Small means the four together explain something. It does "
+         "NOT mean each of them does — that is what the p-values above are for."),
+        ("Verdict", None, None,
+         "Read this with the residual chart beside it. A model can pass every "
+         "number here and still be unusable if the residuals have a shape."),
+    ]
+    S2 = {}
+    for i, (lab, f, fmt, why) in enumerate(fit_stats):
+        r = hs + 1 + i
+        S2[lab] = r
+        ws2.cell(row=r, column=1, value=lab).font = F_B
+        c = mark(ws2, r, 2, "calc")
+        c.value = f
+        if fmt:
+            c.number_format = fmt
+        note_cell(ws2, r, 3, why, W2)
+    r2r, adjr, nr, kr, fr, dfr, pfr, vr = (S2["R²"], S2["Adjusted R²"],
+                                           S2["Contacts in the model (n)"],
+                                           S2["Predictors (k)"], S2["F"],
+                                           S2["Degrees of freedom (residual)"],
+                                           S2["p-value for F"], S2["Verdict"])
+    # the per-coefficient p-values read the residual df cell by address
+    assert dfr == R_DF2, (dfr, R_DF2)
+    ws2.cell(row=adjr, column=2).value = (
+        f'=IFERROR(1-(1-$B${r2r})*($B${nr}-1)/($B${nr}-$B${kr}-1),"")')
+    ws2.cell(row=pfr, column=2).value = (
+        f'=IFERROR(FDIST($B${fr},$B${kr},$B${dfr}),"")')
+    ws2.cell(row=vr, column=2).value = (
+        f'=IF($B${pfr}="","",IF($B${pfr}>=0.05,'
+        f'"NO MODEL — these four together explain nothing",'
+        f'IF($B${adjr}<0.3,"USABLE BUT WEAK — read the effect sizes, not the R²",'
+        f'"USABLE — now go and look at the residual chart")))')
+
+    ab = hs + 1 + len(fit_stats) + 1
+    band(ws2, ab, "THE DECISION RULE — what this model does and does not license", W2)
+    for i, txt in enumerate([
+        "Read the residual chart before you read anything else. Residuals against "
+        "fitted values should be a shapeless cloud of even width around zero. A "
+        "funnel that widens to the right means the model is least reliable exactly "
+        "where the numbers are biggest, and the usual fix is to model log(y) "
+        "instead. A curve means you have fitted a straight line to something bent. "
+        "Either way the coefficients above are not safe to quote, however small "
+        "their p-values are.",
+        "Adjusted R² is the number you report, not R². R² can only go up when you "
+        "add a column, so a model with enough junk in it will always look better "
+        "than the honest one. For support data an adjusted R² of 0.3 to 0.6 on a "
+        "duration is a genuinely useful model; anything above 0.85 usually means "
+        "something on the right-hand side is a repackaging of the left — check you "
+        "have not put a component of the outcome in as a predictor.",
+        "A tiny p-value on a tiny coefficient is not a finding. The 'Act on it?' "
+        "column deliberately refuses to say yes on significance alone: it multiplies "
+        "each coefficient by the range that predictor actually covers in your data, "
+        "and compares that with the smallest effect you said was worth acting on. "
+        "That comparison, not the p-value, is the one to take to a steering group.",
+        "None of this is causation, and a coefficient is not a lever. The model "
+        "cannot tell whether transfers lengthen contacts or whether hard contacts "
+        "get transferred. Before you spend money on a change, either watch the "
+        "mechanism at the gemba or run a designed experiment "
+        "(24-doe-design-matrix.xlsx) — a regression on observational data can rank "
+        "your suspects and it cannot convict one.",
+    ]):
+        note_cell(ws2, ab + 1 + i, 1, txt, W2)
+
+    # ---- scaffolding: the other-three blocks each VIF regresses against, and
+    #      the two endpoints of the zero line on the residual chart
+    for j in range(4):
+        base = 10 + j * 3
+        ws2.cell(row=h2, column=base,
+                 value=f"VIF helper — the other three, for {REG_X[j][0]}").font = F_NOTE
+        others = [k for k in range(4) if k != j]
+        for i in range(len(REG_ROWS)):
+            r = f2 + i
+            for n_, k in enumerate(others):
+                ws2.cell(row=r, column=base + n_,
+                         value=f"={get_column_letter(2 + k)}{r}").number_format = "#,##0"
+    ws2.cell(row=h2, column=22, value="zero line — the chart reads these").font = F_NOTE
+    for i, f in enumerate((f"=IFERROR(MIN($G${f2}:$G${l2}),0)",
+                           f"=IFERROR(MAX($G${f2}:$G${l2}),0)")):
+        ws2.cell(row=f2 + i, column=22, value=f).number_format = "#,##0"
+        ws2.cell(row=f2 + i, column=23, value=0).number_format = "#,##0"
+
+    rc = ScatterChart()
+    rc.title = ("Residuals against fitted — a shapeless cloud is the only shape "
+                "you can use")
+    rc.style = 13
+    rc.height, rc.width = 10, 17
+    rc.scatterStyle = "lineMarker"
+    rc.x_axis.title = "Fitted handle time (seconds)"
+    rc.y_axis.title = "Residual (seconds)"
+    rc.x_axis.delete = False
+    rc.y_axis.delete = False
+    rp = Series(Reference(ws2, min_col=8, min_row=f2, max_row=l2),
+                xvalues=Reference(ws2, min_col=7, min_row=f2, max_row=l2),
+                title="Residual for each contact")
+    rp.marker = Marker(symbol="circle", size=8)
+    rp.marker.graphicalProperties.solidFill = "1F4E79"
+    rp.graphicalProperties.line.noFill = True
+    rc.series.append(rp)
+    zl = Series(Reference(ws2, min_col=23, min_row=f2, max_row=f2 + 1),
+                xvalues=Reference(ws2, min_col=22, min_row=f2, max_row=f2 + 1),
+                title="Zero — residuals should average out along it")
+    zl.marker = Marker(symbol="none")
+    zl.graphicalProperties.line.solidFill = "C0392B"
+    zl.graphicalProperties.line.dashStyle = "dash"
+    zl.graphicalProperties.line.width = 20000
+    rc.series.append(zl)
+    rc.legend = Legend()
+    rc.legend.position = "b"
+    ws2.add_chart(rc, "Y4")
+
+    dv01 = DataValidation(type="whole", operator="between", formula1=0, formula2=1,
+                          allow_blank=True)
+    ws2.add_data_validation(dv01)
+    dv01.add(f"B{f2}:C{l2}")
+
+    # ================================================ 3. logistic scoring ===
+    ws3 = wb.create_sheet("Logistic regression")
+    W3 = 9
+    title(ws3, "Logistic regression — the scoring sheet for a model fitted elsewhere",
+          "Reopened yes/no is the outcome that actually matters, and a straight line "
+          "is the wrong tool for it. Fit the model in Minitab, Python or R; paste the "
+          "coefficient table here and this tab turns it into odds ratios, "
+          "probabilities and a classification table you can argue about.", W3)
+    widths(ws3, [46, 16, 13, 13, 13, 16, 16, 30, 16])
+
+    band(ws3, 4, "READ THIS FIRST — what this tab does, and what it deliberately does not", W3)
+    note_cell(ws3, 5, 1,
+              "This sheet does NOT fit the model. Fitting a logistic regression is "
+              "maximum likelihood: an iterative search that has no closed form, and "
+              "no honest way to write it as a spreadsheet formula. Anything that "
+              "claims to do it in plain Excel is either running a macro or lying to "
+              "you. So the split is explicit — the tool fits, this sheet interprets. "
+              "Everything below is arithmetic on numbers you paste in, and every step "
+              "of that arithmetic is a formula you can click on.", W3)
+    note_cell(ws3, 6, 1,
+              "Where to get the numbers. Minitab: Stat → Regression → Binary Logistic "
+              "Regression → Fit Binary Logistic Model, and tick odds ratios in the "
+              "Results dialog. Python: m = smf.logit('reopened ~ after17 + over50 + "
+              "tenure + transfers', data=df).fit(); m.summary(). R: glm(reopened ~ "
+              "., family = binomial, data = df). Copy the coefficient column, the "
+              "standard error column and the p-value column into the yellow cells "
+              "below, in the same order as your predictors.", W3)
+
+    band(ws3, 8, "STEP 1 — paste the coefficient table your tool produced", W3)
+    hl = 9
+    header(ws3, hl, ["Term", "Coefficient (log-odds)", "Std error", "p-value",
+                     "Odds ratio", "Odds ratio 95% CI low", "Odds ratio 95% CI high",
+                     "What it means"] + [""])
+    ws3.row_dimensions[hl].height = 46
+    lo_means = [
+        '="Baseline odds of a reopen with every driver at zero: "&TEXT($E{r},"0.000")'
+        '&" to 1, which is "&TEXT($E{r}/(1+$E{r}),"0.0%")&" probability."',
+        '="Raising the adjustment after 17:00 multiplies the odds of a reopen by "'
+        '&TEXT($E{r},"0.00")&". This is the posting-batch effect, and it is the '
+        'largest single driver in the model."',
+        '="Clearing the $50 authority limit multiplies the odds of a reopen by "'
+        '&TEXT($E{r},"0.00")&", because the case waits in a queue for approval."',
+        '="Each extra month of tenure multiplies the odds by "&TEXT($E{r},"0.000")'
+        '&" — so a 24-month agent runs at "&TEXT($E{r}^24,"0.00")&" times the odds '
+        'of a first-week agent."',
+        '="Each extra transfer multiplies the odds of a reopen by "'
+        '&TEXT($E{r},"0.00")&". Multiply by how common transfers are before you '
+        'rank it against the others."',
+    ]
+    for i, (term, coef, se, pv) in enumerate(REG_LOGIT):
+        r = hl + 1 + i
+        ws3.cell(row=r, column=1, value=term).alignment = Alignment(
+            wrap_text=True, vertical="center")
+        for col, v, fmt in ((2, coef, "0.000"), (3, se, "0.000"), (4, pv, None)):
+            c = mark(ws3, r, col, "ex" if i == 0 else "in")
+            c.value = v
+            c.alignment = Alignment(vertical="center")
+            if fmt:
+                c.number_format = fmt
+        for col, f, fmt in (
+            (5, f'=IFERROR(EXP($B{r}),"")', "0.000"),
+            (6, f'=IFERROR(EXP($B{r}-1.96*$C{r}),"")', "0.000"),
+            (7, f'=IFERROR(EXP($B{r}+1.96*$C{r}),"")', "0.000"),
+            (8, lo_means[i].format(r=r), None),
+        ):
+            c = mark(ws3, r, col, "calc")
+            c.value = f
+            if fmt:
+                c.number_format = fmt
+            c.alignment = (Alignment(wrap_text=True, vertical="top") if col == 8
+                           else Alignment(vertical="center"))
+            if i == 0:
+                c.fill = EX
+        ws3.row_dimensions[r].height = 12 * (2 + len(lo_means[i]) // 34)
+    note_cell(ws3, hl + 6, 1,
+              "An odds ratio of 1.00 means the driver changes nothing; below 1 it "
+              "protects. The confidence interval is the number to argue about, not "
+              "the point estimate — if it straddles 1.00 the driver has not earned a "
+              "place in your improvement plan, whatever the coefficient says. And a "
+              "p-value printed as <0.0001 by the tool is pasted here as text on "
+              "purpose: it is not a number you should be doing arithmetic on.", W3)
+
+    band(ws3, hl + 8, "STEP 2 — the same 24 contacts, scored with those coefficients", W3)
+    h3 = hl + 9
+    header(ws3, h3, ["Contact ref"] + [x[0] for x in REG_X]
+           + ["Reopened within 7 days (1 = yes)", "Logit", "Predicted probability",
+              "Flagged at your threshold (1 = yes)"])
+    ws3.row_dimensions[h3].height = 46
+    f3, l3 = _reg_data_block(
+        ws3, h3, [1, 2, 3, 4, 5, 6],
+        [(r[0], r[1], r[2], r[3], r[4], r[6]) for r in REG_ROWS],
+        [None, "0", "0", "#,##0", "0", "0"])
+    thr = l3 + 3                              # the threshold input, set below
+    b0 = hl + 1
+    for i in range(len(REG_ROWS)):
+        r = f3 + i
+        for col, f, fmt in (
+            (7, f'=IF($B{r}="","",$B${b0}+$B${b0 + 1}*$B{r}+$B${b0 + 2}*$C{r}'
+                f'+$B${b0 + 3}*$D{r}+$B${b0 + 4}*$E{r})', "0.000"),
+            (8, f'=IFERROR(1/(1+EXP(-$G{r})),"")', "0.0%"),
+            (9, f'=IF($H{r}="","",IF($H{r}>=$B${thr},1,0))', "0"),
+        ):
+            c = mark(ws3, r, col, "calc")
+            c.value, c.number_format = f, fmt
+            if i == 0:
+                c.fill = EX
+    note_cell(ws3, l3 + 1, 1,
+              "The logit is the straight-line part — intercept plus each coefficient "
+              "times its column. The probability is that logit squashed into 0-1 by "
+              "1/(1+EXP(−logit)), which is the whole reason this is not a linear "
+              "regression: a line would happily predict a 130% chance of reopening.", W3)
+
+    band(ws3, thr - 1, "STEP 3 — the threshold you choose, and what it costs you", W3)
+    for r, (lab, val, fmt, hint) in enumerate([
+        ("Flag a contact at this probability or above", 0.20, "0%",
+         "Not 0.5. Roughly one billing adjustment in seven reopens, so at 0.5 the "
+         "model flags nobody and still beats the base rate by predicting 'no' every "
+         "time. Set the threshold from what a flag COSTS you: a quality check on a "
+         "flagged contact takes about four minutes, so you can afford to be wrong "
+         "often."),
+        ("AUC the tool reported", 0.74, "0.00",
+         "Straight off the tool's output — Minitab calls it the concordance or the "
+         "area under the ROC curve. It is threshold-free: 0.5 is a coin toss, 0.7 "
+         "is useful for targeting, 0.8 is strong for support data. It says nothing "
+         "about whether the probabilities themselves are calibrated."),
+    ], start=thr):
+        ws3.cell(row=r, column=1, value=lab).font = F_B
+        c = mark(ws3, r, 2, "in")
+        c.value, c.number_format = val, fmt
+        note_cell(ws3, r, 3, hint, W3)
+        note(ws3, r, 2, hint)
+
+    ct = thr + 3
+    band(ws3, ct, "STEP 4 — the classification table at that threshold", W3)
+    header(ws3, ct + 1, ["What the model said", "Actually reopened", "Did not reopen",
+                         "Total"] + [""] * (W3 - 4))
+    act, pred = f"$F${f3}:$F${l3}", f"$I${f3}:$I${l3}"
+    for i, (lab, a) in enumerate([("Flagged — predicted reopen", 1),
+                                  ("Not flagged", 0)]):
+        r = ct + 2 + i
+        ws3.cell(row=r, column=1, value=lab).font = F_B
+        for col, want in ((2, 1), (3, 0)):
+            c = mark(ws3, r, col, "calc")
+            c.value = f"=SUMPRODUCT(({pred}={a})*({act}={want}))"
+            c.number_format = "#,##0"
+        c = mark(ws3, r, 4, "calc")
+        c.value, c.number_format = f"=SUM($B{r}:$C{r})", "#,##0"
+    r = ct + 4
+    ws3.cell(row=r, column=1, value="Total").font = F_B
+    for col in (2, 3, 4):
+        c = mark(ws3, r, col, "calc")
+        L = get_column_letter(col)
+        c.value, c.number_format = f"=SUM(${L}${ct + 2}:${L}${ct + 3})", "#,##0"
+    tp, fp = f"$B${ct + 2}", f"$C${ct + 2}"
+    fn, tn = f"$B${ct + 3}", f"$C${ct + 3}"
+    note_cell(ws3, ct + 5, 1,
+              "Top left is a contact you flagged that did reopen; top right is a "
+              "false alarm; bottom left is the one you missed. There is no threshold "
+              "that empties both off-diagonal cells, and choosing which of them to "
+              "fill is a business decision, not a statistical one.", W3)
+
+    mb = ct + 7
+    band(ws3, mb, "STEP 5 — what that table says about the model", W3)
+    header(ws3, mb + 1, ["Measure", "Value", "What it tells you"] + [""] * (W3 - 3))
+    for i, (lab, f, fmt, why) in enumerate([
+        ("Sensitivity — reopens you caught", f'=IFERROR({tp}/({tp}+{fn}),"")', "0.0%",
+         "Of the contacts that did reopen, the share the model flagged. This is the "
+         "number the improvement is actually paid on: a reopen you never flagged is "
+         "a reopen you never prevented."),
+        ("Specificity — quiet contacts left alone",
+         f'=IFERROR({tn}/({tn}+{fp}),"")', "0.0%",
+         "Of the contacts that did not reopen, the share the model correctly left "
+         "alone. Falls as you lower the threshold; that is the trade."),
+        ("Precision — flags that were right", f'=IFERROR({tp}/({tp}+{fp}),"")', "0.0%",
+         "Of the contacts you flagged, the share that really reopened. At a 14% base "
+         "rate this is always the ugly number, and it is the one that decides "
+         "whether the team trusts the flag."),
+        ("Accuracy — rows called correctly",
+         f'=IFERROR(({tp}+{tn})/({tp}+{fp}+{fn}+{tn}),"")', "0.0%",
+         "The share of all rows called right. Almost useless on its own: predicting "
+         "'never reopens' for every row scores whatever the base rate below leaves "
+         "it, and prevents nothing. Quote it only beside that base rate."),
+        ("Base rate — share that actually reopened",
+         f'=IFERROR(({tp}+{fn})/({tp}+{fp}+{fn}+{tn}),"")', "0.0%",
+         "What you would score by always guessing 'no'. Accuracy has to beat this "
+         "by a wide margin before it means anything at all."),
+        ("Verdict at this threshold", None, None,
+         "Sensitivity is what the model buys you; precision is what it costs the "
+         "team. Move the threshold in step 3 and watch both move."),
+    ]):
+        r = mb + 2 + i
+        ws3.cell(row=r, column=1, value=lab).font = F_B
+        c = mark(ws3, r, 2, "calc")
+        c.value = f
+        if fmt:
+            c.number_format = fmt
+        note_cell(ws3, r, 3, why, W3)
+    ws3.cell(row=mb + 7, column=2).value = (
+        f'=IF({tp}+{fn}=0,"NO REOPENS IN THE SAMPLE",'
+        f'IF({tp}/({tp}+{fn})<0.5,"MISSES MORE THAN HALF — lower the threshold",'
+        f'IF({tp}/({tp}+{fp})<0.2,"TOO MANY FALSE ALARMS — raise the threshold",'
+        f'"USABLE FOR TARGETING — check it against the cost of a flag")))')
+
+    lb = mb + 9
+    band(ws3, lb, "THE DECISION RULE — before this leaves the room", W3)
+    for i, txt in enumerate([
+        "Never fit a straight line to a yes/no outcome. Linear regression on a 0/1 "
+        "column predicts probabilities above 1 and below 0, and gets the error "
+        "structure wrong on top of it. If your outcome is reopened, escalated, "
+        "breached or churned, it is this tab or nothing.",
+        "Report odds ratios with their confidence intervals, never raw log-odds. "
+        "'Each transfer multiplies the odds of a reopen by 1.84 (95% CI 1.46 to "
+        "2.33)' is a sentence the Improve phase can act on. '0.61' is not. And an "
+        "interval that includes 1.00 means you have not shown anything, however "
+        "confident the point estimate looks.",
+        "The biggest odds ratio is not the biggest opportunity. Multiply each odds "
+        "ratio by how COMMON that driver is. After-17:00 has the largest ratio here "
+        "and applies to 46% of contacts; a rare driver with an odds ratio of 5 that "
+        "touches 2% of volume moves almost nothing. Rank by ratio times prevalence "
+        "and you will usually reorder the list.",
+        "AUC and accuracy are not the same question, and neither is causation. AUC "
+        "asks whether the model RANKS reopens above non-reopens; accuracy asks how "
+        "many rows it called right at one threshold; and neither says the drivers "
+        "cause the reopens. Before you change the 17:00 cut-off, confirm the "
+        "posting-batch mechanism at the gemba or pilot the change against a control "
+        "group (16-pilot-protocol.md) — the model chose your suspect, the pilot "
+        "convicts it.",
+    ]):
+        note_cell(ws3, lb + 1 + i, 1, txt, W3)
+    dvp = DataValidation(type="decimal", operator="between", formula1=0, formula2=1,
+                         allow_blank=True)
+    ws3.add_data_validation(dvp)
+    dvp.add(f"B{thr}")
+    dv01b = DataValidation(type="whole", operator="between", formula1=0, formula2=1,
+                           allow_blank=True)
+    ws3.add_data_validation(dv01b)
+    dv01b.add(f"B{f3}:C{l3}")
+    dv01b.add(f"F{f3}:F{l3}")
+
+    howto(wb, LEGEND + [
+        (True, "What this workbook is for"),
+        (False, "Two of the tools in the library — linear/multiple regression and logistic "
+                "regression — had nowhere to write anything down. This is that place. It "
+                "carries one worked case all the way through: billing adjustments, a 7-day "
+                "reopen rate of 14.2% against a target of 8%, 966 contacts in the baseline "
+                "month, mean handle time 412 seconds, and four drivers the team had already "
+                "named. The same 24 sampled contacts appear on all three tabs, so you can "
+                "paste your own extract once and reuse the columns."),
+        (True, "Which tab, and in what order"),
+        (False, "Simple linear first, always — one driver against the outcome, plotted, so "
+                "you see curvature, clusters and outliers before any coefficient hides them. "
+                "Then Multiple regression, which fits all four drivers together and shows "
+                "which of them the data cannot tell apart. Logistic regression last, and "
+                "only when the outcome is yes/no."),
+        (True, "What the logistic tab does not do"),
+        (False, "It does not fit the model. Maximum likelihood is an iterative search with no "
+                "closed form, so no plain spreadsheet formula can do it honestly. Fit it in "
+                "Minitab, statsmodels or R, paste the coefficient table into the yellow "
+                "cells, and this tab does the interpretation: odds ratios with confidence "
+                "intervals, a predicted probability per contact, and a classification table "
+                "at whatever threshold you choose."),
+        (True, "How good is good enough, for support data"),
+        (False, "Lower than a manufacturing course will tell you. A single driver explaining "
+                "20-40% of a duration is a normal, useful result; an adjusted R² of 0.3 to "
+                "0.6 across several drivers is a good model. Anything above 0.85 usually "
+                "means a component of the outcome has crept in as a predictor. Judge a model "
+                "on the size of the effects it hands you and on the residual plot, not on "
+                "R²."),
+        (True, "The trap that catches everybody"),
+        (False, "A significant coefficient is not a coefficient worth acting on. Significance "
+                "only says the effect is probably not zero. The 'Act on it?' column "
+                "multiplies each coefficient by the range that driver actually covers in "
+                "your data and compares it with the smallest effect you said would matter — "
+                "and it refuses to say yes on a p-value alone."),
+        (True, "And the one that ends projects"),
+        (False, "Correlation here is not causation. No regression on observed data can tell "
+                "you whether transfers lengthen contacts or whether hard contacts get "
+                "transferred. Regression ranks your suspects. A designed experiment "
+                "(24-doe-design-matrix.xlsx) or a controlled pilot (16-pilot-protocol.md) "
+                "convicts one. Write the association down here, then go and test it."),
+        (True, "Where the numbers go next"),
+        (False, "The coefficients, their intervals and the residual verdict belong in "
+                "14-root-cause-evidence-pack.md, next to the mechanism you observed. The "
+                "driver you decide to act on becomes a candidate solution in "
+                "15-solution-selection-matrix.xlsx."),
+    ])
+    return wb, "30-regression.xlsx"
+
+
 BUILDERS = [five_whys, fishbone, stakeholder, kano, doe, pareto, flow, control_charts,
-            erlang, gage_rr]
+            erlang, gage_rr, regression]
 
 
 def main() -> int:

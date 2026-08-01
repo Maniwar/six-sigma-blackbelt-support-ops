@@ -373,6 +373,46 @@ def run_visual() -> tuple[int, int, list[str]]:
     return killed, len(muts), survivors
 
 
+def run_properties() -> tuple[int, int, list[str]]:
+    """The property suite went from five permanent failures to none in one
+    sitting. That is either five real fixes or five checks quietly declawed, and
+    the two look identical from a green run — so pin an axis to the shipped
+    example's magnitude and require the harness to say so.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import qa_properties as P
+    book = TEMPLATES / "25-pareto-and-distribution.xlsx"
+    if not book.exists():
+        return 0, 0, []
+    killed = applied = 0
+    survivors = []
+    with tempfile.TemporaryDirectory() as td:
+        tmp = Path(td) / book.name
+        shutil.copyfile(book, tmp)
+        wb = load_workbook(tmp)
+        pinned = False
+        for ws in wb.worksheets:
+            for ch in getattr(ws, "_charts", []):
+                ch.y_axis.scaling.min, ch.y_axis.scaling.max = 0, 500
+                pinned = True
+        if pinned:
+            wb.save(tmp)
+            applied = 1
+            P.fails.clear()
+            P.passes[0] = 0
+            try:
+                P.test_axis_survives_rescale(tmp)
+            except Exception:                                    # noqa: BLE001
+                pass
+            if P.fails:
+                killed = 1
+            else:
+                survivors.append(
+                    "    SURVIVED [PROPERTY] axis pinned to the example's magnitude")
+            P.fails.clear()
+    return killed, applied, survivors
+
+
 def audit_to_set(path: Path) -> set[str]:
     Q.fails.clear()
     Q.warns.clear()
@@ -447,6 +487,13 @@ def main() -> int:
         survivors += s
         print(f"  {'(preview visuals)':36s} {k}/{a} mutants killed"
               f"{'' if k == a else '   <-- a check did not fire'}")
+        k, a, s = run_properties()
+        total_k += k
+        total_a += a
+        survivors += s
+        if a:
+            print(f"  {'(input properties)':36s} {k}/{a} mutants killed"
+                  f"{'' if k == a else '   <-- a check did not fire'}")
     print(f"\n  {total_k}/{total_a} mutants killed across {len(books)} workbooks")
     if survivors:
         print(f"\n{len(survivors)} SURVIVING MUTANT(S) — these checks cannot fail:")

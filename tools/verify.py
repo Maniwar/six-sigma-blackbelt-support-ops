@@ -514,10 +514,10 @@ def test_sync() -> None:
            if isinstance(e.get(f), str) and re.search(r"&(\w+|#\d+);", e[f])]
     check(not ent, "no template title or description carries a raw HTML entity",
           ", ".join(ent[:4]))
-    check(len(tpls) == 29, f"29 templates registered (found {len(tpls)})")
+    check(len(tpls) == 30, f"30 templates registered (found {len(tpls)})")
 
     exts = [e.get("ext") for e in tpls.values()]
-    check(exts.count("xlsx") == 18, f"18 Excel workbooks (found {exts.count('xlsx')})")
+    check(exts.count("xlsx") == 19, f"19 Excel workbooks (found {exts.count('xlsx')})")
     check(exts.count("md") == 11, f"11 Markdown templates (found {exts.count('md')})")
 
     for slug, entry in tpls.items():

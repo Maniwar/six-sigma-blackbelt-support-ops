@@ -35,8 +35,31 @@ from xlpolish import polish_workbook  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATES = ROOT / "templates"
 
-# Built by tools/build_templates.py, which owns them end to end.
-BUILT = re.compile(r"^(2[0-9])-")
+# Built by tools/build_templates.py, which owns them end to end. Read from the
+# previews that builder writes rather than guessed from the file name: the guess
+# was `^2[0-9]-`, which silently stopped covering the pack the moment a
+# thirtieth template existed, and re-saving a generated workbook here is
+# destructive — openpyxl's reader keeps only the first chart type in a combo.
+# The regex stays as the fallback for a checkout with no previews.json.
+_BUILT_RE = re.compile(r"^(2[0-9]|[3-9][0-9])-")
+
+
+def _is_built(name: str) -> bool:
+    if name in _BUILT_NAMES:
+        return True
+    return bool(_BUILT_RE.match(name))
+
+
+def _built_names() -> set:
+    import json
+    p = Path(__file__).resolve().parent / "previews.json"
+    try:
+        return set(json.loads(p.read_text(encoding="utf-8")))
+    except Exception:                                            # noqa: BLE001
+        return set()
+
+
+_BUILT_NAMES = _built_names()
 
 # Fill colours used across the workbooks; the preview renderer keys off these.
 YELLOW_INPUT = "FFFFF9E3"
@@ -240,7 +263,7 @@ def patch_formulas(verbose: bool = True) -> int:
     for path in sorted(TEMPLATES.glob("*.xlsx")):
         if path.name in by_file:
             continue
-        if BUILT.match(path.name):
+        if _is_built(path.name):
             # build_templates.py already polishes these at build time. Loading
             # and re-saving here would be destructive: openpyxl's reader keeps
             # only the first chart type in a combo, so every reference line laid
