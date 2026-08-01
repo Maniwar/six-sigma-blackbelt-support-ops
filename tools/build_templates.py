@@ -2990,10 +2990,12 @@ def regression():
             v.value = (f"=IFERROR(1/(1-INDEX(LINEST(${xcol}${f2}:${xcol}${l2},"
                        f"${hcol}${f2}:${hend}${l2},TRUE,TRUE),3,1)),\"\")")
             v.number_format = "0.00"
+            v.alignment = Alignment(vertical="center")
             e = mark(ws2, r, 7, "calc")
             e.value = (f'=IFERROR($B{r}*(MAX(${xcol}${f2}:${xcol}${l2})'
                        f'-MIN(${xcol}${f2}:${xcol}${l2})),"")')
             e.number_format = "#,##0"
+            e.alignment = Alignment(vertical="center")
             a = mark(ws2, r, 8, "calc")
             a.value = (
                 f'=IF($E{r}="","",IF($E{r}>=0.05,'
