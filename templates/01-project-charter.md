@@ -1,15 +1,33 @@
 # Project Charter — <Project name>
 
+<!-- guidance -->
+## How to use this
+
+**What it is for.** The contract between you, your Champion and Finance. Nothing else in the project is allowed to contradict it.
+
+**When.** Define, before any data collection. Re-signed at every tollgate where the scope or the benefit changes.
+
+**Who signs it.** Black Belt drafts · Champion, Process owner and Finance partner sign
+
+**The mistake this prevents.** A charter with a benefit number and no named harvest mechanism. If nobody has committed to removing the headcount, renegotiating the contract or absorbing the growth, the saving is occupancy reduction — real for agents, invisible to the P&L, and it will not survive Finance validation at closure.
+
+*Italic entries below are a worked example from one project — billing adjustments closing before the posting confirms, driving a 14.2% 7-day reopen rate against a target of 8%. Delete them as you fill your own in.*
+
+---
+
+
+
+
 | Field | Value |
 |---|---|
-| Project ID | |
-| Black Belt | |
-| Champion | |
-| Process owner | |
-| Finance partner | |
-| Master Black Belt | |
-| Start date | |
-| Target close date | |
+| Project ID | *BIL-2026-014* |
+| Black Belt | *M. Berenji* |
+| Champion | *R. Mehta, Support Director* |
+| Process owner | *A. Okafor, Billing Ops* |
+| Finance partner | *J. Lindqvist* |
+| Master Black Belt | *S. Iyer* |
+| Start date | *2026-04-06* |
+| Target close date | *2026-10-30* |
 | Charter version / date | v1.0 / |
 
 ## 1. Problem statement
@@ -129,7 +147,7 @@ Signed by affected ops leader: ____________________  Date: __________
 
 | Role | Name | Signature | Date |
 |---|---|---|---|
-| Champion | | | |
-| Black Belt | | | |
-| Finance partner | | | |
-| Master Black Belt | | | |
+| Champion | *R. Mehta, Support Director* |  |  |
+| Black Belt | *M. Berenji* |  |  |
+| Finance partner | *J. Lindqvist* |  |  |
+| Master Black Belt | *S. Iyer* |  |  |

@@ -541,6 +541,19 @@ def test_sync() -> None:
     for term in ("Gemba", "Kaizen", "Poka-yoke"):
         check(f'"{term}"' in src, f"{term} is still a glossary entry")
 
+    # The eleven markdown templates shipped as well-structured blank forms with
+    # nothing telling a first-time user what a good answer looks like, while
+    # every workbook opened with a how-to tab and a worked example row. They
+    # carry the same now.
+    for md in sorted(TEMPLATES.glob("*.md")):
+        body = md.read_text(encoding="utf-8")
+        check("## How to use this" in body,
+              f"{md.name}: has a how-to block")
+        check("**The mistake this prevents.**" in body,
+              f"{md.name}: names the mistake it prevents")
+        check(body.count("*") > 6,
+              f"{md.name}: carries a worked example", "no italic example entries found")
+
     for dead in ("parseCSV", "renderCSV"):
         check(dead not in src, f"dead {dead}() removed")
     check("function esc2(" in src, "esc2() retained (renderMD depends on it)")

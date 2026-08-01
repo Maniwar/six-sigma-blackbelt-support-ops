@@ -1,5 +1,23 @@
 # VOC Plan and CTQ Tree — <Project>
 
+<!-- guidance -->
+## How to use this
+
+**What it is for.** Turns what customers say into something you can measure, without losing the meaning on the way.
+
+**When.** Define, after the SIPOC and before the baseline — you cannot measure a CTQ you have not defined.
+
+**Who signs it.** Black Belt · signed off with the process owner and whoever owns the survey
+
+**The mistake this prevents.** Jumping from a verbatim straight to a metric. The middle column is the work: a need is not a driver and a driver is not a measure.
+
+*Italic entries below are a worked example from one project — billing adjustments closing before the posting confirms, driving a 14.2% 7-day reopen rate against a target of 8%. Delete them as you fill your own in.*
+
+---
+
+
+
+
 ## 1. VOC collection plan
 
 | Method | Population | Sample plan | n | Who | When | Known bias |
@@ -9,7 +27,7 @@
 | Customer interviews | | | | | | Selection; social desirability |
 | Complaint / escalation review | | | | | | Extreme cases only |
 | Churn exit reasons | | | | | | Post-hoc rationalization |
-| Internal (VOB / VOE) | | | | | | |
+| Internal (VOB / VOE) | *Agent forum and QA notes* | *ongoing* | *n/a* | *Agents name the same posting delay* |  |  |
 
 ## 2. Affinity themes
 

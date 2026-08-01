@@ -1,13 +1,31 @@
 # Measurement System Analysis — Attribute Agreement Study
 
+<!-- guidance -->
+## How to use this
+
+**What it is for.** Proves your QA scoring, disposition coding or survey interpretation is a measurement system rather than a set of opinions.
+
+**When.** Measure, before you baseline anything that depends on a human judgement.
+
+**Who signs it.** Black Belt runs it · QA manager owns the remediation
+
+**The mistake this prevents.** Reporting percent agreement instead of kappa. Two analysts who both pass 90% of calls agree 82% of the time by luck alone; kappa removes that and routinely lands at 0.35–0.60 where the organisation believed it was near 1.0.
+
+*Italic entries below are a worked example from one project — billing adjustments closing before the posting confirms, driving a 14.2% 7-day reopen rate against a target of 8%. Delete them as you fill your own in.*
+
+---
+
+
+
+
 **Measurement being validated:** <QA scoring / disposition coding / intent tagging / severity classification>
 
 ## 1. Study design
 
 | Field | Value |
 |---|---|
-| Appraisers (n, names/IDs) | |
-| Items sampled (n) | |
+| Appraisers (n, names/IDs) | *4 — QA analysts QA-01 to QA-04* |
+| Items sampled (n) | *50 recorded billing contacts* |
 | Sample stratification | ___ clear pass · ___ clear fail · ___ genuinely ambiguous |
 | Replicates per appraiser | (minimum 2) |
 | Separation between replicates | (minimum 5 days) |

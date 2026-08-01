@@ -1,5 +1,23 @@
 # Handover Package and Benefit Validation — <Project>
 
+<!-- guidance -->
+## How to use this
+
+**What it is for.** Closes the project: hands the control plan to the owner and gets the benefit signed by Finance.
+
+**When.** Control, after 90 days of control data — not at the end of the improvement.
+
+**Who signs it.** Process owner accepts the controls · Finance validates the benefit
+
+**The mistake this prevents.** Handing over without a named owner for each control. A control plan with no owner is a document; the process reverts within two quarters and nobody is accountable for noticing.
+
+*Italic entries below are a worked example from one project — billing adjustments closing before the posting confirms, driving a 14.2% 7-day reopen rate against a target of 8%. Delete them as you fill your own in.*
+
+---
+
+
+
+
 ## Part A — Handover checklist
 
 - [ ] Signed control plan with named owners for every metric
@@ -35,13 +53,13 @@ Name: ____________  Role: ____________  Signature: ____________  Date: _________
 
 | Field | Value |
 |---|---|
-| Full implementation date | |
-| Control period start | |
+| Full implementation date | *2026-08-03* |
+| Control period start | *2026-08-04* |
 | Control period end | (minimum 90 days) |
-| Days of control data | |
-| Post-period metric (centre line) | |
-| Post-period UCL / LCL | |
-| Process stable in the control period? | |
+| Days of control data | *91* |
+| Post-period metric (centre line) | *7.6%* |
+| Post-period UCL / LCL | *9.1% / 6.1%* |
+| Process stable in the control period? | *Yes — no points outside the limits, no runs of 8* |
 
 ### Mix-adjusted comparison
 > Required. An unadjusted before/after is not acceptable evidence.
@@ -49,8 +67,8 @@ Name: ____________  Role: ____________  Signature: ____________  Date: _________
 | Field | Value |
 |---|---|
 | Contact-mix chi-square, baseline vs post (p) | |
-| Mix shift present? | |
-| Adjustment method applied | |
+| Mix shift present? | *Checked: contact-reason mix chi-sq p = 0.38, no material shift* |
+| Adjustment method applied | *None required* |
 | Mix-adjusted effect | |
 
 ### Benefit calculation

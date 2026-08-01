@@ -1,5 +1,23 @@
 # Pilot Protocol — <Project>
 
+<!-- guidance -->
+## How to use this
+
+**What it is for.** Registers what you will do, on whom, for how long, and what result would make you stop — before you start.
+
+**When.** Improve, before the pilot runs. Registering it afterwards is not a protocol.
+
+**Who signs it.** Black Belt writes · Champion approves the stopping rule
+
+**The mistake this prevents.** Deciding the success criterion after seeing the data. Write the practical threshold and the kill criteria into this document first, and the pilot can only tell you one of two things.
+
+*Italic entries below are a worked example from one project — billing adjustments closing before the posting confirms, driving a 14.2% 7-day reopen rate against a target of 8%. Delete them as you fill your own in.*
+
+---
+
+
+
+
 **Complete and circulate this BEFORE the pilot starts. Pre-registration is what stops
 post-hoc metric-shopping, which is the single largest source of inflated benefits in
 support improvement programs.**
@@ -8,21 +26,21 @@ support improvement programs.**
 
 | Field | Content |
 |---|---|
-| Solution(s) | |
-| Root cause(s) addressed | |
-| Countermeasure hierarchy level | |
-| Expected mechanism of effect | |
+| Solution(s) | *Block Resolved until the billing posting webhook confirms* |
+| Root cause(s) addressed | *RC-1 closure permitted before posting confirms* |
+| Countermeasure hierarchy level | *2 — Design it out* |
+| Expected mechanism of effect | *The ticket cannot reach Resolved while an adjustment is in flight, so the customer has nothing to reopen for* |
 
 ## 2. Design
 
 | Field | Value |
 |---|---|
-| Treatment group definition | |
-| **Concurrent control group definition** | |
+| Treatment group definition | *Billing queue, sites A and C, all tenures* |
+| **Concurrent control group definition** | *Billing queue, sites B and D, same period* |
 | Randomization / assignment mechanism | (agent-level / site-level / time-block / switchback) |
 | Matching factors | contact mix · tenure distribution · channel split · site · day-part |
-| Start date | |
-| End date | |
+| Start date | *2026-06-01* |
+| End date | *2026-07-27 (8 whole weeks)* |
 | **Duration** | (minimum 4 full weeks) |
 | **Weeks excluded from analysis** | (week 1 — learning curve is a confounder, not the steady state) |
 | Blinding | (ambient / announced) |
