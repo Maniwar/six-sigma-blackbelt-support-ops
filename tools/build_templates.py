@@ -130,7 +130,7 @@ def overlay(ch, ws, ref, name, colour="C0392B"):
 
 
 def bar(ws, title_, cat_ref, val_ref, anchor, horizontal=False, pct=False, series=None,
-        colours=None):
+        colours=None, name=None):
     """A chart bound to the cells, so it moves when the numbers do.
 
     Series titles are set here rather than read from a header cell, because the
@@ -145,6 +145,8 @@ def bar(ws, title_, cat_ref, val_ref, anchor, horizontal=False, pct=False, serie
     ch.gapWidth = 60
     ch.add_data(val_ref, titles_from_data=False)
     ch.set_categories(cat_ref)
+    if name and ch.series:
+        ch.series[0].tx = SeriesLabel(v=name)   # else the legend reads "Series1"
     if ch.series and colours:
         from openpyxl.chart.marker import DataPoint
         from openpyxl.chart.shapes import GraphicalProperties
@@ -375,7 +377,8 @@ def fishbone():
     ws.cell(row=37, column=8, value="Mean causes per branch").font = F_NOTE
     fb = bar(ws, "Causes per branch — a thin bar is a blind spot",
              Reference(ws, min_col=1, min_row=38, max_row=44),
-             Reference(ws, min_col=2, min_row=38, max_row=44), "J8")
+             Reference(ws, min_col=2, min_row=38, max_row=44), "J8",
+             name="Causes on this branch")
     overlay(fb, ws, Reference(ws, min_col=8, min_row=38, max_row=44),
             "Mean — below this is a branch you are not looking at")
     ws.merge_cells("A46:F46")
@@ -833,7 +836,8 @@ def doe():
     ws.column_dimensions["K"].width = 11         # visible: charts skip hidden cells
     de = bar(ws, "Effect size — which factor actually moved the response",
              Reference(ws, min_col=1, min_row=20, max_row=25),
-             Reference(ws, min_col=4, min_row=20, max_row=25), "M5", horizontal=True)
+             Reference(ws, min_col=4, min_row=20, max_row=25), "M5", horizontal=True,
+             name="Effect on the response")
     overlay(de, ws, Reference(ws, min_col=11, min_row=20, max_row=25),
             "Noise floor — the mean interaction, anything smaller is nothing")
     ws.merge_cells("A27:I27")

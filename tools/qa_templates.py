@@ -181,6 +181,20 @@ def audit_charts(path: Path, wb) -> int:
                         fail(book, "CHARTS",
                              f"{label} series {si} leaves invertIfNegative unset — any negative "
                              "value renders as a blank bar")
+            # A series with no name shows as "Series1" the moment anything
+            # turns the legend on — which laying a reference line over a bar
+            # chart does.
+            if getattr(ch, "legend", None) is not None:
+                for si, ser in enumerate(ch.series, start=1):
+                    tx = getattr(ser, "tx", None)
+                    nm = ""
+                    if tx is not None:
+                        nm = (getattr(tx, "v", None) or
+                              (tx.strRef.f if getattr(tx, "strRef", None) else "") or "")
+                    if not nm:
+                        fail(book, "CHARTS",
+                             f"{label} series {si} has no name but the chart has a legend — "
+                             "Excel will label it 'Series1'")
             if ch.height and ch.height < 5:
                 warn(book, "CHARTS", f"{label} is only {ch.height}cm tall — labels will collide")
     if total == 0 and book not in NO_CHART_OK:
@@ -264,6 +278,30 @@ def audit_guided(path: Path, wb) -> None:
              f"comes from: {naked[:5]}")
     if unlabelled:
         fail(book, "GUIDED", f"{len(unlabelled)} input(s) under a blank column header: {unlabelled[:5]}")
+    # A label appearing twice on one sheet is the signature of a ghost block:
+    # a helper table that was moved, leaving the old copy behind, because the
+    # builders only ever write cells and never clear the ground they left.
+    for ws in wb.worksheets:
+        # Only BOLD text counts. Ordinary content legitimately repeats — two
+        # solutions can address the same root cause, two metrics can use the
+        # same chart type — but a heading appearing twice means a block was
+        # moved and its old copy was left behind.
+        labels = {}
+        for row in ws.iter_rows():
+            for c in row:
+                v = c.value
+                if not (isinstance(v, str) and len(v) > 24 and not v.startswith("=")):
+                    continue
+                if not (c.font and c.font.bold):
+                    continue
+                labels.setdefault(v, []).append(c.coordinate)
+        ghosts = {v: at for v, at in labels.items() if len(at) > 1}
+        if ghosts:
+            v, at = next(iter(ghosts.items()))
+            fail(book, "GUIDED",
+                 f"{len(ghosts)} label(s) appear more than once on {ws.title!r} — "
+                 f"a moved helper block left its old copy behind: {v[:40]!r} at {at[:3]}")
+
     if not any(ws.sheet_view.showGridLines is False for ws in wb.worksheets):
         warn(book, "GUIDED", "gridlines left on everywhere — reads like a spreadsheet, not a tool")
 

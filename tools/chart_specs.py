@@ -21,6 +21,7 @@ import pathlib
 from openpyxl.chart import BarChart, LineChart, Reference, Series
 from openpyxl.chart.label import DataLabelList
 from openpyxl.chart.marker import Marker
+from openpyxl.chart.series import SeriesLabel
 from openpyxl.packaging.custom import StringProperty
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
@@ -69,7 +70,7 @@ class Sheet:
 
 
 def _bar(ws, title, cats, vals, anchor, colours=None, horizontal=False,
-         fmt=None, height=7.5, width=15, labels=True, gap=60):
+         fmt=None, height=7.5, width=15, labels=True, gap=60, name=None):
     ch = BarChart()
     ch.type = "bar" if horizontal else "col"
     ch.style = 10
@@ -79,6 +80,10 @@ def _bar(ws, title, cats, vals, anchor, colours=None, horizontal=False,
     ch.gapWidth = gap
     ch.add_data(vals, titles_from_data=False)
     ch.set_categories(cats)
+    if name and ch.series:
+        # An unnamed series shows as "Series1" the moment anything turns the
+        # legend on — which laying a reference line over it does.
+        ch.series[0].tx = SeriesLabel(v=name)
     ch.x_axis.delete = False
     ch.y_axis.delete = False
     if fmt:
@@ -239,6 +244,15 @@ def data_collection_plan(wb) -> int:
     if not name:
         return 0
     sh = Sheet(wb[name])
+    # This block used to sit at row 20. chart_specs only ever writes cells and
+    # patch_workbooks loads the workbook from disk, so moving it left the old
+    # copy behind as a ghost table. Clear the ground we abandoned.
+    for r in range(20, 33):
+        for c in range(1, 4):
+            cell = sh.ws.cell(row=r, column=c)
+            if cell.__class__.__name__ != "MergedCell" and cell.value is not None:
+                cell.value = None
+                sh.changed += 1
     r0 = 34                      # below every merged note row on this tab
     sh.label(r0, 1, "How sample size moves with the precision you ask for")
     sh.put(r0 + 1, 1, "Worst-case proportion (p=0.5), 95% confidence. Halving the "
@@ -312,7 +326,8 @@ def xy_matrix(wb) -> int:
     sh.put(14, 15, "Mean", bold=True)
     ch = _bar(ws, "Weighted total by candidate cause — ranked, tallest first",
               blk["cats"], blk["vals"][0],
-              "Q14", horizontal=True, height=11, width=17, labels=False)
+              "Q14", horizontal=True, height=11, width=17, labels=False,
+              name="Weighted total")
     _overlay(ch, ws, Reference(ws, min_col=15, min_row=15, max_row=36), "Mean score")
     return sh.changed
 
@@ -375,7 +390,8 @@ def solution_selection(wb) -> int:
     sh.put(13, 19, "Mean", bold=True)
     ch = _bar(ws, "Weighted score by solution — ranked, best first",
               blk["cats"], blk["vals"][0],
-              "U13", horizontal=True, height=11, width=17, labels=False)
+              "U13", horizontal=True, height=11, width=17, labels=False,
+              name="Weighted score")
     _overlay(ch, ws, Reference(ws, min_col=19, min_row=14, max_row=33), "Mean score")
     return sh.changed
 
