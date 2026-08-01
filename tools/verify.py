@@ -690,6 +690,22 @@ def test_sync() -> None:
     check(said and all((int(a), int(b)) == (len(tpls), exts.count("xlsx")) for a, b in said),
           f"the page's own template count matches the registry ({len(tpls)}/"
           f"{exts.count('xlsx')})", f"the prose says {sorted(set(said))}")
+    # The glossary is one JSON literal plus eight Object.assign blocks, and a key
+    # written twice does not raise anything — the later one silently wins. Fifteen
+    # terms had been defined twice, so fifteen definitions were written, shipped
+    # and unreachable, and it was not consistently the better one that survived:
+    # the Tukey entry that won gave a Minitab menu path, and the one it replaced
+    # explained that comparing five queues is ten tests and produces a false
+    # positive about 40% of the time.
+    terms = gloss_keys(src)
+    twice = sorted({t for t in terms if terms.count(t) > 1})
+    check(not twice, "no glossary term is defined twice",
+          f"silently overwritten: {twice}")
+    said = re.findall(r"(\d+) plain-English definitions", src)
+    check(said and all(int(n) == len(set(terms)) for n in said),
+          f"the page's definition count matches the glossary ({len(set(terms))})",
+          f"the prose says {sorted(set(said))}")
+
     btn = re.findall(r"Download all (\d+) templates", src)
     check(btn and all(int(n) == len(tpls) for n in btn),
           "the download-all button counts the templates it downloads",
@@ -1214,6 +1230,45 @@ JARGON = [
     "Histogram", "Boxplot", "Run chart", "Pareto chart", "Percentile",
     "Standard deviation", "Variance", "Changeover", "Pull system", "Bottleneck",
 ]
+
+
+
+def gloss_keys(src: str) -> list[str]:
+    """Every term slot in the glossary, duplicates included.
+
+    Walks each object literal by brace depth rather than by regex, because the
+    definitions themselves are full of braces, quotes and apostrophes.
+    """
+    out: list[str] = []
+    for spot in [m.end() - 1 for m in
+                 re.finditer(r"const GLOSS=\{|Object\.assign\(GLOSS,\s*\{", src)]:
+        depth, quote, i, start = 0, None, spot, spot + 1
+        while i < len(src):
+            ch = src[i]
+            if quote:
+                if ch == "\\":
+                    i += 2
+                    continue
+                if ch == quote:
+                    quote = None
+            elif src[i:i + 2] == "/*":
+                i = src.index("*/", i) + 2
+                continue
+            elif ch in "\"'":
+                quote = ch
+            elif ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    break
+            elif ch == ":" and depth == 1:
+                m = re.search(r'(?:"([^"]+)"|\'([^\']+)\'|([A-Za-z_$][\w$ .&/-]*))\s*$',
+                              src[start:i].rstrip())
+                if m:
+                    out.append(next(g for g in m.groups() if g is not None).strip())
+            i += 1
+    return out
 
 
 def test_glossary() -> None:
