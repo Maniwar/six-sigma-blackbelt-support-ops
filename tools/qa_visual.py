@@ -18,6 +18,9 @@ So this one renders THE PREVIEW, the thing readers see, and it asserts:
            chart that resolves to live cells and plots nothing passes every
            structural check in the repo.
   OVERLAP  no chart's legend or axis labels are drawn over its own plot area.
+  CONTRAST every label clears WCAG AA against whatever it is drawn on — which
+           for a value label sitting on a bar is that series' own colour, not
+           the white the other checks all assume.
   SHEET    a contact sheet per template, so the images get looked at by someone
            rather than merely produced.
 
@@ -105,6 +108,84 @@ def text_boxes(svg_text: str):
             x0, x1 = x, x + w
         out.append((x0, x1, y, txt, vb, bool(rot)))
     return out
+
+
+def _lum(hexc: str) -> float:
+    h = hexc.lstrip("#")
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    parts = []
+    for i in (0, 2, 4):
+        c = int(h[i:i + 2], 16) / 255
+        parts.append(c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4)
+    return 0.2126 * parts[0] + 0.7152 * parts[1] + 0.0722 * parts[2]
+
+
+def contrast(a: str, b: str) -> float:
+    la, lb = _lum(a), _lum(b)
+    return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+
+
+RE_RECT = re.compile(
+    r'<rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)"[^>]*?'
+    r'fill="(#[0-9a-fA-F]{3,6})"')
+RE_CLS_FILL = re.compile(r"\.(\w+)\{[^}]*?fill:(#[0-9a-fA-F]{3,6})")
+
+# WCAG AA: 4.5:1 for body text, and 3:1 only for LARGE text, which means 24px
+# regular or 18.66px bold. Nothing in these charts is large — the value labels
+# are 10.5px bold and even the title is 14px — so the allowance is derived from
+# the declared font rather than assumed. The first version of this check listed
+# the title and value classes as large by hand, which handed both of them a 3:1
+# pass they are nowhere near entitled to.
+AA_BODY, AA_LARGE = 4.5, 3.0
+RE_FONT_FULL = re.compile(r"font:\s*(?:(\d+)\s+)?([\d.]+)px")
+
+
+def _needs(cls: str, svg_text: str) -> float:
+    m = re.search(r"\." + re.escape(cls) + r"\{([^}]*)\}", svg_text)
+    f = RE_FONT_FULL.search(m.group(1)) if m else None
+    if not f:
+        return AA_BODY
+    weight = int(f.group(1) or 400)
+    size = float(f.group(2))
+    large = size >= 24 or (weight >= 700 and size >= 18.66)
+    return AA_LARGE if large else AA_BODY
+
+
+def audit_contrast(book: str, title: str, svg_text: str) -> None:
+    """Every label has to be readable against whatever it is drawn on.
+
+    Text on the white plot area was never the risk — the label grey is 5.8:1 and
+    the title 17:1. The risk is a value label sitting ON a bar, where the
+    background is whatever colour that series happens to be, and a dark label on
+    a dark fill is unreadable while every structural check still passes: the
+    text exists, it is inside the frame, and it does not overlap another label.
+    """
+    colours = dict(RE_CLS_FILL.findall(svg_text))
+    rects = [(float(x), float(y), float(w), float(h), fill)
+             for x, y, w, h, fill in RE_RECT.findall(svg_text)]
+    root = ET.fromstring(svg_text)
+    for el in root.iter("{http://www.w3.org/2000/svg}text"):
+        txt = "".join(el.itertext()).strip()
+        cls = el.get("class", "")
+        if not txt or cls not in colours:
+            continue
+        m = re.search(r"translate\(([-\d.]+),\s*([-\d.]+)\)", el.get("transform", ""))
+        x = float(m.group(1)) if m else float(el.get("x", 0))
+        y = float(m.group(2)) if m else float(el.get("y", 0))
+        # The deepest rect containing the text's anchor is what sits behind it.
+        bg = "#ffffff"
+        for rx, ry, rw, rh, fill in rects:
+            if rx <= x <= rx + rw and ry <= y <= ry + rh:
+                bg = fill
+        got = contrast(colours[cls], bg)
+        need = _needs(cls, svg_text)
+        if got < need:
+            check(False, f"[CONTRAST] {book} · {title}",
+                  f"{txt[:32]!r} is {colours[cls]} on {bg} — {got:.1f}:1, below the "
+                  f"{need}:1 this text size needs to stay readable")
+            return
+    passes[0] += 1
 
 
 def audit_svg(book: str, title: str, svg_text: str) -> None:
@@ -207,7 +288,9 @@ def main() -> int:
         # this one looks at them.
         for svg in svgs:
             title = re.search(r'aria-label="([^"]*)"', svg)
-            audit_svg(entry["file"], title.group(1) if title else "(untitled)", svg)
+            name = title.group(1) if title else "(untitled)"
+            audit_svg(entry["file"], name, svg)
+            audit_contrast(entry["file"], name, svg)
             charts += 1
 
     print(f"Looked at {charts} chart(s) across the previews.")

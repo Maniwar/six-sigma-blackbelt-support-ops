@@ -500,13 +500,22 @@ def run_visual() -> tuple[int, int, list[str]]:
                                         + "Average wait per step" + m.group(3), 1)
                     if m else s)(
              _re.search(r'(<text x="[\d.]+" y="[\d.]+" class="cl">)([^<]{6,})(</text>)', s))),
+        # Label grey lightened until it stops being readable. 4.5:1 is the WCAG
+        # AA bar for body text; #cfd4dc on white is about 1.5:1, which looks
+        # fine in a thumbnail and disappears on a real screen.
+        ("visual: axis labels too faint to read",
+         lambda s: s.replace("fill:#5b6675", "fill:#cfd4dc")),
     ]
+    contrast_mutants = {"visual: axis labels too faint to read"}
     killed = 0
     survivors = []
     for name, mutate in muts:
         V.fails.clear()
         V.passes[0] = 0
-        V.audit_svg("mutant.xlsx", name, mutate(svg))
+        if name in contrast_mutants:
+            V.audit_contrast("mutant.xlsx", name, mutate(svg))
+        else:
+            V.audit_svg("mutant.xlsx", name, mutate(svg))
         if V.fails:
             killed += 1
         else:
