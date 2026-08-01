@@ -486,7 +486,9 @@ def render(spec: dict, cells: dict, width: int = 900) -> str | None:
     pad_l = 14 + max(28, 7.0 * max(len(t) for t in ylab))
     if ax_prim.get("title"):
         pad_l += 16
-    pad_r = 18
+    # A horizontal chart's last value label is centred on the axis end, so half
+    # of it hangs past the plot — "400,000" came out as "400,00(".
+    pad_r = 34 if horizontal else 18
     if sec:
         ylab2 = [fmt_num(lo2 + i * st2, ax_sec.get("fmt"))
                  for i in range(int(round((hi2 - lo2) / st2)) + 1)] if st2 else ["0"]

@@ -192,6 +192,26 @@ def rank_colours(n, top=3, head=AMBER, rest=BLUE):
     return [head if i < top else rest for i in range(n)]
 
 
+def _vrule(ch, ref, name, colour=RED):
+    """Stand a vertical reference on a line chart.
+
+    A limit that lives on the X axis — an SLA in hours, a spec bound — cannot be
+    a line series. A category chart takes one Y per X, so the series is a single
+    point, and a single point with no marker draws nothing at all: Excel and
+    LibreOffice agree, which is how a chart captioned "area past the red line is
+    a breach" shipped without a red line on it. A one-category column with a
+    wide gap is a vertical rule, and it is the only shape that is.
+    """
+    b = BarChart()
+    b.type = "col"
+    b.gapWidth = 400
+    sr = Series(ref, title=name)
+    sr.graphicalProperties.solidFill = colour
+    sr.graphicalProperties.line.solidFill = colour
+    b.series.append(sr)
+    ch += b
+
+
 def _overlay(ch, ws, ref, name, colour=RED):
     """Lay a reference line over a bar chart.
 
@@ -554,11 +574,12 @@ def calculators(wb) -> int:
         # baseline, and red is this repo's colour for a limit or a breach — so
         # the chart carried two red references. NA() leaves a gap instead.
         sh.put(r, 3, f"=IF(ABS(A{r}-$B$5)<=(8*$B$7)/80,MAX($B$21:$B$61),NA())", fmt="0.0000")
-    _line(sh.ws, "Where you sit against the SLA — area past the red line is a breach",
-          Reference(sh.ws, min_col=1, min_row=21, max_row=61),
-          [(Reference(sh.ws, min_col=2, min_row=21, max_row=61), "Your process", BLUE, False, False),
-           (Reference(sh.ws, min_col=3, min_row=21, max_row=61), "SLA limit", RED, False, False)],
-          "E4", height=9, width=18, y_title="Relative frequency")
+    ch = _line(sh.ws, "Where you sit against the SLA — area past the red line is a breach",
+               Reference(sh.ws, min_col=1, min_row=21, max_row=61),
+               [(Reference(sh.ws, min_col=2, min_row=21, max_row=61),
+                 "Your process", BLUE, False, False)],
+               "E4", height=9, width=18, y_title="Relative frequency")
+    _vrule(ch, Reference(sh.ws, min_col=3, min_row=21, max_row=61), "SLA limit")
     changed += sh.changed
 
     # 4 — Little's Law, as a picture
