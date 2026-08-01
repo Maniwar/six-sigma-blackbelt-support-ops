@@ -336,17 +336,24 @@ def _boundary(ws, row: int, span) -> bool:
     return False
 
 
-LONG_NOTE = 200          # characters that need a paragraph's worth of width
-NARROW = 40              # a column below this cannot carry one
+NOTE_FLOOR = 60          # shorter than this is a label, not a paragraph
+MAX_LINES = 4            # deeper than this and the column is the problem
+
+
+def _wrapped_lines(text: str, width: float) -> float:
+    """Roughly how many lines this text takes in a column of that width."""
+    return len(text) / max(4.0, width * 0.95)
 
 
 def widen_long_notes(wb) -> int:
     """Give a paragraph somewhere to go, instead of a 13-wide column.
 
-    The hypothesis log's test-selection guidance is 776 characters sitting in a
-    column 13 wide, so it wrapped into a single cell about sixty lines tall and
-    pushed the table that follows off the screen. The content was right; it had
-    nowhere to sit. Two more like it across the pack.
+    Measured in LINES, not characters. A first attempt used a flat 200-character
+    threshold and missed the worst case in the pack: the six hierarchy
+    definitions on the control plan are 130-170 characters each in a column 26
+    wide, so each one wrapped six or seven lines deep and the block read as a
+    column of shredded text. Length alone says nothing — 170 characters is a
+    sentence in a wide column and a paragraph in a narrow one.
 
     Only merges when every cell to the right of it on that row is empty, so it
     cannot swallow a neighbour, and sizes the row from the width it ends up
@@ -363,12 +370,13 @@ def widen_long_notes(wb) -> int:
         for row in list(ws.iter_rows()):
             for cell in row:
                 v = cell.value
-                if not (isinstance(v, str) and len(v) > LONG_NOTE
+                if not (isinstance(v, str) and len(v) >= NOTE_FLOOR
                         and not v.startswith("=")):
                     continue
                 if cell.coordinate in anchors or (cell.row, cell.column) in shadow:
                     continue
-                if (ws.column_dimensions[cell.column_letter].width or 8.43) >= NARROW:
+                if _wrapped_lines(
+                        v, ws.column_dimensions[cell.column_letter].width or 8.43) <= MAX_LINES:
                     continue
                 if any(ws.cell(row=cell.row, column=k).value not in (None, "")
                        for k in range(cell.column + 1, last + 1)):
@@ -378,7 +386,7 @@ def widen_long_notes(wb) -> int:
                 ws.merge_cells(start_row=cell.row, start_column=cell.column,
                                end_row=cell.row, end_column=last)
                 cell.alignment = Alignment(wrap_text=True, vertical="top")
-                lines = 1 + int(len(v) / max(20, span * 0.95))
+                lines = 1 + int(_wrapped_lines(v, span))
                 ws.row_dimensions[cell.row].height = max(
                     ws.row_dimensions[cell.row].height or 0, 13 * lines)
                 n += 1

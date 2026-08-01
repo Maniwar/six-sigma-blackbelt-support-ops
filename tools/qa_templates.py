@@ -655,11 +655,15 @@ def audit_formula_colour(path: Path, wb) -> None:
 def audit_note_width(path: Path, wb) -> None:
     """A paragraph needs a paragraph's width, or it wraps into a column of soup.
 
-    776 characters of test-selection guidance sat in a column 13 wide on the
-    hypothesis log, wrapping about sixty lines tall and pushing the table it
-    introduces off the screen. The content was right and its container was not,
-    which no check looked at: every guidance layer asks whether an explanation
-    EXISTS and none asked whether it is readable where it sits.
+    Measured in lines, not characters. A flat 200-character threshold caught the
+    hypothesis log's 776-character guidance and missed the worse case: the six
+    hierarchy definitions on the control plan, 130-170 characters each in a
+    column 26 wide, each wrapping six or seven lines deep so the block read as
+    shredded text. Length alone says nothing about readability — the same
+    sentence is fine in a wide column and unreadable in a narrow one.
+
+    Every guidance layer until now asked whether an explanation EXISTS. None
+    asked whether it is legible where it sits.
     """
     book = path.name
     bad = []
@@ -669,13 +673,20 @@ def audit_note_width(path: Path, wb) -> None:
         for row in ws.iter_rows():
             for c in row:
                 v = c.value
-                if not (isinstance(v, str) and len(v) > 200 and not v.startswith("=")):
+                if not (isinstance(v, str) and len(v) >= 60 and not v.startswith("=")):
                     continue
                 if c.coordinate in anchors or (c.row, c.column) in shadow:
                     continue
                 w = ws.column_dimensions[c.column_letter].width or 8.43
-                if w < 40:
-                    bad.append(f"{ws.title}!{c.coordinate} ({len(v)} chars in a {w:.0f}-wide column)")
+                lines = len(v) / max(4.0, w * 0.95)
+                # Only where there is somewhere to widen INTO. A note in the last
+                # column of a populated table row has neighbours; wrapping deep
+                # there is the table's shape, not a defect anyone can fix here.
+                free = all(ws.cell(row=c.row, column=k).value in (None, "")
+                           for k in range(c.column + 1, ws.max_column + 1))
+                if lines > 4 and free:
+                    bad.append(f"{ws.title}!{c.coordinate} ({len(v)} chars wrapping "
+                               f"~{lines:.0f} lines in a {w:.0f}-wide column)")
     if bad:
         fail(book, "EXAMPLE",
              f"{len(bad)} note(s) wrapped into a column too narrow to read them: {bad[:3]}")
