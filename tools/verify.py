@@ -506,6 +506,7 @@ def test_numeric_other() -> None:
 def test_sync() -> None:
     src = HTML.read_text(encoding="utf-8")
     _, _, tpls = extract_tpls(src)
+    test_tool_links(src, tpls)
     # A title and a description are set with textContent, so an HTML entity in
     # one is shown to the reader literally. The modal read "Control Charts
     # &mdash; all seven types" for as long as the entry has existed, because the
@@ -662,6 +663,58 @@ def test_sync() -> None:
     check("function esc2(" in src, "esc2() retained (renderMD depends on it)")
     check(src.count("-year net<") == 0 and "'-year NPV</th>" in src,
           "wizard sensitivity column is labelled NPV, not 'net'")
+
+
+def test_tool_links(src: str, tpls: dict) -> None:
+    """A tool must link to a template that is about that tool.
+
+    "Linear and multiple regression" and "Logistic regression" both pointed at
+    the root-cause evidence pack — a narrative document with nowhere to write a
+    coefficient. It was reported by a reader, because nothing here compared the
+    two halves: the tool library and the template pack were authored
+    separately and joined by a hand-typed slug that no check ever read.
+    """
+    from openpyxl import load_workbook as _lw
+
+    def corpus(slug: str) -> str:
+        e = tpls.get(slug)
+        if not e:
+            return ""
+        bits = [e.get("title", ""), e.get("desc", ""), e.get("content", "")]
+        if e.get("ext") == "xlsx":
+            try:
+                wb = _lw(TEMPLATES / e["file"], read_only=True)
+                for ws in wb.worksheets:
+                    bits.append(ws.title)
+                    for row in ws.iter_rows():
+                        bits += [c.value for c in row if isinstance(c.value, str)]
+            except Exception:                                    # noqa: BLE001
+                pass
+        return " ".join(b for b in bits if b).lower()
+
+    STOP = {"and", "the", "of", "for", "test", "tests", "analysis", "chart",
+            "charts", "study", "plan", "models", "model"}
+    seg = src[src.index('id="toolList"'):]
+    bad = []
+    # Bound each tool at its own </details>. Letting the last one run to the end
+    # of the file swallowed the whole template grid and produced thirty
+    # spurious hits the first time this was written.
+    for block in seg.split('<details class="tool"')[1:]:
+        block = block.split("</details>")[0]
+        m = re.search(r'<span class="tn">([^<]*)</span>', block)
+        if not m:
+            continue
+        name = m.group(1)
+        words = [w for w in re.findall(r"[A-Za-z][A-Za-z'’-]{3,}", name.lower())
+                 if w not in STOP]
+        if not words:
+            continue
+        for slug in sorted(set(re.findall(r'data-(?:tpl|tplchip|dl)="([0-9][^"]*)"', block))):
+            text = corpus(slug)
+            if text and not any(w in text for w in words):
+                bad.append(f"{name!r} -> {slug}, which never mentions {words}")
+    check(not bad, "every tool links to a template that mentions what the tool is",
+          "\n      ".join(bad[:4]))
 
 
 def _check_preview_generated(entry: dict, path: Path) -> None:

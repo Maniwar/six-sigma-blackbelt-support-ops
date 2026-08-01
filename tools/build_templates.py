@@ -1092,7 +1092,10 @@ def pareto():
     ws2 = wb.create_sheet("Shape and spread")
     ws2.sheet_view.showGridLines = False
     title(ws2, "Is this data the shape you assumed?",
-          "Support durations are right-skewed. The mean flatters you; the median and p90 do not.", 4)
+          "Normality assessment for support data. Support durations are right-skewed: "
+          "the mean flatters you, the median and p90 do not. Read the skew before you "
+          "pick a test — a two-sample t-test on data this shaped will mislead you, and "
+          "the non-parametric equivalent will not.", 4)
     widths(ws2, [34, 18, 18, 60])
     ws2.cell(row=4, column=1, value="Paste your values into column B").font = F_NOTE
     header(ws2, 5, ["Statistic", "Value", "", "What it tells you"])
@@ -1695,7 +1698,9 @@ def control_charts():
          "Average within-subgroup spread over the baseline window."),
         ("A2 for this n", "=IFERROR(LOOKUP(B5,{2;3;4;5;6;7;8;9;10},{1.880;1.023;0.729;0.577;0.483;0.419;0.373;0.337;0.308}),\"n out of range\")",
          "#,##0.000", "Standard constant. Above n=8 most people switch to Xbar-S."),
-        ("D4 for this n", "=IFERROR(LOOKUP(B5,{2;3;4;5;6;7;8;9;10},{3.267;2.574;2.282;2.114;2.004;1.924;1.864;1.816;1.777}),\"n out of range\")", "#,##0.000", ""),
+        ("D4 for this n", "=IFERROR(LOOKUP(B5,{2;3;4;5;6;7;8;9;10},{3.267;2.574;2.282;2.114;2.004;1.924;1.864;1.816;1.777}),\"n out of range\")", "#,##0.000",
+         "Sets the upper limit on the range chart: R-bar x D4. It is the only "
+         "one of the three that is never zero."),
         ("D3 for this n", "=IFERROR(LOOKUP(B5,{2;3;4;5;6;7;8;9;10},{0;0;0;0;0;0.076;0.136;0.184;0.223}),\"n out of range\")", "#,##0.000", "Zero below n=7 — a range cannot be meaningfully small."),
         ("Xbar UCL / LCL", "=TEXT(B6+B8*B7,\"#,##0.00\")&\"  /  \"&TEXT(B6-B8*B7,\"#,##0.00\")", "@", "Grand average plus or minus A2 x R-bar."),
     ], 12)

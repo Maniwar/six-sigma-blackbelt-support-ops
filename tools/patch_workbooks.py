@@ -207,7 +207,15 @@ VALUES: list[tuple[str, str, str, object]] = [
     ("13-hypothesis-test-log.xlsx", "Test log", "A8", "Significance level (alpha)"),
     ("13-hypothesis-test-log.xlsx", "Test log", "B8", 0.05),
     ("13-hypothesis-test-log.xlsx", "Test log", "C8",
-     "Used by the 'Above threshold?' column. 0.05 is standard; drop to 0.01 when acting on the result is expensive."),
+     "Used by the 'Above threshold?' column. 0.05 is standard; drop to 0.01 when acting on "
+     "the result is expensive. WHICH TEST GOES IN THE TEST COLUMN — the log never named one, "
+     "and eight tools in the library send you here. Two means, normal-ish: two-sample t-test. "
+     "Two means, skewed (most support duration data): Mann-Whitney U. Before and after on the "
+     "SAME units: paired t-test, or Wilcoxon signed-rank if skewed. Three or more groups: "
+     "one-way ANOVA, or Kruskal-Wallis if skewed. Rates or proportions: one- and two-proportion "
+     "tests. Two categorical variables: chi-square test of independence. Comparing spread "
+     "rather than centre: Levene's test. Check the shape first on the 'Shape and spread' tab "
+     "of 25-pareto-and-distribution.xlsx — it decides which half of that list you are in."),
     ("19-black-belt-calculators.xlsx", "9 ROI and payback", "A17",
      "Under 18 months payback is generally an easy sell. Net present value is calculated across all the years "
      "you model; the three rows above show the first three. And set year-one expectations honestly: a Black Belt "
