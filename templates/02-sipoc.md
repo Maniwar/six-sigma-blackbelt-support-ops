@@ -11,7 +11,7 @@
 
 **The mistake this prevents.** Writing the process you wish you had rather than the one that runs. Walk it before you draw it.
 
-*Italic entries below are a worked example from one project — billing adjustments closing before the posting confirms, driving a 14.2% 7-day reopen rate against a target of 8%. Delete them as you fill your own in.*
+*Italic entries below are a worked example from one project — billing adjustments closing before the posting confirms, driving a 14.2% 7-day reopen rate on the in-scope adjustments (OD-BIL-004-ADJ — 137 reopens / 966 contacts in the baseline month, 09-baseline-document.md:90) against a target of 8.0%. That is not the queue-wide 14.2% (OD-BIL-004 v2, all billing tickets): two different populations that land on the same number. Delete them as you fill your own in.*
 
 ---
 
@@ -50,13 +50,24 @@
 - *Enterprise accounts, which sit on a separate billing stack*
 - *Credits Billing Ops raises proactively with no customer contact — no dispute, so no reopen to avoid*
 
+### How many cases the scope contains
+
+Scope is not agreed until you can say how many cases a year fall inside it. That count, and nothing wider, is the denominator every later benefit claim multiplies.
+
+| | |
+|---|---|
+| **In scope, measured** | *966 adjustment contacts in the baseline month, 137 of them reopened inside 7 days — the 14.2% that is this project's Y, under OD-BIL-004-ADJ (09-baseline-document.md:90; the same 966 at 14-root-cause-evidence-pack.md:96 and 16-pilot-protocol.md:85)* |
+| **In scope, annualised** | *966 x 12 = 11,592 adjustments a year — the only population a benefit for this project may be multiplied by. It is one measured month annualised: the reporting team who pulled the queue volume (01-project-charter.md §3) still owes a 12-month `dw_ticket_fact` pull filtered to the scope rows above, before the Improve tollgate re-states the benefit (planned 2026-07-27, 01-project-charter.md §8)* |
+| **Context, never a multiplier** | *The whole Billing queue: ~5,100 tickets a week, so 61,400 over the 12-week baseline window (09-baseline-document.md:51 — 12 weeks, not a quarter) and 266,000 a year (01-project-charter.md §3, where it is marked context only). It carries its own 7-day reopen rate, OD-BIL-004 v2, which also reads 14.2% on that far wider population* |
+| **Why the two must never be mixed** | *In-scope adjustments are 11,592 of the queue's 266,000 contacts, and their reopens are 11,592 x 14.2% = 1,646 against the queue's 266,000 x 14.2% = 37,772 — 4.4% of each. Fix every adjustment reopen and the queue rate moves from 14.2% to (37,772 − 1,646) / 266,000 = 13.58%, a 0.62-point move. The benefit case first written for this project applied the adjustment-scoped 6.2-point gap (09-baseline-document.md:105) to the queue's 266,000: ten times the arithmetic maximum. A rate measured on one population and a volume taken from another is how a benefit case dies* |
+
 ## Process inputs classified
 
 | Input (x) | Controllable | Noise | SOP-fixed | Notes |
 |---|---|---|---|---|
-| *How the billing queue routes — one queue for everyone, or skill-based to billing-trained agents* | *x* | | | *We set this ourselves in the routing rules. Skill-based routing took 29 s off handle time in the trial* |
+| *How the billing queue routes — one queue for everyone, or skill-based to billing-trained agents* | *x* | | | *We set this ourselves in the routing rules. Its handle-time effect is `<not measured — no trial result for it exists in the pack>`; R. Okonjo, Tier 1 team lead and owner of the AHT scorecard (01-project-charter.md §7), to measure it before the Improve tollgate, planned 2026-07-27 (01-project-charter.md §8)* |
 | *Adjustment authority limit — $50 for Tier 1, $250 for Billing Ops* | | | *x* | *Set by the Finance delegation-of-authority policy. Raising it is a policy request, not a process change* |
-| *Whether the knowledge article is shown to the agent at the point of raising the adjustment* | *x* | | | *A toggle in the agent desktop, and the cheapest of the three changes to switch on — worth 22 s* |
+| *Whether the knowledge article is shown to the agent at the point of raising the adjustment* | *x* | | | *A toggle in the agent desktop, and the cheapest of the controllable changes to switch on. Its handle-time effect is `<not measured — same gap as the routing row>`; R. Okonjo to measure it alongside the routing change before the Improve tollgate (01-project-charter.md §8)* |
 | *The 02:00 nightly posting batch window* | | | *x* | *Owned by the billing platform vendor and fixed in the run schedule; a second run needs a contract change, so treat it as fixed here* |
 | *When the dispute arrives, and where it falls in the billing cycle (the 12th to the 18th)* | | *x* | | *Volume roughly doubles across the cycle peak. We cannot move when customers call, so block on cycle week in the analysis instead of trying to control it* |
 

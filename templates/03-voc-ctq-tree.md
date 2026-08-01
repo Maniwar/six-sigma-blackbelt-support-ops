@@ -11,7 +11,7 @@
 
 **The mistake this prevents.** Jumping from a verbatim straight to a metric. The middle column is the work: a need is not a driver and a driver is not a measure.
 
-*Italic entries below are a worked example from one project — billing adjustments closing before the posting confirms, driving a 14.2% 7-day reopen rate against a target of 8%. Delete them as you fill your own in.*
+*Italic entries below are a worked example from one project — billing adjustments closing before the posting confirms, driving a 14.2% 7-day reopen rate on in-scope billing adjustments (OD-BIL-004-ADJ, measured at 137 reopens in 966 adjustments in the baseline month) against a target of 8%. That is not the same 14.2% as the whole-queue rate under OD-BIL-004 v2; see the note under the CTQ tree. Delete them as you fill your own in.*
 
 ---
 
@@ -30,7 +30,7 @@
 
 | Theme | Frequency | Representative verbatim |
 |---|---|---|
-| *Told it was fixed, it was not* — the adjustment had not posted when the case closed | *412 (43% of the 966 coded)* | *"The lady said it was all sorted on the Tuesday. I looked on the Thursday and the charge was still sitting there."* |
+| *Told it was fixed, it was not* — the adjustment had not posted when the case closed | *412 contacts (43% of the 966 coded VOC contacts, 1 Mar – 31 May collection)* | *"The lady said it was all sorted on the Tuesday. I looked on the Thursday and the charge was still sitting there."* |
 | *Credited against the wrong plan* | *233 (24%)* | *"You have refunded me for the 30GB tariff. I moved to the 60GB one in January and I have the email to prove it."* |
 | *Charged twice for the same month* | *151 (16%)* | *"There are two identical line items on this bill. Now I have two case numbers as well and neither of them talks to the other."* |
 | *Proration not explained* | *96 (10%)* | *"I switched on the 14th, so how is this bill bigger than a normal month? Nobody could walk me through it."* |
@@ -40,9 +40,9 @@
 
 | Need | Must-be | Performance | Delighter | Evidence |
 |---|---|---|---|---|
-| *The credit I was promised is actually on my next bill* | *x* | | | *Nobody ever thanks us for a credit that posts; 412 of the 966 coded contacts are about one that did not* |
-| *Bill me once for one month* | *x* | | | *151 duplicate-charge contacts, and the complaints panel escalates almost every one it sees* |
-| *Tell me the date the credit will show* | | *x* | | *All 6 interviewees asked for a date unprompted; the tighter the date given, the fewer the callbacks — 74 contacts are refund timing alone* |
+| *The credit I was promised is actually on my next bill* | *x* | | | *Nobody ever thanks us for a credit that posts; 412 of the 966 coded VOC contacts (1 Mar – 31 May collection) are about one that did not* |
+| *Bill me once for one month* | *x* | | | *151 coded duplicate-charge contacts, and the complaints panel escalates almost every one it sees* |
+| *Tell me the date the credit will show* | | *x* | | *All 6 interviewees asked for a date unprompted; the tighter the date given, the fewer the callbacks — 74 coded contacts are refund timing alone* |
 | *You tell me it has posted, so I never have to check* | | | *x* | *No verbatim asks for it. The handful of agents who ring back off their own bat get named in CSAT free text by name* |
 
 ## 4. CTQ tree
@@ -58,18 +58,39 @@ Need:      "<customer's words>"
 
 | # | Need | Driver | CTQ | Spec / target | Measurement method | Population | Sampling |
 |---|---|---|---|---|---|---|---|
-| 1 | *Do not make me chase it* | *The adjustment posts before I am told it is done* | *Reopens within 7 days* | *<= 8.0%* | *Warehouse query OD-BIL-004* | *All billing tickets* | *Census* |
+| 1 | *Do not make me chase it* | *The adjustment posts before I am told it is done* | *7-day reopen rate, in-scope billing adjustments* | *<= 8.0%* | *OD-BIL-004-ADJ — a new definition, lineage not yet traced (see the note below)* | *In-scope billing adjustments (02-sipoc scope: consumer, voice/chat/email, sites A–D, up to $250; fraud holds, collections, manual cheques and proactive credits excluded)* | *Census — 966 adjustments in the baseline month* |
 | 2 | *Tell me when it will be resolved* | *A committed date given at first contact* | *Share of contacts with a commitment logged* | *>= 90%* | *QA audit item 7* | *Sampled contacts* | *200/week stratified* |
-| 3 | *Do not make me repeat myself* | *Resolved without a second contact* | *7-day reopen rate* | *<= 8.0%* | *OD-BIL-004 v2* | *All billing tickets* | *Census* |
+| 3 | *Do not make me repeat myself* | *Resolved without a second contact* | *7-day reopen rate, all billing tickets* | *<= 8.0%, but context only — closing every adjustment reopen moves this rate 0.62 points, so it is not this project's to deliver (see the note below)* | *OD-BIL-004 v2* | *All billing tickets reaching Resolved — the whole Billing queue* | *Census* |
 
 **Completion test:** if two people could measure this CTQ differently, it is not
 finished. Every row above must survive that test.
+
+**Two rates can wear the same name.** Rows 1 and 3 are both "a 7-day reopen rate"
+and they are different quantities. Bind every row to its population as well as to
+its query, or the rate measured on one population ends up multiplied by the volume
+of another — the most common way a real benefit case dies.
+> *Both rows read 14.2% today, which is exactly why nobody noticed. Row 1 is
+> OD-BIL-004-ADJ — in-scope billing adjustments only, measured at 137 reopens in
+> 966 adjustments in the baseline month (09-baseline-document, section 5). Row 3 is
+> OD-BIL-004 v2 — every billing ticket reaching Resolved, 14.2% over 1–31 Mar
+> (06-data-lineage, competing-definitions table). The 6.2-point gap the project is
+> signed up to close is row 1's gap and cannot be carried to row 3's population: 966
+> adjustments a month is 11,592 a year against 266,000 billing contacts a year
+> (01-project-charter), so in-scope adjustments are 4.4% of the queue and 1,646 of
+> its 37,772 reopens. Fixing every one of them moves row 3 from 14.2% to 13.58% —
+> 0.62 points, a tenth of the 6.2 that was claimed against the whole queue.*
+
+**Adjustment-level rate over the full baseline window:** `<not yet measured>`
+> *One month stands behind the adjustment rate, not the 12 weeks the queue rate is
+> cut on (09-baseline-document, section 3). Analytics must re-run OD-BIL-004 v2
+> against the 02-sipoc in-scope denominator for 1 Mar – 31 May and issue the result
+> as OD-BIL-004-ADJ before this CTQ tree is signed off.*
 
 ## 5. CTQ weighting (feeds the X-Y matrix)
 
 | CTQ | Weight (1–10) | Rationale |
 |---|---|---|
-| *7-day reopen rate, billing adjustments (OD-BIL-004 v2)* | *10* | *The project Y. 14.2% against a target of 8.0% is why the charter was signed, and every other CTQ earns its weight by moving this one* |
-| *Share of adjustments confirmed posted before the case is closed* | *9* | *The biggest bar on the Pareto — 412 contacts. Closing the case before the nightly posting batch confirms is the mechanism the project exists to break* |
-| *Share of contacts with a commitment date logged* | *7* | *Weaker link to the reopen rate, but it is the one thing a Tier 1 agent controls inside the call, and it covers the 74 refund-timing contacts on its own* |
-| *Mean handle time* | *4* | *A guardrail rather than a goal: it is on the list so a fix cannot buy the reopen rate back with a longer call. 412 seconds today, and anything outside 363–468 seconds is a signal* |
+| *7-day reopen rate, in-scope billing adjustments (OD-BIL-004-ADJ)* | *10* | *The project Y. 14.2% — 137 reopens in 966 adjustments in the baseline month — against a target of 8.0% is why the charter was signed, and every other CTQ earns its weight by moving this one. Not the whole-queue rate of the same name under OD-BIL-004 v2, which reads 14.2% too and is a different quantity* |
+| *Share of adjustments confirmed posted before the case is closed* | *9* | *The biggest bar on the Pareto — 412 coded VOC contacts. Closing the case before the nightly posting batch confirms is the mechanism the project exists to break* |
+| *Share of contacts with a commitment date logged* | *7* | *Weaker link to the reopen rate, but it is the one thing a Tier 1 agent controls inside the call, and it covers the 74 coded VOC contacts about refund timing on its own* |
+| *Mean handle time, billing adjustments* | *4* | *A guardrail rather than a goal: it is on the list so a fix cannot buy the reopen rate back with a longer call. 412 s today — seconds, not the 412 coded contacts two rows up — and anything outside 363–468 s is a signal* |

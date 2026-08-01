@@ -11,11 +11,11 @@
 
 **The mistake this prevents.** Accepting a study whose parts do not span the real range. If every sampled contact is a routine one, %study variation flatters itself and the gage looks better than it is.
 
-*Italic entries below are a worked example from one project — billing adjustments closing before the posting confirms, driving a 14.2% 7-day reopen rate against a target of 8%. Delete them as you fill your own in.*
+*Italic entries below are a worked example from one project — billing adjustments closing before the posting confirms, driving a 7-day reopen rate on in-scope billing adjustments of 14.2% against a target of 8%. That rate is the project's Y, defined separately as OD-BIL-004-ADJ and measured at 137 reopens in 966 in-scope adjustments in the baseline month (09-baseline-document.md:90). The whole Billing queue's 7-day reopen rate under OD-BIL-004 v2 is also 14.2%; it is a different quantity, and it is context only. Delete them as you fill your own in.*
 
 ---
 
-**Measurement being validated:** *handle time on a billing adjustment, in minutes, as the analyst clocks it — not the CRM timestamp, which is a different gage and has to be validated separately*
+**Measurement being validated:** *handle time on an in-scope billing adjustment (the OD-BIL-004-ADJ population, not the whole Billing queue), in minutes, as the analyst clocks it — not the CRM timestamp, which is a different gage and has to be validated separately*
 
 ## How to work this out
 
@@ -50,6 +50,12 @@ If you are running this in Minitab it is *Stat → Quality Tools → Gage Study 
 | Order randomized? | *Yes* |
 | Appraisers blinded to prior measurement? | *Yes* |
 
+*The study recorded the range of the 10 parts but never their mean, so the 412 s mean
+handle time the pack carries elsewhere (16-pilot-protocol.md:83) cannot be checked against
+anything measured here. Mean handle time of the sampled parts: `<not recorded>`. The Black
+Belt who ran the study must state it before the 412 s is described as validated by this
+gage.*
+
 ## 2. Results
 
 | Source | Variance component | % Contribution | % Study variation |
@@ -76,6 +82,16 @@ differently. Buying a better timer would change nothing.*
 | Bias | Compare mean measurement to a reference value | *+0.8 min* | *Two analysts consistently round after-call work up* |
 | Linearity | Bias across the operating range | *No trend across the range* | *—* |
 | Stability | Repeat measurement of the same item over time | *Re-measured after 4 weeks, no drift* | *—* |
+
+*Size the gage in seconds before any handle-time result is read off it. The Gage R&R
+standard deviation is √0.6973 = 0.84 min, about 50 s, and the bias above is +0.8 min,
+about 48 s, all of it in one direction. The band this gage has to police is 33 s wide —
+the pilot allows handle time to rise by 8%, from 412 s to 445 s (16-pilot-protocol.md:83).
+A one-sided 48 s bias is wider than the whole band. How much handle time the fix actually
+adds: `<not measured in this study>` — the charter's "roughly 40 s"
+(01-project-charter.md:123) is an expectation, not a measurement. The Black Belt must
+re-run this study once the three analysts are re-calibrated and state the measured figure,
+before the pilot's handle-time guardrail is read off this gage.*
 
 ## 4. Verdict and action
 
