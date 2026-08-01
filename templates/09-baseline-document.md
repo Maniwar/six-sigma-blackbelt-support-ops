@@ -18,6 +18,10 @@
 
 
 
+
+
+
+
 **This document is the zero point for the benefit clock. Finance signs it.**
 
 ## 1. Extract
@@ -39,10 +43,10 @@
 | Chart type used | (I-MR / X̄-S / Laney p′ / Laney u′) |
 | Chart type justification | *Proportion at ~5,100 tickets/week; sigma z = 4.25, so an ordinary p-chart would signal on almost every point* |
 | Centre line | *14.2%* |
-| UCL / LCL | |
+| UCL / LCL | *17.1% / 11.3%* |
 | σ_z (if attribute chart) | (near 1.0 = no overdispersion; >1.2 = use Laney) |
-| Special causes found | |
-| Special causes excluded (and why) | |
+| Special causes found | *One week (w/c 2026-02-16) above the UCL — a billing platform release* |
+| Special causes excluded (and why) | *None excluded. The release is a real process condition and will recur.* |
 | **Process stable?** | Yes / No |
 
 > Capability is meaningless on an unstable process. Demonstrate stability first.
@@ -51,13 +55,13 @@
 
 | Statistic | Value |
 |---|---|
-| n | |
-| Mean | |
-| **Median** | |
-| Standard deviation | |
-| p10 / p50 / p90 / p95 | |
-| Skewness | |
-| Distribution shape | |
+| n | *61,400 tickets* |
+| Mean | *14.2%* |
+| **Median** | *14.0%* |
+| Standard deviation | *1.4 points* |
+| p10 / p50 / p90 / p95 | *12.3% / 14.0% / 16.2% / 16.9%* |
+| Skewness | *0.31 — mild right skew, as expected for a proportion near the middle* |
+| Distribution shape | *Approximately symmetric at weekly aggregation; the underlying durations are not* |
 | Normality assessment (probability plot, not just the p-value) | |
 | Bimodality present? If so, resolved by stratifying on | |
 
@@ -70,11 +74,11 @@
 |---|---|
 | Specification | USL = ___ / LSL = ___ (support specs are usually one-sided) |
 | Index used | Ppu / Ppl / Ppk / binomial capability |
-| Index justification | |
+| Index justification | *Ppu — only an upper limit exists (target is a maximum)* |
 | Transformation applied | (none / Box-Cox λ = ___ / Johnson / fitted lognormal) |
-| **Capability index value** | |
-| % outside specification (observed) | |
-| % outside specification (fitted) | |
+| **Capability index value** | *Ppu 0.42* |
+| % outside specification (observed) | *58% of weeks above the 8.0% target* |
+| % outside specification (fitted) | *61%* |
 | DPU / DPO / DPMO | |
 | Opportunities per unit (program standard) | |
 | Z from data (long-term) | |

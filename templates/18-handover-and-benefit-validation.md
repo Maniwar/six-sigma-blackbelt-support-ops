@@ -18,6 +18,10 @@
 
 
 
+
+
+
+
 ## Part A — Handover checklist
 
 - [ ] Signed control plan with named owners for every metric
@@ -66,36 +70,36 @@ Name: ____________  Role: ____________  Signature: ____________  Date: _________
 
 | Field | Value |
 |---|---|
-| Contact-mix chi-square, baseline vs post (p) | |
+| Contact-mix chi-square, baseline vs post (p) | *0.38 — no material mix shift* |
 | Mix shift present? | *Checked: contact-reason mix chi-sq p = 0.38, no material shift* |
 | Adjustment method applied | *None required* |
-| Mix-adjusted effect | |
+| Mix-adjusted effect | *-4.7 points (unadjusted -4.9)* |
 
 ### Benefit calculation
 
 | Item | Value |
 |---|---|
-| Baseline metric | |
-| Post metric | |
-| Improvement | |
-| Annualized units affected | |
-| Unit cost basis ($) | |
-| **Gross annual benefit** | |
-| Realization factor applied | |
-| **Realized annual benefit** | |
+| Baseline metric | *14.2%* |
+| Post metric | *7.6%* |
+| Improvement | *6.6 percentage points* |
+| Annualized units affected | *4,052 reopens avoided* |
+| Unit cost basis ($) | *$6.80 fully-loaded cost per contact* |
+| **Gross annual benefit** | *$27,554* |
+| Realization factor applied | *0.85* |
+| **Realized annual benefit** | *$23,421* |
 | Benefit type | hard / soft / cost avoidance |
-| Harvest mechanism | |
-| Harvest evidence (req/plan/PO reference) | |
+| Harvest mechanism | *Hiring avoidance — two billing roles removed from the Q1 plan* |
+| Harvest evidence (req/plan/PO reference) | *Headcount plan v4, lines 22-23, signed by WFM 2026-11-08* |
 | Benefit claim period | 12 months from ____________ |
-| Double-counting check — overlapping projects | |
+| Double-counting check — overlapping projects | *Checked against BIL-2026-009 (payment retries); no shared contacts* |
 
 ### Finance validation
 
 | Role | Name | Signature | Date |
 |---|---|---|---|
-| Black Belt | | | |
-| Champion | | | |
-| **Finance partner** | | | |
+| Black Belt | *M. Berenji* |  | *2026-11-14* |
+| Champion | *R. Mehta* |  | *2026-11-15* |
+| **Finance partner** | *J. Lindqvist* |  | *2026-11-20* |
 | Master Black Belt | | | |
 
 ## Part D — Checkpoints

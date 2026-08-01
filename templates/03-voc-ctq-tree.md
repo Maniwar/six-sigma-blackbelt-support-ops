@@ -18,6 +18,10 @@
 
 
 
+
+
+
+
 ## 1. VOC collection plan
 
 | Method | Population | Sample plan | n | Who | When | Known bias |
@@ -54,9 +58,9 @@ Need:      "<customer's words>"
 
 | # | Need | Driver | CTQ | Spec / target | Measurement method | Population | Sampling |
 |---|---|---|---|---|---|---|---|
-| 1 | | | | | | | |
-| 2 | | | | | | | |
-| 3 | | | | | | | |
+| 1 | *Do not make me chase it* | *The adjustment posts before I am told it is done* | *Reopens within 7 days* | *<= 8.0%* | *Warehouse query OD-BIL-004* | *All billing tickets* | *Census* |
+| 2 | *Tell me when it will be resolved* | *A committed date given at first contact* | *Share of contacts with a commitment logged* | *>= 90%* | *QA audit item 7* | *Sampled contacts* | *200/week stratified* |
+| 3 | *Do not make me repeat myself* | *Resolved without a second contact* | *7-day reopen rate* | *<= 8.0%* | *OD-BIL-004 v2* | *All billing tickets* | *Census* |
 
 **Completion test:** if two people could measure this CTQ differently, it is not
 finished. Every row above must survive that test.

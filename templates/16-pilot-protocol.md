@@ -18,6 +18,10 @@
 
 
 
+
+
+
+
 **Complete and circulate this BEFORE the pilot starts. Pre-registration is what stops
 post-hoc metric-shopping, which is the single largest source of inflated benefits in
 support improvement programs.**
@@ -53,15 +57,15 @@ support improvement programs.**
 
 | Field | Value |
 |---|---|
-| **Primary metric** | |
-| **Statistical test** | |
-| Stratification to be applied | |
+| **Primary metric** | *7-day reopen rate, billing adjustments* |
+| **Statistical test** | *Two-proportion test, treatment vs concurrent control* |
+| Stratification to be applied | *Contact reason and agent tenure band* |
 | Mix-shift check | chi-square on contact-reason distribution, treatment vs control |
-| **Practical significance threshold** | |
-| Alpha | |
-| Power / required n per group | |
-| Stopping rule | |
-| Who runs the analysis | |
+| **Practical significance threshold** | *1.5 percentage points — below this the benefit does not clear the cost* |
+| Alpha | *0.05* |
+| Power / required n per group | *80% power needs 6,900 per group; 8 weeks yields ~7,300* |
+| Stopping rule | *Stop early only for harm: CSAT down more than 0.15 or handle time up more than 8%* |
+| Who runs the analysis | *M. Berenji, with A. Okafor reviewing before it is circulated* |
 
 > Changing the primary metric or the test after seeing results invalidates the pilot.
 > If you must change it, say so explicitly in the tollgate and treat the result as
@@ -93,9 +97,9 @@ support improvement programs.**
 
 | Metric | Treatment | Control | Difference | 95% CI | p | Threshold met? |
 |---|---|---|---|---|---|---|
-| Primary: | | | | | | |
-| Counter-bal: | | | | | | |
-| Counter-bal: | | | | | | |
+| Primary: | *7-day reopen rate* | *14.2%* | *8.0%* | *1.5 pts* | *2-proportion* | *Weekly* |
+| Counter-bal: | *CSAT, billing* | *4.11* | *no decline* | *-0.15* | *Mann-Whitney* | *Weekly* |
+| Counter-bal: | *CSAT, billing* | *4.11* | *no decline* | *-0.15* | *Mann-Whitney* | *Weekly* |
 
 **Mix-shift check:** chi-square p = ______  → confounded? Yes / No
 
@@ -107,10 +111,10 @@ support improvement programs.**
 
 | Field | Value |
 |---|---|
-| Pilot effect | |
-| Assumed realization factor | |
-| **Forecast at full rollout** | |
-| Basis for the realization assumption | |
+| Pilot effect | *-4.9 percentage points (CI -6.1 to -3.7)* |
+| Assumed realization factor | *0.85* |
+| **Forecast at full rollout** | *-4.2 points, worth $22,005 a year* |
+| Basis for the realization assumption | *Sites B and D have a different release cadence, so uptake lags by about a quarter* |
 
 ## 8. Decision
 

@@ -18,6 +18,10 @@
 
 
 
+
+
+
+
 | Field | Value |
 |---|---|
 | Project ID | *BIL-2026-014* |
@@ -47,14 +51,14 @@ Reduce / increase `<metric>` from `<baseline>` to `<target>` by `<date>`, while 
 
 | Item | Value | Source |
 |---|---|---|
-| Baseline volume (annual) | | |
-| Baseline metric | | |
-| Target metric | | |
-| Units avoided / improved | | |
-| Unit cost basis ($) | | |
-| **Gross annual benefit** | | |
-| Realization factor | | |
-| **Realized annual benefit** | | |
+| Baseline volume (annual) | *61,400 billing tickets* |  |
+| Baseline metric | *14.2% reopened within 7 days* |  |
+| Target metric | *8.0%* |  |
+| Units avoided / improved | *3,807 reopens avoided a year* |  |
+| Unit cost basis ($) | *$6.80 fully-loaded cost per contact* |  |
+| **Gross annual benefit** | *$25,888* |  |
+| Realization factor | *0.85 — agreed with Finance, reflects partial harvest in year one* |  |
+| **Realized annual benefit** | *$22,005* |  |
 
 **Benefit type** (select one, per the program benefit accounting policy):
 - [ ] Hard — headcount reduction
@@ -74,23 +78,23 @@ Signed by WFM:     ____________________  Date: __________
 
 | | |
 |---|---|
-| First process step | |
-| Last process step | |
-| In scope | |
-| Out of scope | |
-| Channels included | |
-| Sites / vendors included | |
-| Customer segments included | |
+| First process step | *Customer submits a billing dispute* |
+| Last process step | *Adjustment has posted and the customer has confirmed* |
+| In scope | *Billing adjustments, all channels, all sites* |
+| Out of scope | *Fraud holds, collections, and anything requiring a manual refund cheque* |
+| Channels included | *Voice, chat, email* |
+| Sites / vendors included | *Sites A-D; no outsourced volume in scope* |
+| Customer segments included | *All consumer accounts; enterprise excluded (different billing stack)* |
 
 ## 5. Metric hierarchy
 
 | Type | Metric | Baseline | Target | Op. definition ref |
 |---|---|---|---|---|
-| Primary | | | | |
-| Secondary | | | | |
-| Secondary | | | | |
-| Counter-balancing | | | | |
-| Counter-balancing | | | | |
+| Primary | *7-day reopen rate, billing* | *14.2%* | *8.0%* | *OD-BIL-004 v2* |
+| Secondary | *Median resolution time, billing* | *4.6 h* | *4.0 h* | *OD-BIL-007 v1* |
+| Secondary | *Median resolution time, billing* | *4.6 h* | *4.0 h* | *OD-BIL-007 v1* |
+| Counter-balancing | *CSAT, billing contacts* | *4.11* | *no decline* | *OD-CX-002 v3* |
+| Counter-balancing | *CSAT, billing contacts* | *4.11* | *no decline* | *OD-CX-002 v3* |
 
 **Practical significance threshold:** `<value>`
 > Derivation (work backwards from the benefit model — anything smaller is a null
@@ -122,11 +126,11 @@ Signed by affected ops leader: ____________________  Date: __________
 
 | Tollgate | Planned date | Actual | Outcome (Pass / Hold / Return) |
 |---|---|---|---|
-| Define | | | |
-| Measure | | | |
-| Analyze | | | |
-| Improve | | | |
-| Control | | | |
+| Define | *2026-04-06* | *2026-04-24* | *Charter signed, SIPOC agreed* |
+| Measure | *2026-04-27* | *2026-06-05* | *MSA passed, baseline signed* |
+| Analyze | *2026-06-08* | *2026-07-24* | *Root causes evidenced on two keys* |
+| Improve | *2026-07-27* | *2026-09-25* | *Pilot read, solution selected* |
+| Control | *2026-09-28* | *2026-12-18* | *90 days of control data, benefit validated* |
 
 ## 9. Known risks and dependencies
 

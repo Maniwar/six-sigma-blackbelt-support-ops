@@ -18,6 +18,10 @@
 
 
 
+
+
+
+
 **Measurement being validated:** <QA scoring / disposition coding / intent tagging / severity classification>
 
 ## 1. Study design
@@ -43,9 +47,9 @@
 
 | Measure | Result | Threshold | Verdict |
 |---|---|---|---|
-| Within-appraiser agreement (repeatability) | | | |
-| Between-appraiser agreement (reproducibility) | | | |
-| Agreement with the standard (accuracy) | | | |
+| Within-appraiser agreement (repeatability) | *78%* | *>= 90%* | *Fail — QA-03 at 62%* |
+| Between-appraiser agreement (reproducibility) | *64%* | *>= 90%* | *Fail* |
+| Agreement with the standard (accuracy) | *71%* | *>= 90%* | *Fail* |
 | Fleiss' / Cohen's kappa | | see below | |
 
 **Kappa interpretation:** >0.90 excellent · 0.75–0.90 good · 0.40–0.75 marginal (do not
@@ -84,18 +88,18 @@ data in decisions).
 
 | Action taken | Date | Re-test kappa | New verdict |
 |---|---|---|---|
-| Rubric items rewritten | | | |
-| Decision rules added | | | |
-| Examples library built | | | |
-| Categories merged / removed | | | |
-| Calibration cadence set | | | |
+| Rubric items rewritten | *Items 4 and 7* | *QA manager* | *2026-05-22* |
+| Decision rules added | *Written rule for partial credit on empathy* | *QA manager* | *2026-05-22* |
+| Examples library built | *Six scored calls per rubric item* | *QA leads* | *2026-06-05* |
+| Categories merged / removed | *Merged 'tone' into 'empathy' — never scored apart* | *QA manager* | *2026-05-29* |
+| Calibration cadence set | *Fortnightly, 45 minutes, all analysts* | *QA manager* | *2026-06-01* |
 
 ## 7. Ongoing control
 
 | Control | Frequency | Owner |
 |---|---|---|
-| Calibration session | | |
-| Blind re-score audit | | |
-| Kappa re-measurement | | |
+| Calibration session | *2026-06-12* | *Complete* |
+| Blind re-score audit | *2026-06-26* | *Complete* |
+| Kappa re-measurement | *2026-07-10* | *kappa 0.84 — passed* |
 
 Study run by: ____________  Date: __________

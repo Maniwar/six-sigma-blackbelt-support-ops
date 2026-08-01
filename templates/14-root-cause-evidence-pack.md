@@ -18,6 +18,10 @@
 
 
 
+
+
+
+
 **The two-key rule:** a root cause is accepted only with a statistical result **and** a
 described physical mechanism verified at the gemba. Statistics without mechanism is
 correlation. Mechanism without statistics is opinion.
@@ -69,10 +73,10 @@ Name: ____________  Agrees this cause is real and plausible: Yes / No  Date: ___
 
 | # | Root cause | Statistical evidence | Mechanism verified | % of gap | Accepted |
 |---|---|---|---|---|---|
-| 1 | | | | | |
-| 2 | | | | | |
-| 3 | | | | | |
-| 4 | | | | | |
+| 1 | *Closure permitted before the posting confirms* | *Statistical + mechanism* | *4.9 pts* | *79%* | *Accepted* |
+| 2 | *Agent cannot see posting status from the ticket* | *Statistical + mechanism* | *1.1 pts* | *18%* | *Accepted* |
+| 3 | *Reopen metric counts same-reason only* | *Mechanism only* | *—* | *—* | *Rejected — no statistical key* |
+| 4 | *New-hire tenure under 90 days* | *Statistical only* | *0.4 pts* | *6%* | *Held — no mechanism described yet* |
 | | | | **Total % of gap explained** | | |
 
 > **Gate criterion:** if the accepted root causes explain less than ~60% of the

@@ -18,6 +18,10 @@
 
 
 
+
+
+
+
 **Measurement being validated:** <observer-timed task / timestamp-derived metric>
 
 ## 1. Study design (crossed, ANOVA method)
