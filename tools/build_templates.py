@@ -2303,10 +2303,22 @@ def erlang():
                 "is conservative; look at A to see how much of your measured service level is "
                 "actually people giving up."),
         (True, "Where it stops being true"),
-        (False, "Erlang assumes a steady arrival rate, one skill, no concurrency and no callbacks. "
-                "Staff each interval separately. For chat at three concurrent sessions, divide "
-                "handle time by a realistic concurrency first — and know that this still "
-                "understates the tail."),
+        (False, "Erlang assumes a steady arrival rate, one skill, one customer per agent and no "
+                "callbacks. Staff each interval separately."),
+        (True, "Chat, and what to use instead"),
+        (False, "Erlang C cannot represent a concurrency cap: a chat waits for an agent who is "
+                "BELOW the cap, not for one who is free. It still sizes the workload, though, if "
+                "you enter the AGENT VIEW of handle time above — busy time divided by chats "
+                "finished, which is agent-seconds consumed per chat, so the concurrency is "
+                "already divided out. Enter the case view (session duration) instead and you "
+                "over-staff by exactly the concurrency factor. Treat the answer as a floor: "
+                "session duration is not independent of load, so the handle time you measured at "
+                "a cap of 2 is not the one you get at a cap of 3, and Erlang reports neither that "
+                "nor response latency. Validate with a discrete-event simulation that models the "
+                "cap — the chat engines in the WFM suites do this — and read the output as "
+                "service level against concurrency cap rather than as a single headcount. With "
+                "no simulator, write down that you approximated and that the tail is "
+                "understated."),
         (True, "The order that matters"),
         (False, "Shrinkage is applied to the answer, not to the load. Inflating the load by "
                 "shrinkage and then running Erlang produces a different and wrong number."),
