@@ -85,6 +85,75 @@ RE_IASSC_CODE = re.compile(r"\b([1-5]\.[1-5])\b")
 
 
 
+def test_guidance() -> None:
+    """tools/md_guidance.py holds a SECOND copy of the pack's worked example.
+
+    It fills the blank fields of a markdown template with the billing-adjustment
+    case, which means it carries its own copy of every figure the pack states —
+    and a second copy of a number is a number that will drift. It had. It still
+    held the benefit chain that was withdrawn for being causally impossible, so
+    regenerating an emptied template re-injected 61,400 tickets, 3,807 reopens
+    avoided and $22,005 realized, none of which survive anywhere else.
+
+    Worse, it rewrote each document's "how to use this" block unconditionally,
+    and its copy of the preamble said "a 14.2% 7-day reopen rate" with no
+    population named — the exact defect the reconciliation removed, since the
+    whole queue and the in-scope adjustments both run 14.2% and multiplying one
+    by the other is how the case died. One run of the tool would have put that
+    sentence back into all eleven documents.
+
+    Nothing in the build invokes it, which is precisely why it rotted unseen.
+    So the build checks it instead: every figure the tool would write has to be
+    one the templates already carry, and every row it addresses has to exist.
+    """
+    sys.path.insert(0, str(ROOT / "tools"))
+    import md_guidance
+    import qa_citations
+
+    def figs(text: str) -> set:
+        out = set()
+        for m in qa_citations.RE_FIG.finditer(text or ""):
+            n = qa_citations.norm(m.group(0))
+            if len(n.replace(".", "")) >= 3 or "$" in m.group(0):
+                out.add(n)
+        return out
+
+    # The preamble is the dangerous string: it is rewritten on every run, so a
+    # stale one cannot be protected by "only fills blanks".
+    preamble = md_guidance.block("01-project-charter")
+    check("OD-BIL-004-ADJ" in preamble,
+          "the guidance preamble names the population it measures",
+          "it says '14.2% reopen rate' with no population — the whole queue and "
+          "the in-scope adjustments both run 14.2% and they are different quantities")
+
+    dead, drift = [], []
+    for name, values in md_guidance.EXAMPLE.items():
+        path = TEMPLATES / f"{name}.md"
+        if not path.exists():
+            dead += [f"{name} (no such template)"] if values else []
+            continue
+        rows: dict = {}
+        for line in path.read_text(encoding="utf-8").split("\n"):
+            if line.startswith("|"):
+                cells = line.split("|")
+                if len(cells) >= 3:
+                    rows.setdefault(cells[1].strip(), []).append(" | ".join(cells[2:-1]))
+        for label, val in values.items():
+            if label not in rows:
+                dead.append(f"{name}: {label!r}")
+                continue
+            want = figs(val)
+            if want and not (want & set().union(*(figs(r) for r in rows[label]))):
+                drift.append(f"{name}: {label!r} offers {sorted(want)[:2]}, "
+                             f"the document has none of them")
+    check(not drift,
+          f"every figure md_guidance would write is one the pack states "
+          f"({sum(len(v) for v in md_guidance.EXAMPLE.values())} values)",
+          "; ".join(drift[:5]))
+    check(not dead, "every row md_guidance addresses still exists",
+          "; ".join(dead[:6]))
+
+
 def test_citations() -> None:
     """A cross-reference has to land on what it claims.
 
@@ -1426,6 +1495,8 @@ def main() -> int:
     test_glossary()
     print("CITATIONS  every file.md:NN lands on a line that carries the figure")
     test_citations()
+    print("GUIDANCE   the template filler's numbers match the pack's")
+    test_guidance()
     print("EXPORT     business case HTML + live-formula workbook")
     test_export()
     if fast:

@@ -469,6 +469,86 @@ def run_markdown() -> tuple[int, int, list[str]]:
     return killed, applied, survivors
 
 
+# ------------------------------------------------------ guidance mutants
+# md_guidance.py holds a second copy of the pack's worked example, and a second
+# copy of a number is a number that will drift. It had: it still carried the
+# benefit chain that was withdrawn for being causally impossible, and it
+# rewrote every document's preamble with a bare "14.2% reopen rate" — the one
+# sentence those documents now exist to warn against. Nothing in the build ran
+# it, so nothing noticed for a release.
+#
+# These mutate the module rather than a file, so each one saves and restores.
+
+
+def gm_drift_figure(MG):
+    """A worked-example number the pack does not state anywhere."""
+    for name, vals in MG.EXAMPLE.items():
+        for label, v in vals.items():
+            if any(c.isdigit() for c in v):
+                vals[label] = "999,777 units at $888.55"
+                return f"{name} {label!r} offers a figure nothing states"
+    return None
+
+
+def gm_dead_row(MG):
+    """A key that addresses a row no template has — dead weight carrying a
+    number, which is how the stale ones hid."""
+    for name, vals in MG.EXAMPLE.items():
+        if vals:
+            k = next(iter(vals))
+            vals["Row that no template has"] = vals.pop(k)
+            return f"{name} {k!r} renamed to a row that does not exist"
+    return None
+
+
+def gm_unpopulated_preamble(MG):
+    """The preamble that says 14.2% without saying 14.2% of WHAT."""
+    orig = MG.block
+    MG.block = lambda n: orig(n).replace("OD-BIL-004-ADJ", "the billing queue")
+    return "preamble no longer names the population it measures"
+
+
+GUIDE_MUTANTS = [("guidance: a figure the pack does not state", gm_drift_figure),
+                 ("guidance: a row no template has", gm_dead_row),
+                 ("guidance: preamble drops the population", gm_unpopulated_preamble)]
+
+
+def run_guidance() -> tuple[int, int, list[str]]:
+    import copy
+    import importlib
+
+    V = importlib.import_module("verify")
+    MG = importlib.import_module("md_guidance")
+
+    def fails() -> list[str]:
+        V.FAILURES.clear()
+        V.PASSES[0] = 0
+        V.test_guidance()
+        return list(V.FAILURES)
+
+    killed = applied = 0
+    survivors = []
+    baseline = fails()
+    for name, mutate in GUIDE_MUTANTS:
+        saved, saved_block = copy.deepcopy(MG.EXAMPLE), MG.block
+        try:
+            what = mutate(MG)
+            if not what:
+                continue
+            applied += 1
+            if set(fails()) - set(baseline):
+                killed += 1
+            else:
+                survivors.append(f"    SURVIVED [GUIDANCE] {name} — {what}")
+        finally:
+            MG.EXAMPLE.clear()
+            MG.EXAMPLE.update(saved)
+            MG.block = saved_block
+    V.FAILURES.clear()
+    V.PASSES[0] = 0
+    return killed, applied, survivors
+
+
 # ------------------------------------------------------- numeric mutants
 # The #N/A exemption used to be a hand-written list of column spans, and two
 # workbooks that use the same NA() idiom were never added to it — so the gate
@@ -852,6 +932,12 @@ def main() -> int:
         docs = len(sorted(TEMPLATES.glob("*.md")))
         print(f"  {'(markdown templates)':36s} {k}/{a} mutants killed"
               f"{'' if k == a else '   <-- a check did not fire'}   across {docs} docs")
+        k, a, s = run_guidance()
+        total_k += k
+        total_a += a
+        survivors += s
+        print(f"  {'(template filler)':36s} {k}/{a} mutants killed"
+              f"{'' if k == a else '   <-- a check did not fire'}")
         k, a, s = run_numeric()
         total_k += k
         total_a += a

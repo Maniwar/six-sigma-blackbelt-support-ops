@@ -129,22 +129,26 @@ HOWTO = {
 
 EXAMPLE = {
     "01-project-charter": {
-        'Baseline volume (annual)': '61,400 billing tickets',
-        'Baseline metric': '14.2% reopened within 7 days',
-        'Target metric': '8.0%',
-        'Units avoided / improved': '3,807 reopens avoided a year',
-        'Unit cost basis ($)': '$6.80 fully-loaded cost per contact',
-        '**Gross annual benefit**': '$25,888',
+        'Benefit denominator — in-scope adjustment volume (annual)':
+            '11,592 in-scope billing adjustments a year — 966 a month x 12',
+        'Billing queue volume (annual) — CONTEXT ONLY, never a benefit multiplier':
+            '266,000 billing tickets a year. Never a benefit denominator: the 6.2-point '
+            'gap is measured on adjustments, not on this queue',
+        'Baseline metric': '14.2% of in-scope billing adjustments reopened within 7 days — 137 reopens in 966 contacts',
+        'Target metric': '8.0%, on the same in-scope adjustment population',
+        'Units avoided / improved': '719 reopens avoided a year — 11,592 in-scope adjustments x 6.2 points',
+        'Unit cost basis ($)': '$38.60 fully-loaded cost of a **reopened** contact — not $6.80, which is the cost to serve one contact and was never the price of a reopen',
+        '**Gross annual benefit**': '$27,753 — 719 x $38.60',
         'Realization factor': '0.85 — agreed with Finance, reflects partial harvest in year one',
-        '**Realized annual benefit**': '$22,005',
+        '**Realized annual benefit**': '$23,590 — $27,753 x 0.85, under the $50,000 Finance floor',
         'First process step': 'Customer submits a billing dispute',
         'Last process step': 'Adjustment has posted and the customer has confirmed',
-        'In scope': 'Billing adjustments, all channels, all sites',
+        'In scope': 'In-scope billing adjustments as OD-BIL-004-ADJ defines them: consumer accounts, voice / chat / email, sites A-D',
         'Out of scope': 'Fraud holds, collections, and anything requiring a manual refund cheque',
         'Channels included': 'Voice, chat, email',
         'Sites / vendors included': 'Sites A-D; no outsourced volume in scope',
         'Customer segments included': 'All consumer accounts; enterprise excluded (different billing stack)',
-        'Primary': '7-day reopen rate, billing | 14.2% | 8.0% | OD-BIL-004 v2',
+        'Primary': '7-day reopen rate, in-scope billing adjustments | 14.2% — 137 reopens / 966 contacts | 8.0% | OD-BIL-004-ADJ',
         'Secondary': 'Median resolution time, billing | 4.6 h | 4.0 h | OD-BIL-007 v1',
         'Counter-balancing': 'CSAT, billing contacts | 4.11 | no decline | OD-CX-002 v3',
         'Define': '2026-04-06 | 2026-04-24 | Charter signed, SIPOC agreed',
@@ -160,7 +164,7 @@ EXAMPLE = {
         "Champion": "R. Mehta, Support Director", "Process owner": "A. Okafor, Billing Ops",
         "Finance partner": "J. Lindqvist", "Master Black Belt": "S. Iyer",
         "Start date": "2026-04-06", "Target close date": "2026-10-30",
-        "Charter version / date": "v1.0 / 2026-04-06",
+        "Charter version / date": "v2.0 / `<date this revision is signed>` — see §11",
     },
     "14-root-cause-evidence-pack": {
         '1': 'Closure permitted before the posting confirms | Statistical + mechanism | 4.9 pts | 79% | Accepted',
@@ -251,7 +255,7 @@ EXAMPLE = {
         '— Repeatability (equipment)': '11.2 | 3.2 | Acceptable',
         '— Reproducibility (appraiser)': '26.1 | 7.4 | The analysts disagree more than the tool does',
         'Part-to-part': '95.9 | 27.3 | Good spread across the sampled range',
-        '**Total variation**': '100.0 | 28.5 | —',
+        '**Total variation**': '8.6380 | 100% | 100%',
         '% Study variation': '28.4% | Marginal: under 10% good, 10-30% conditional, over 30% unusable',
         'Number of distinct categories (ndc)': '4 | 5 or more is wanted; 4 means it can just about tell four groups apart',
         'Bias': '+0.8 min | Two analysts consistently round after-call work up | Retrain on the ACW definition',
@@ -282,23 +286,21 @@ EXAMPLE = {
         'UCL / LCL': '17.1% / 11.3%',
         'Special causes found': 'One week (w/c 2026-02-16) above the UCL — a billing platform release',
         'Special causes excluded (and why)': 'None excluded. The release is a real process condition and will recur.',
-        'n': '61,400 tickets',
+        'n': '61,400 tickets over the 12-week window (~5,100/week) — the whole Billing queue, not the adjustment population',
         'Mean': '14.2%',
         '**Median**': '14.0%',
         'Standard deviation': '1.4 points',
         'p10 / p50 / p90 / p95': '12.3% / 14.0% / 16.2% / 16.9%',
         'Skewness': '0.31 — mild right skew, as expected for a proportion near the middle',
         'Distribution shape': 'Approximately symmetric at weekly aggregation; the underlying durations are not',
-        'Normality assessment (probability plot, not just a p-value)': 'Probability plot near-linear; Anderson-Darling p = 0.03, which at n = 12 weeks is not a concern',
-        'Bimodality present? If so, resolved by stratification?': 'No',
         'Index justification': 'Ppu — only an upper limit exists (target is a maximum)',
         '**Capability index value**': 'Ppu 0.42',
         '% outside specification (observed)': '58% of weeks above the 8.0% target',
         '% outside specification (fitted)': '61%',
         "Metric": "7-day reopen rate, billing adjustments",
-        "Operational definition ref": "OD-BIL-004 v2",
+        "Operational definition ref": "OD-BIL-004 v2 — the whole-Billing-queue definition, and the one every row of this table is cut on. The project's Y is OD-BIL-004-ADJ, a different population",
         "Period covered": "2026-01-05 to 2026-03-29 (12 whole weeks)",
-        "Records (n)": "61,400 billing tickets over the 12-week window",
+        "Records (n)": "61,400 billing tickets — the whole Billing queue over those 12 weeks at ~5,100/week, not the adjustment population",
         "Extract date": "2026-04-02",
         "Extract query / job ref": "warehouse job bl_reopen_baseline, commit 4f2a9c1",
         "Immutable snapshot stored at": "s3://analytics-snapshots/BIL-2026-014/baseline.parquet",
@@ -315,11 +317,9 @@ EXAMPLE = {
         'Power / required n per group': '80% power needs 6,900 per group; 8 weeks yields ~7,300',
         'Stopping rule': 'Stop early only for harm: CSAT down more than 0.15 or handle time up more than 8%',
         'Who runs the analysis': 'M. Berenji, with A. Okafor reviewing before it is circulated',
-        'Primary:': '7-day reopen rate | 14.2% | 8.0% | 1.5 pts | 2-proportion | Weekly',
-        'Counter-bal:': 'CSAT, billing | 4.11 | no decline | -0.15 | Mann-Whitney | Weekly',
         'Pilot effect': '-4.9 percentage points (CI -6.1 to -3.7)',
         'Assumed realization factor': '0.85',
-        '**Forecast at full rollout**': '-4.2 points, worth $22,005 a year',
+        '**Forecast at full rollout**': '-4.2 points (-4.9 x 0.85) on the in-scope adjustment population, worth $18,798 a year',
         'Basis for the realization assumption': 'Sites B and D have a different release cadence, so uptake lags by about a quarter',
         "Solution(s)": "Block Resolved until the billing posting webhook confirms",
         "Root cause(s) addressed": "RC-1 closure permitted before posting confirms",
@@ -339,14 +339,14 @@ EXAMPLE = {
         'Contact-mix chi-square, baseline vs post (p)': '0.38 — no material mix shift',
         'Mix-adjusted effect': '-4.7 points (unadjusted -4.9)',
         'Baseline metric': '14.2%',
-        'Post metric': '7.6%',
-        'Improvement': '6.6 percentage points',
-        'Annualized units affected': '4,052 reopens avoided',
-        'Unit cost basis ($)': '$6.80 fully-loaded cost per contact',
-        '**Gross annual benefit**': '$27,554',
+        'Post metric': '`<post-period centre line, OD-BIL-004-ADJ>`',
+        'Improvement': '6.2 percentage points — the 14.2% baseline against the 8.0% target, both on OD-BIL-004-ADJ',
+        'Annualized units affected': '719 reopens avoided — 11,592 in-scope adjustments a year x 6.2 points',
+        'Unit cost basis ($)': '$38.60 fully-loaded cost of a **reopened** contact — not $6.80, which is the cost to serve one contact and was never the price of a reopen',
+        '**Gross annual benefit**': '$27,753 — 719 x $38.60',
         'Realization factor applied': '0.85',
-        '**Realized annual benefit**': '$23,421',
-        'Harvest mechanism': 'Hiring avoidance — two billing roles removed from the Q1 plan',
+        '**Realized annual benefit**': '$23,590 — $27,753 x 0.85',
+        'Harvest mechanism': '`<whether any reduction is available, and against which plan — WFM to state the approved establishment and the actual headcount at the claim date>`',
         'Harvest evidence (req/plan/PO reference)': 'Headcount plan v4, lines 22-23, signed by WFM 2026-11-08',
         'Double-counting check — overlapping projects': 'Checked against BIL-2026-009 (payment retries); no shared contacts',
         'Black Belt': 'M. Berenji | | 2026-11-14',
@@ -356,8 +356,8 @@ EXAMPLE = {
         "Control period start": "2026-08-04",
         "Control period end": "2026-11-02",
         "Days of control data": "91",
-        "Post-period metric (centre line)": "7.6%",
-        "Post-period UCL / LCL": "9.1% / 6.1%",
+        "Post-period metric (centre line)": "`<post-period centre line, OD-BIL-004-ADJ>`",
+        "Post-period UCL / LCL": "`<UCL>` / `<LCL>` — published with the centre line above",
         "Process stable in the control period?": "Yes — no points outside the limits, no runs of 8",
         "Mix shift present?": "Checked: contact-reason mix chi-sq p = 0.38, no material shift",
         "Adjustment method applied": "None required",
@@ -380,9 +380,9 @@ EXAMPLE = {
         'Complaint / escalation review': 'Formal complaints, billing | All | Census, 12 weeks | 61 | Complaints team | Apr-Jun | Small n, high signal',
         'Churn exit reasons': 'Cancellation survey | Cancelling accounts | Census | 340 | Retention | Apr-Jun | Self-reported and post-hoc',
         'Internal (VOB / VOE)': 'Agent forum and QA notes | Billing agents | Ongoing | n/a | QA lead | Ongoing | Agents name the posting delay unprompted',
-        '1': 'Do not make me chase it | The adjustment posts before I am told it is done | Reopens within 7 days | <= 8.0% | Warehouse query OD-BIL-004 | All billing tickets | Census',
+        '1': 'Do not make me chase it | The adjustment posts before I am told it is done | 7-day reopen rate, in-scope billing adjustments | <= 8.0% | OD-BIL-004-ADJ | In-scope billing adjustments | Census',
         '2': 'Tell me when it will be resolved | A committed date given at first contact | Share of contacts with a commitment logged | >= 90% | QA audit item 7 | Sampled contacts | 200/week stratified',
-        '3': 'Do not make me repeat myself | Resolved without a second contact | 7-day reopen rate | <= 8.0% | OD-BIL-004 v2 | All billing tickets | Census',
+        '3': 'Do not make me repeat myself | Resolved without a second contact | 7-day reopen rate, all billing tickets | No target — context only; the 8.0% belongs to the adjustment population | OD-BIL-004 v2 | All billing tickets | Census',
         "Survey verbatims": "CSAT free text, billing reasons | 12 weeks | n=2,180 | Only 14% respond — survivorship",
         "Contact transcripts": "Chat and email, billing queue | 4 weeks | n=8,400 | Topic-modelled, then read 200 by hand",
         "Customer interviews": "Disputed-charge customers | 6 sessions | n=6 | Recruited from reopens, so biased to failure",
@@ -406,9 +406,18 @@ def block(name: str) -> str:
         f"**When.** {when}\n\n"
         f"**Who signs it.** {who}\n\n"
         f"**The mistake this prevents.** {trap}\n\n"
+        # Name the population. The whole Billing queue and the in-scope adjustments
+        # BOTH run a 14.2% 7-day reopen rate, under two different definitions on two
+        # different populations, and multiplying one's rate by the other's volume is
+        # how this pack's benefit case died. A bare "14.2% reopen rate" is the defect
+        # the templates now teach against, so the preamble may not print one.
         "*Italic entries below are a worked example from one project — billing "
         "adjustments closing before the posting confirms, driving a 14.2% 7-day reopen "
-        "rate against a target of 8%. Delete them as you fill your own in.*\n\n"
+        "rate on in-scope billing adjustments (OD-BIL-004-ADJ) against a target of 8%. "
+        "The whole Billing queue also runs a 14.2% 7-day reopen rate, under OD-BIL-004 "
+        "v2 on a far wider population — a different quantity that happens to agree to "
+        "the decimal, which is how the two came to be multiplied together. Say which "
+        "one you mean every time. Delete them as you fill your own in.*\n\n"
         "---\n"
     )
 
@@ -454,17 +463,26 @@ def main() -> int:
         text = path.read_text(encoding="utf-8")
         # Filling tables is a ONE-TIME operation. It writes into whichever cells
         # are still blank, so running it twice walks the values one column along
-        # and puts the date in the signature box. The how-to block is safe to
-        # rewrite; the tables are not.
-        done = MARK in text
-        if done:
-            text = re.sub(re.escape(MARK) + r".*?\n---\n", "", text, count=1, flags=re.S)
-        lines = text.split("\n")
-        # the block goes after the H1 title
-        for i, line in enumerate(lines):
-            if line.startswith("# "):
-                lines.insert(i + 1, "\n" + block(name))
-                break
+        # and puts the date in the signature box.
+        #
+        # The how-to block used to be rewritten unconditionally, on the reasoning
+        # that prose is safe to regenerate. It is not. Every one of these eleven
+        # blocks has been edited since it was generated — 04-operational-definition
+        # gained a whole paragraph about reading the metric name first, 06 has its
+        # own version of the mistake it prevents — and the reconciliation rewrote
+        # every preamble to name the population its figures are measured on. One
+        # run of this tool flattened all eleven back to the generic text, which is
+        # how a document that teaches "a bare 14.2% reopen rate is the defect"
+        # would come to print exactly that. The file is the authority on its own
+        # prose; the block is only written where there is not one already.
+        if MARK not in text:
+            lines = text.split("\n")
+            for i, line in enumerate(lines):
+                if line.startswith("# "):          # after the H1 title
+                    lines.insert(i + 1, "\n" + block(name))
+                    break
+        else:
+            lines = text.split("\n")
         # Filling is safe to repeat: fill_row skips any row that already carries
         # an italic example, so a second run is a no-op rather than a shift.
         # Gating on `done` meant a template restored from git could never be
