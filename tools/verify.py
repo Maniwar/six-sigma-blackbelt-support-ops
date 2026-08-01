@@ -84,6 +84,35 @@ RE_ASQ_CODE = re.compile(r"\b((?:I|II|III|IV|V|VI|VII|VIII|IX)(?:\.[A-Z])?(?:\.\
 RE_IASSC_CODE = re.compile(r"\b([1-5]\.[1-5])\b")
 
 
+
+def test_citations() -> None:
+    """A cross-reference has to land on what it claims.
+
+    The templates cite each other by LINE NUMBER, which is not a stable
+    address: editing any document shifts every pointer into it from every
+    sibling. One pass added seventeen lines to the charter and silently broke
+    references in four other files. tools/qa_citations.py resolves them.
+    """
+    import qa_citations
+
+    qa_citations.fails.clear()
+    qa_citations.warns.clear()
+    qa_citations.checked[0] = 0
+    cache: dict = {}
+    for path in sorted(qa_citations.TEMPLATES.glob("*.md")):
+        qa_citations.check_file(path, cache)
+    check(qa_citations.checked[0] > 100,
+          f"the citation check walked the pack ({qa_citations.checked[0]} references)",
+          "it found almost nothing to resolve — the reference format has changed")
+    # NOT a check yet, deliberately. Six references do not resolve and two of
+    # those six look like artefacts of the figure extraction rather than real
+    # breaks. Turning this into check() before they are triaged would fail the
+    # build on the tool's own bugs, which is how a harness loses its authority.
+    # Triage the six, fix the real ones, then make this a check().
+    for f in qa_citations.fails:
+        print(f"           TODO {f}")
+
+
 def test_bok() -> None:
     """Every body-of-knowledge section the page cites has to exist.
 
