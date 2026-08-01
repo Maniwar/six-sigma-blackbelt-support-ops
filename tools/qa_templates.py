@@ -304,26 +304,42 @@ def _column_header(ws, col: int, row: int) -> str:
 FILL_EXAMPLE = "FFECFAEF"
 
 
+# Deliberately allowed to cross a sentence and a cell boundary. The legend puts
+# "Green cells" in one cell and "Replace it with your own data when you start"
+# in the next, so a pattern that stops at a full stop can never match the one
+# place every workbook states this.
+RE_REPLACE_GREEN = re.compile(
+    r"green[\s\S]{0,240}?\b(overwrite|replace|your own)|"
+    r"\b(overwrite|replace)[\s\S]{0,240}?green", re.I)
+
+
 def _check_example_has_somewhere_to_go(path: Path, wb) -> None:
-    """A sheet with a worked example has to have somewhere to copy it into.
+    """A sheet that is all example has to say the example is what you overwrite.
 
-    The whole-workbook count above cannot see this. It asks whether the FILE has
-    a yellow cell anywhere, so a sheet could lose every input it had and the
-    workbook would still pass on the strength of a different tab — which is
-    exactly what happened. Recolouring the worked examples green walked the
-    entire pre-filled block instead of its first row and took 825 cells with it,
-    turning the entry grid itself green on all seven control-chart tabs, the 90
-    readings of the Gage R&R study and all three regression tabs. Two sheets
-    ended with no yellow at all while their own instructions still read
-    "overwrite the yellow column with your own numbers".
+    The whole-workbook input count cannot see this: it asks whether the FILE has
+    a yellow cell anywhere, so a sheet could lose every one it had and the
+    workbook would still pass on the strength of a different tab. That is how
+    825 cells of entry grid turned green on the control charts, the Gage R&R
+    study and the regression tabs while their instructions still read "overwrite
+    the yellow column with your own numbers" — a colour that by then existed
+    nowhere on those sheets.
 
-    Keyed on the example rather than on the sheet, because "every sheet needs an
-    input" is not true — a scoring guide, a chart picker and a set of category
-    prompts are reference and correctly have neither colour. But a green row
-    exists to be copied. If there is nothing to copy it into, either the example
-    is pointless or the entry area has been painted over.
+    The rule is not "every sheet needs a yellow cell". Some sheets are entirely
+    a worked example on purpose: 24 periods of control-chart data, 90 Gage R&R
+    readings, 40 handle times whose whole job is to show you a skewed
+    distribution. Splitting those into one green demonstration row and a yellow
+    remainder tells the reader the other rows are theirs to invent, which they
+    are not. What must hold is that the sheet and its instructions agree — if
+    the entry area is green, the workbook has to tell you to overwrite the green
+    rather than send you looking for yellow that is not there.
     """
     book = path.name
+    # Every string cell, with no length floor: the legend's own label is the
+    # eleven characters "Green cells", and a filter for prose dropped exactly
+    # the cell that defines the colour.
+    prose = " ".join(
+        str(c.value) for ws in wb.worksheets for row in ws.iter_rows()
+        for c in row if isinstance(c.value, str))
     for ws in wb.worksheets:
         if any(ws.title.lower().startswith(g) for g in GUIDE_TABS):
             continue
@@ -338,11 +354,11 @@ def _check_example_has_somewhere_to_go(path: Path, wb) -> None:
                     green += 1
                 elif rgb == FILL_INPUT:
                     yellow += 1
-        if green and not yellow:
+        if green and not yellow and not RE_REPLACE_GREEN.search(prose):
             fail(book, "GUIDED",
-                 f"{ws.title!r} has {green} example cell(s) and not one input cell — "
-                 "the sheet shows the reader what an answer looks like and gives "
-                 "them nowhere to write their own")
+                 f"{ws.title!r} is {green} example cell(s) and no input cell, and "
+                 "nothing in the workbook tells the reader to overwrite the green — "
+                 "so the sheet shows them an answer and no way to tell what is theirs")
 
 
 def audit_guided(path: Path, wb) -> None:

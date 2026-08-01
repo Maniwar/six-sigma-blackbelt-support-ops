@@ -195,7 +195,12 @@ def mark(ws, row, col, kind, note=None):
 LEGEND = [
     (True, "Yellow cells"), (False, "You fill these in."),
     (True, "Blue cells"), (False, "Calculated for you. Do not type over them — they contain formulas."),
-    (True, "Green row"), (False, "A worked example so you can see the expected format. Delete it when you start."),
+    # Plural, and "replace" rather than "delete": on the sheets that ship seeded
+    # with a full dataset — the control charts, the Gage R&R study, regression —
+    # the worked example IS the entry area. Deleting it leaves an empty chart.
+    (True, "Green cells"), (False, "A worked example, so you can see the expected format and the "
+                                   "charts say something the moment you open the file. Replace it "
+                                   "with your own data when you start."),
 ]
 
 
@@ -1140,12 +1145,11 @@ def pareto():
               326, 335, 346, 358, 372, 389, 408, 431, 459, 494,
               538, 594, 668, 771, 918, 1140, 1502, 2160, 3480, 5220]
     for i, v in enumerate(HANDLE):
-        # First row is the worked example, the other 39 are the reader's paste
-        # area — seeded so the statistics and the chart say something on
-        # opening, but still theirs to overwrite. Colouring all 40 green left
-        # A15 telling them to paste into a column with nothing marked to paste
-        # into, which is the whole sheet's purpose.
-        c = mark(ws2, 20 + i, 2, "ex" if i == 0 else "in")
+        # All forty are the worked example: they are one distribution, and the
+        # whole point of the tab is to show you what a skewed one looks like.
+        # Splitting them green-then-yellow would say the first value is a
+        # demonstration and the other thirty-nine are yours to invent.
+        c = mark(ws2, 20 + i, 2, "ex")
         c.value = v
         c.number_format = "#,##0"
     for r in range(20 + len(HANDLE), 60):
@@ -2084,8 +2088,9 @@ def control_charts():
                 "control limits written as live formulas so you can see exactly where each line comes from."),
         (True, "How to use it"),
         (False, "1. Open the 'Pick your chart' tab and find the row that matches the data you have."),
-        (False, "2. Go to that tab. Overwrite the yellow column with your own numbers, oldest first. The green row is a "
-                "worked example — replace it too once you have the hang of it."),
+        (False, "2. Go to that tab. The green cells are a worked example — 24 periods of real-shaped support "
+                "data, so the chart and its limits say something the moment you open it. Overwrite them "
+                "with your own numbers, oldest first. The yellow cell above is a setting you choose, not data."),
         (False, "3. The chart, the limits and the signal column update themselves. Nothing else needs touching."),
         (False, "4. Blue cells are calculated. Read the formula bar on any of them to see the arithmetic — the constants "
                 "(1.128, 2.66, 3.267, A2, D3, D4) are all visible, not buried."),
@@ -2338,7 +2343,9 @@ def gage_rr():
     W = 14
     title(ws, "Measurement System Analysis — continuous Gage R&R (crossed, ANOVA)",
           "How much of the variation you are about to analyse is the measurement "
-          "rather than the process. Type the yellow cells; everything else calculates.", W)
+          "rather than the process. The green block is a worked study — overwrite the 90 "
+          "readings with your own. The yellow cells above it describe your study; "
+          "everything else calculates.", W)
 
     band(ws, 4, "THE STUDY — what you measured, and what you will compare it against", W)
     for r, (lab, val, fmt, hint) in enumerate([
@@ -2712,7 +2719,8 @@ def regression():
     W = 6
     title(ws, "Simple linear regression — one driver, one outcome",
           "Fit a straight line through two columns, then find out how much of the "
-          "outcome that one driver actually explains. Yellow cells are yours; "
+          "outcome that one driver actually explains. The green rows are a worked example — "
+          "replace them with your own pairs. Yellow cells above are yours to set; "
           "everything blue is a formula you can point at.", W)
     # Column A carries both the long statistic labels and the contact ref, and
     # column B both a typed answer and the x column, so both are sized for the

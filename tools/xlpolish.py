@@ -348,19 +348,20 @@ def mark_examples(wb) -> int:
     value is a sensible DEFAULT to adjust — alpha at 0.05, a subgroup size of
     five — not an example to delete, and those must stay yellow.
 
-    And scoped to the FIRST data row of the block, because that is what the
-    legend on these sheets promises: "Overwrite the yellow column with your own
-    numbers. The green row is a worked example — replace it too once you have
-    the hang of it." One row, singular, on every legend in the pack.
+    Scoped to the CONTIGUOUS pre-filled rows at the top of the block, and it
+    stops at the first row that has nothing in it. Those rows are one worked
+    example and the reader reads them as one: the Pareto ships five billing
+    defect categories with counts and shares, and colouring the first green and
+    the next four yellow says the last four are yours to invent, which is not
+    what they are.
 
-    Painting every pre-filled row instead recoloured 825 cells and turned the
-    entry grid itself green on the workbooks that ship seeded with data — all
-    seven control-chart tabs, the 90 readings of the Gage R&R study, all three
-    regression tabs. The reader was left with a sheet of reference-coloured
-    numbers, an instruction to overwrite a yellow column that no longer existed,
-    and on two sheets not one yellow cell anywhere. A pre-filled grid is not an
-    example sitting beside the entry area; it IS the entry area, seeded so the
-    charts have something to draw on opening.
+    The two wrong answers before this one are worth keeping, because they are
+    opposite errors. The first painted every yellow cell in the block whatever
+    lay below, which ran past the end of the logistic tab's data and turned its
+    threshold and AUC settings into what looks like reference data. The second
+    over-corrected to the first row alone, which split every seeded example down
+    the middle. The boundary is the data, not a row count: an example ends where
+    the blank rows begin.
     """
     from openpyxl.styles import PatternFill
     green = PatternFill("solid", fgColor=FILL_EX)
@@ -400,9 +401,7 @@ def mark_examples(wb) -> int:
                     if yellow and literal:
                         cell.fill = green
                         n += 1
-                # The example is this row and stops here. Everything below it is
-                # the reader's to overwrite and has to stay yellow to say so.
-                break
+                r += 1
     return n
 
 

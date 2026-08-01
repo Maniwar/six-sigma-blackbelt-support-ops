@@ -195,13 +195,17 @@ def m_untitled_chart(wb):
 
 
 def m_paint_over_the_inputs(wb):
-    """Recolour a sheet's entry grid as example data, leaving nowhere to type.
+    """Turn a sheet all-green AND take away the sentence that explains it.
 
     Not hypothetical: this shipped. Repainting the worked examples green walked
-    every pre-filled row of a block instead of its first, took 825 cells with
-    it, and left two sheets with no input cell at all while their instructions
-    still said to overwrite the yellow column. The workbook-wide count passed it
-    because other tabs still had yellow.
+    every pre-filled row of a block, took 825 cells with it, and left sheets
+    with no input cell at all while the instructions still said to overwrite the
+    yellow column — a colour that by then existed nowhere on them.
+
+    Both halves are needed, because an all-green sheet is legitimate when the
+    workbook says the green is what you replace. The defect is the mismatch, so
+    the mutant creates the mismatch: paint the inputs over, then delete the
+    instruction that would have made it coherent.
     """
     green = PatternFill("solid", fgColor="FFECFAEF")
     for ws in wb.worksheets:
@@ -214,7 +218,16 @@ def m_paint_over_the_inputs(wb):
             continue
         for c in hit:
             c.fill = green
-        return f"repainted all {len(hit)} input cell(s) on {ws.title!r} as example data"
+        # The instruction lives across two cells — "Green cells" in one, "Replace
+        # it with your own data" in the next — so deleting whole cells that match
+        # on their own removes neither half. Take the word out instead.
+        for w in wb.worksheets:
+            for row in w.iter_rows():
+                for c in row:
+                    if isinstance(c.value, str) and "green" in c.value.lower():
+                        c.value = _re.sub("green", "shaded", c.value, flags=_re.I)
+        return (f"repainted all {len(hit)} input cell(s) on {ws.title!r} as example "
+                "data and removed the sentence that says to overwrite the green")
     return None
 
 

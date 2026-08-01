@@ -123,6 +123,35 @@ def test_bok() -> None:
               f"{want[:60]!r} — run tools/apply_bok.py" if got else
               "the module carries no BOK mapping at all")
 
+    # The headline coverage claim, checked against what the modules actually
+    # map to. It read "the full ASQ CSSBB and IASSC bodies of knowledge" in six
+    # places — the lede, three meta descriptions and two JSON-LD blocks — while
+    # three ASQ sections had no module at all. A number in the claim is worth
+    # more than the word "full" precisely because a number can be wrong.
+    from bok import coverage as _coverage
+    asq_cov, iassc_cov = _coverage()
+    a_have = sum(1 for v in asq_cov.values() if v)
+    i_have = sum(1 for v in iassc_cov.values() if v)
+    claim = f"{a_have} of the {len(asq_cov)} ASQ CSSBB sections"
+    check(claim in src, "the coverage claim matches the modules",
+          f"the page should say {claim!r}; if the modules changed, the claim and "
+          "the coverage table both have to move with them")
+    check(i_have == len(iassc_cov) or "complete IASSC" not in src,
+          "the page only claims a complete IASSC mapping while it has one",
+          f"{i_have} of {len(iassc_cov)} IASSC sections are covered")
+
+    # Every chip in the coverage table is a link into the module it names. One
+    # module ships expanded, as <details class="mod" open>, and the first pass
+    # gave anchors only to the ones written <details class="mod"> exactly — so
+    # that module's chips pointed at nothing.
+    mod_ids = set(re.findall(r'<details class="mod" id="(M\d+)"', src))
+    targets = set(re.findall(r'class="pill" href="#(M\d+)"', src))
+    check(not targets - mod_ids, "every coverage-table link lands on a module",
+          f"{sorted(targets - mod_ids)} are linked but have no anchor")
+    check(len(mod_ids) == len(MODULE_MAP),
+          "every module carries an anchor to link at",
+          f"{len(mod_ids)} anchors for {len(MODULE_MAP)} modules")
+
     mappings = RE_BOK.findall(src)
     check(len(mappings) >= 20, "every module declares a BOK mapping",
           f"only {len(mappings)} found — the curriculum claims full coverage")

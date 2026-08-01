@@ -30,9 +30,11 @@ def _rows(cov: dict, titles: dict) -> str:
     out = []
     for code, mids in cov.items():
         if mids:
+            # Links, not labels. A traceability matrix whose cells you cannot
+            # follow is a picture of the mapping rather than a way through it.
             # No separator: the chips carry their own margin, and a comma between
             # two inline-block pills renders with a space in front of it.
-            where = "".join(f'<span class="pill">{m}</span>' for m in sorted(mids))
+            where = "".join(f'<a class="pill" href="#{m}">{m}</a>' for m in sorted(mids))
         else:
             where = '<em>not taught in this programme</em>'
         cls = "" if mids else ' class="gap"'
@@ -83,6 +85,17 @@ def main() -> int:
     out, written, added = [], 0, 0
     for b in blocks:
         m = RE_MOD.search(b)
+        if m:
+            # An anchor to link at. The modules had none, so the coverage table
+            # could only name them; the page's own deep-link handler already
+            # opens a collapsed <details> once it can find one by id.
+            #
+            # Matched as a tag rather than a literal string because one module
+            # ships expanded, as <details class="mod" open> — a literal replace
+            # silently skipped exactly that one and left a dead link behind it.
+            b = re.sub(r'<details class="mod"((?: (?!id=)[^>]*)?)>',
+                       lambda mm: f'<details class="mod" id="{m.group(1)}"{mm.group(1)}>',
+                       b, count=1)
         line = render(m.group(1)) if m else None
         if line is None:
             out.append(b)
