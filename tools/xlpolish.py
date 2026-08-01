@@ -253,6 +253,65 @@ def explain_headers(wb) -> int:
     return n
 
 
+def stamp(wb):
+    """Freeze the document timestamps so a rebuild that changes nothing is empty.
+
+    openpyxl writes the current time into docProps/core.xml on every save. Every
+    worksheet XML can be byte-identical and all 19 workbooks still come out with
+    different bytes, which changes the base64 embedded in the page, which makes
+    the HTML differ too. So `git diff` after a rebuild always showed 20 modified
+    files and could never tell anyone whether the rebuild actually did anything
+    — the same blindness as a check that cannot fail, in the one place a
+    reviewer looks first.
+
+    The date is the project's, fixed, and deliberately not derived from
+    anything: a value that moves is the entire problem.
+    """
+    from datetime import datetime
+    fixed = datetime(2026, 1, 1)
+    wb.properties.created = fixed
+    wb.properties.modified = fixed
+    wb.properties.creator = "six-sigma-blackbelt-support-ops"
+    wb.properties.lastModifiedBy = "six-sigma-blackbelt-support-ops"
+    return wb
+
+
+ZIP_EPOCH = (2026, 1, 1, 0, 0, 0)
+
+
+def save_workbook(wb, path) -> None:
+    """Save, then rewrite the archive with fixed entry timestamps.
+
+    Freezing the document properties is only half of it, and setting them before
+    the save does not survive it — openpyxl stamps dcterms:modified with the
+    clock as it writes, so that one has to be corrected here, afterwards. An
+    .xlsx is also a zip, and a zip records a modification time per entry, which
+    Python's zipfile likewise takes from the clock. All three move independently;
+    all three have to be pinned before "the build produced no diff" means what it
+    says.
+    """
+    import re as _re
+    import zipfile
+    wb.save(path)
+    src = zipfile.ZipFile(path)
+    items = [(i, src.read(i.filename)) for i in src.infolist()]
+    src.close()
+    tmp = path.with_name(path.name + ".rezip")
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as out:
+        for info, data in items:
+            if info.filename == "docProps/core.xml":
+                data = _re.sub(
+                    rb"(<dcterms:modified[^>]*>)[^<]*(</dcterms:modified>)",
+                    rb"\g<1>2026-01-01T00:00:00Z\g<2>", data)
+            zi = zipfile.ZipInfo(info.filename, date_time=ZIP_EPOCH)
+            zi.compress_type = info.compress_type
+            zi.external_attr = info.external_attr
+            zi.internal_attr = info.internal_attr
+            zi.create_system = info.create_system
+            out.writestr(zi, data)
+    tmp.replace(path)
+
+
 FILL_IN = "FFFFF9E3"        # "you fill this in"
 FILL_EX = "FFECFAEF"        # "a worked example — delete it when you start"
 FILL_BAND = "FFEEF1F6"      # a section band: the table above it has ended
@@ -288,6 +347,20 @@ def mark_examples(wb) -> int:
     Scoped to banded tables on purpose. A standalone yellow input holding a
     value is a sensible DEFAULT to adjust — alpha at 0.05, a subgroup size of
     five — not an example to delete, and those must stay yellow.
+
+    And scoped to the FIRST data row of the block, because that is what the
+    legend on these sheets promises: "Overwrite the yellow column with your own
+    numbers. The green row is a worked example — replace it too once you have
+    the hang of it." One row, singular, on every legend in the pack.
+
+    Painting every pre-filled row instead recoloured 825 cells and turned the
+    entry grid itself green on the workbooks that ship seeded with data — all
+    seven control-chart tabs, the 90 readings of the Gage R&R study, all three
+    regression tabs. The reader was left with a sheet of reference-coloured
+    numbers, an instruction to overwrite a yellow column that no longer existed,
+    and on two sheets not one yellow cell anywhere. A pre-filled grid is not an
+    example sitting beside the entry area; it IS the entry area, seeded so the
+    charts have something to draw on opening.
     """
     from openpyxl.styles import PatternFill
     green = PatternFill("solid", fgColor=FILL_EX)
@@ -327,8 +400,27 @@ def mark_examples(wb) -> int:
                     if yellow and literal:
                         cell.fill = green
                         n += 1
-                r += 1
+                # The example is this row and stops here. Everything below it is
+                # the reader's to overwrite and has to stay yellow to say so.
+                break
     return n
+
+
+def _anchor_ref(ch) -> str | None:
+    """Where a chart is anchored, as "K3", whichever form openpyxl is using.
+
+    A chart built in this session carries a plain string. One read back from a
+    file carries a OneCellAnchor/TwoCellAnchor object with zero-based col/row,
+    so comparing it against a string never matched and every chart looked moved
+    on every run.
+    """
+    a = getattr(ch, "anchor", None)
+    if isinstance(a, str):
+        return a
+    frm = getattr(a, "_from", None)
+    if frm is None:
+        return None
+    return f"{get_column_letter(frm.col + 1)}{frm.row + 1}"
 
 
 def polish_workbook(wb, landscape: bool = True) -> int:
@@ -337,7 +429,12 @@ def polish_workbook(wb, landscape: bool = True) -> int:
     Returns how many sheets it actually changed, so a caller that only saves on
     a real change (patch_workbooks.py, to keep the embedded base64 stable) can
     tell whether this pass did anything.
+
+    Runs at every save site in the build, which is why stamp() lives here: the
+    document timestamps have to be frozen on the way out or the bytes move
+    whether or not the content did.
     """
+    stamp(wb)
     changed = explain_headers(wb) + mark_examples(wb)
     for ws in wb.worksheets:
         before = (ws.page_setup.fitToWidth, ws.page_setup.orientation, ws.freeze_panes)
@@ -373,9 +470,16 @@ def polish_workbook(wb, landscape: bool = True) -> int:
             free = get_column_letter(last_col + 2)
             row_at = 3
             for ch in charts:
-                ch.anchor = f"{free}{row_at}"
+                target = f"{free}{row_at}"
+                # Only a real move counts. This incremented unconditionally, so
+                # every workbook with a chart reported a change on every run and
+                # re-saved forever — which was invisible while the timestamps
+                # churned the bytes anyway, and is the whole reason "did the
+                # build change anything?" had no answer.
+                if _anchor_ref(ch) != target:
+                    changed += 1
+                ch.anchor = target
                 row_at += max(16, int((ch.height or 7.5) / 0.5) + 3)
-                changed += 1
 
 
         for ch in getattr(ws, "_charts", []):

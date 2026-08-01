@@ -301,6 +301,50 @@ def _column_header(ws, col: int, row: int) -> str:
     return ""
 
 
+FILL_EXAMPLE = "FFECFAEF"
+
+
+def _check_example_has_somewhere_to_go(path: Path, wb) -> None:
+    """A sheet with a worked example has to have somewhere to copy it into.
+
+    The whole-workbook count above cannot see this. It asks whether the FILE has
+    a yellow cell anywhere, so a sheet could lose every input it had and the
+    workbook would still pass on the strength of a different tab — which is
+    exactly what happened. Recolouring the worked examples green walked the
+    entire pre-filled block instead of its first row and took 825 cells with it,
+    turning the entry grid itself green on all seven control-chart tabs, the 90
+    readings of the Gage R&R study and all three regression tabs. Two sheets
+    ended with no yellow at all while their own instructions still read
+    "overwrite the yellow column with your own numbers".
+
+    Keyed on the example rather than on the sheet, because "every sheet needs an
+    input" is not true — a scoring guide, a chart picker and a set of category
+    prompts are reference and correctly have neither colour. But a green row
+    exists to be copied. If there is nothing to copy it into, either the example
+    is pointless or the entry area has been painted over.
+    """
+    book = path.name
+    for ws in wb.worksheets:
+        if any(ws.title.lower().startswith(g) for g in GUIDE_TABS):
+            continue
+        green = yellow = 0
+        for row in ws.iter_rows():
+            for c in row:
+                try:
+                    rgb = str(c.fill.fgColor.rgb) if c.fill and c.fill.patternType else ""
+                except Exception:                                # noqa: BLE001
+                    continue
+                if rgb == FILL_EXAMPLE:
+                    green += 1
+                elif rgb == FILL_INPUT:
+                    yellow += 1
+        if green and not yellow:
+            fail(book, "GUIDED",
+                 f"{ws.title!r} has {green} example cell(s) and not one input cell — "
+                 "the sheet shows the reader what an answer looks like and gives "
+                 "them nowhere to write their own")
+
+
 def audit_guided(path: Path, wb) -> None:
     """Every yellow cell has to say where its number comes from."""
     book = path.name
@@ -341,6 +385,7 @@ def audit_guided(path: Path, wb) -> None:
                     naked.append(f"{ws.title}!{c.coordinate}")
     if inputs == 0:
         warn(book, "GUIDED", "no yellow input cells — is anything meant to be filled in?")
+    _check_example_has_somewhere_to_go(path, wb)
     if naked:
         fail(book, "GUIDED",
              f"{len(naked)} standalone input(s) with no explanation of where the number "
@@ -579,6 +624,10 @@ def audit_rowlabel(path: Path, wb) -> None:
     for ws in wb.worksheets:
         if any(ws.title.lower().startswith(g) for g in GUIDE_TABS):
             continue
+        # Rows that belong to a banded table whose column A carries a real name.
+        grid_rows = {r for hrow, first, last, cols in _blocks(ws)
+                     if cols.get(1, "").strip()
+                     for r in range(first, last + 1)}
         for r in range(1, ws.max_row + 1):
             lab = ws.cell(row=r, column=1).value
             val = ws.cell(row=r, column=2)
@@ -589,6 +638,28 @@ def audit_rowlabel(path: Path, wb) -> None:
             except Exception:                                    # noqa: BLE001
                 rgb = ""
             if rgb not in (FILL_INPUT, FILL_CALC) or val.value in (None, ""):
+                continue
+            # A row of a data grid, where column A is a real column with a name
+            # of its own — "Part", "Period", "Category" — and the value is a
+            # number the reader types. The header explains all 24 rows at once;
+            # a note on each would be noise, and JARGON already requires that
+            # header to be readable.
+            #
+            # Two things this exemption must NOT do, both of which it did on the
+            # first attempt and a mutant caught:
+            #
+            # Membership comes from the block, not from walking up the sheet
+            # looking for a dark fill. That walk has no lower bound, so a row
+            # three below the end of a table still found the table's header and
+            # inherited an explanation from a table it is not in.
+            #
+            # And it is limited to LITERAL values. A calculated cell under the
+            # same header is a named quantity, not a repeated measurement —
+            # "Count", "Mean", "p90" sit under a "Statistic" header and each one
+            # needs its own sentence. Exempting on the header alone silently
+            # dropped every stats block in the pack.
+            if (r in grid_rows and not (isinstance(val.value, str)
+                                        and val.value.startswith("="))):
                 continue
             note = " ".join(
                 str(ws.cell(row=r, column=c).value) for c in ROWLABEL_COLS

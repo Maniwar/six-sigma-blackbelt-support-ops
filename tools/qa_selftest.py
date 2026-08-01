@@ -194,6 +194,37 @@ def m_untitled_chart(wb):
     return None
 
 
+def m_paint_over_the_inputs(wb):
+    """Recolour a sheet's entry grid as example data, leaving nowhere to type.
+
+    Not hypothetical: this shipped. Repainting the worked examples green walked
+    every pre-filled row of a block instead of its first, took 825 cells with
+    it, and left two sheets with no input cell at all while their instructions
+    still said to overwrite the yellow column. The workbook-wide count passed it
+    because other tabs still had yellow.
+    """
+    green = PatternFill("solid", fgColor="FFECFAEF")
+    for ws in wb.worksheets:
+        if any(ws.title.lower().startswith(g) for g in Q.GUIDE_TABS):
+            continue
+        shadow = Q.merged_shadow(ws)
+        hit = [c for row in ws.iter_rows() for c in row
+               if (c.row, c.column) not in shadow and _fill(c) == Q.FILL_INPUT]
+        if not hit:
+            continue
+        for c in hit:
+            c.fill = green
+        return f"repainted all {len(hit)} input cell(s) on {ws.title!r} as example data"
+    return None
+
+
+def _fill(c) -> str:
+    try:
+        return str(c.fill.fgColor.rgb) if c.fill and c.fill.patternType else ""
+    except Exception:                                            # noqa: BLE001
+        return ""
+
+
 def m_bare_row(wb):
     """A name and a number, and nothing telling the reader what it is."""
     for ws in wb.worksheets:
@@ -253,6 +284,7 @@ MUTANTS = [
     ("unexplained yellow input", m_naked_input, "GUIDED"),
     ("chart wired to an emptied block", m_empty_series, "CHARTS"),
     ("chart with no title", m_untitled_chart, "CHARTS"),
+    ("entry grid repainted as example data", m_paint_over_the_inputs, "GUIDED"),
     ("label and number, no explanation", m_bare_row, "ROWLABEL"),
     ("explanation stripped off a calculated row", m_strip_row_note, "ROWLABEL"),
 ]

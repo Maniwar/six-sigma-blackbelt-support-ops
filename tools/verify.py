@@ -79,6 +79,37 @@ def covered_non_anchor(ws) -> set[str]:
     return dead
 
 
+def test_deterministic() -> None:
+    """Every shipped workbook carries frozen timestamps, so a diff means something.
+
+    An .xlsx records the time in three independent places — the created and
+    modified properties in docProps/core.xml, and a modification time on every
+    zip entry — and openpyxl writes the clock into all three. So a rebuild that
+    changed nothing still produced twenty modified binary files plus the page
+    that embeds them, and `git diff` could never answer "did that build actually
+    do anything?". It hid a real one: a chart was re-anchored and a note's font
+    rewritten on every single run, growing the style table by one entry per
+    build, for as long as this repo has existed.
+
+    Checked here rather than by building twice, which would double every run.
+    """
+    import zipfile
+    from xlpolish import ZIP_EPOCH
+    stamp = "2026-01-01T00:00:00Z"
+    for path in sorted(TEMPLATES.glob("*.xlsx")):
+        z = zipfile.ZipFile(path)
+        core = z.read("docProps/core.xml").decode("utf-8", "replace")
+        for field in ("created", "modified"):
+            got = re.search(rf"<dcterms:{field}[^>]*>([^<]*)<", core)
+            check(bool(got) and got.group(1) == stamp,
+                  f"{path.name} docProps {field} frozen",
+                  f"is {got.group(1) if got else '(absent)'}, not {stamp} — the "
+                  "bytes move on every build and a diff stops meaning anything")
+        moving = [i.filename for i in z.infolist() if i.date_time != ZIP_EPOCH]
+        check(not moving, f"{path.name} zip entry timestamps frozen",
+              f"{len(moving)} entry/entries carry a build-time clock: {moving[:3]}")
+
+
 def test_structure() -> None:
     for path in sorted(TEMPLATES.glob("*.xlsx")):
         wb = load_workbook(path)
@@ -1114,6 +1145,8 @@ def test_toollib() -> None:
 # --------------------------------------------------------------------- main
 def main() -> int:
     fast = "--fast" in sys.argv
+    print("BUILD      workbooks are byte-reproducible")
+    test_deterministic()
     print("STRUCTURE  merged-cell reference audit")
     test_structure()
     print("SYNC       four-way template consistency")

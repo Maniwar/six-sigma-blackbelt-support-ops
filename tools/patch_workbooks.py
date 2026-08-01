@@ -30,7 +30,7 @@ from openpyxl.worksheet.datavalidation import DataValidation
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from chart_specs import add_charts  # noqa: E402
 from worked_examples import add_examples  # noqa: E402
-from xlpolish import polish_workbook  # noqa: E402
+from xlpolish import polish_workbook, save_workbook  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATES = ROOT / "templates"
@@ -482,15 +482,22 @@ def patch_notes(wb, wbname: str) -> int:
         if c.value != text:
             c.value = text
             n += 1
-        c.font = Font(italic=True, size=9, color="FF6B7280")
+        # Only assign a style that is not already there. _style_new_cells runs
+        # first and styles these same cells; overwriting its font and alignment
+        # unconditionally made the pair oscillate, minting one fresh cellXf on
+        # every build. The workbook grew a style per run forever, and nobody
+        # could see it because the document timestamps churned the bytes anyway.
+        if (c.font.italic, c.font.sz,
+                getattr(c.font.color, "rgb", None)) != (True, 9.0, "FF6B7280"):
+            c.font = Font(italic=True, size=9, color="FF6B7280")
         width = ws.column_dimensions[c.column_letter].width or 8.43
-        if width >= 40:
-            c.alignment = Alignment(wrap_text=True, vertical="top")
+        wrap, vert = (True, "top") if width >= 40 else (False, "center")
+        if (bool(c.alignment.wrap_text), c.alignment.vertical) != (wrap, vert):
+            c.alignment = Alignment(wrap_text=wrap, vertical=vert)
+        if wrap:
             lines = 1 + int(len(text) / (width * 0.95))
             ws.row_dimensions[c.row].height = max(
                 ws.row_dimensions[c.row].height or 0, 13 * lines)
-        else:
-            c.alignment = Alignment(wrap_text=False, vertical="center")
     return n
 
 
@@ -530,7 +537,7 @@ def patch_formulas(verbose: bool = True) -> int:
         # openpyxl's zip output is not byte-stable, so saving an unchanged
         # workbook would churn its base64 copy in the HTML on every run.
         if local:
-            wb.save(path)
+            save_workbook(wb, path)
         changed += local
         if verbose:
             state = f"{local:3d} cell(s) rewritten" if local else "  unchanged"
@@ -552,7 +559,7 @@ def patch_formulas(verbose: bool = True) -> int:
         local += add_charts(wb, path.name)
         local += polish_workbook(wb)
         if local:
-            wb.save(path)
+            save_workbook(wb, path)
             changed += local
             if verbose:
                 print(f"  {path.name:46s} {local:3d} layout fix(es)")

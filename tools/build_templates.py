@@ -30,7 +30,7 @@ from openpyxl.comments import Comment
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import chartsvg  # noqa: E402
 from preview import shown_from, workbook_html  # noqa: E402
-from xlpolish import polish_workbook  # noqa: E402
+from xlpolish import polish_workbook, save_workbook  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATES = ROOT / "templates"
@@ -1140,7 +1140,12 @@ def pareto():
               326, 335, 346, 358, 372, 389, 408, 431, 459, 494,
               538, 594, 668, 771, 918, 1140, 1502, 2160, 3480, 5220]
     for i, v in enumerate(HANDLE):
-        c = mark(ws2, 20 + i, 2, "ex")
+        # First row is the worked example, the other 39 are the reader's paste
+        # area — seeded so the statistics and the chart say something on
+        # opening, but still theirs to overwrite. Colouring all 40 green left
+        # A15 telling them to paste into a column with nothing marked to paste
+        # into, which is the whole sheet's purpose.
+        c = mark(ws2, 20 + i, 2, "ex" if i == 0 else "in")
         c.value = v
         c.number_format = "#,##0"
     for r in range(20 + len(HANDLE), 60):
@@ -3496,7 +3501,7 @@ def main() -> int:
         wb, name = fn()
         polish_workbook(wb)
         path = TEMPLATES / name
-        wb.save(path)
+        save_workbook(wb, path)
         # regenerate from the saved file so the preview describes what ships,
         # with every formula's real result rather than a value remembered by
         # hand in SHOWN — which only ever covered the cells someone thought to
