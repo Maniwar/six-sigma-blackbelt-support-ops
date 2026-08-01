@@ -253,6 +253,58 @@ def explain_headers(wb) -> int:
     return n
 
 
+FILL_IN = "FFFFF9E3"        # "you fill this in"
+FILL_EX = "FFECFAEF"        # "a worked example — delete it when you start"
+
+
+def mark_examples(wb) -> int:
+    """Demonstration data inside a table is a worked example, so colour it one.
+
+    The legend promises yellow means "you fill these in" and green means "a
+    worked example so you can see the expected format; delete it when you
+    start". 104 rows across seven sheets were demonstration data painted
+    yellow, which contradicts both at once: the cell is not something you fill
+    in, it is already filled.
+
+    Scoped to banded tables on purpose. A standalone yellow input holding a
+    value is a sensible DEFAULT to adjust — alpha at 0.05, a subgroup size of
+    five — not an example to delete, and those must stay yellow.
+    """
+    from openpyxl.styles import PatternFill
+    green = PatternFill("solid", fgColor=FILL_EX)
+    n = 0
+    for ws in wb.worksheets:
+        if ws.title.lower().startswith(("how to use", "read me", "legend")):
+            continue
+        shadow = {(r, c) for rng in ws.merged_cells.ranges
+                  for r in range(rng.min_row, rng.max_row + 1)
+                  for c in range(rng.min_col, rng.max_col + 1)
+                  if (r, c) != (rng.min_row, rng.min_col)}
+        for hrow, cols in _header_rows(ws).items():
+            span = sorted(cols)
+            r = hrow + 1
+            while r <= ws.max_row:
+                row_cells = [ws.cell(row=r, column=c) for c in span]
+                if all(c.value in (None, "") for c in row_cells):
+                    break
+                for cell in row_cells:
+                    if (cell.row, cell.column) in shadow:
+                        continue
+                    try:
+                        yellow = (cell.fill and cell.fill.patternType
+                                  and str(cell.fill.fgColor.rgb) == FILL_IN)
+                    except Exception:                            # noqa: BLE001
+                        yellow = False
+                    literal = (cell.value not in (None, "") and
+                               not (isinstance(cell.value, str)
+                                    and cell.value.startswith("=")))
+                    if yellow and literal:
+                        cell.fill = green
+                        n += 1
+                r += 1
+    return n
+
+
 def polish_workbook(wb, landscape: bool = True) -> int:
     """Print setup, frozen headers and chart legibility, for every sheet.
 
@@ -260,7 +312,7 @@ def polish_workbook(wb, landscape: bool = True) -> int:
     a real change (patch_workbooks.py, to keep the embedded base64 stable) can
     tell whether this pass did anything.
     """
-    changed = explain_headers(wb)
+    changed = explain_headers(wb) + mark_examples(wb)
     for ws in wb.worksheets:
         before = (ws.page_setup.fitToWidth, ws.page_setup.orientation, ws.freeze_panes)
 
