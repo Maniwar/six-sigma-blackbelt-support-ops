@@ -87,6 +87,12 @@ def _bar(ws, title, cats, vals, anchor, colours=None, horizontal=False,
         ch.series[0].tx = SeriesLabel(v=name)
     ch.x_axis.delete = False
     ch.y_axis.delete = False
+    if horizontal:
+        # Excel draws category 1 at the BOTTOM of a horizontal bar chart, so a
+        # ranked list reads upside down. Flip the CATEGORY axis — which for a
+        # bar chart is x_axis, not y_axis; reversing y_axis runs the values
+        # from 300 down to 0 and moves the labels to the wrong side.
+        ch.x_axis.scaling.orientation = "maxMin"
     if fmt:
         ch.y_axis.numFmt = fmt
     if labels:
@@ -160,6 +166,25 @@ def ranked_block(sh, first, last, sort_col, carry, dest, label, fmts=None):
     return {"cats": Reference(sh.ws, min_col=dest + 1, min_row=first, max_row=last),
             "vals": [Reference(sh.ws, min_col=dest + 2 + j, min_row=first, max_row=last)
                      for j in range(len(carry) - 1)]}
+
+
+TOP_N = 10          # a ranked chart is for the head of the list, not all 26 rows
+
+
+def rank_colours(n, top=3, head=AMBER, rest=BLUE):
+    """Amber for the head of a ranking, blue for the rest.
+
+    A LineChart laid over a HORIZONTAL bar chart cannot draw a reference line:
+    the line chart plots its own categories up the vertical axis, so a constant
+    series renders as a staircase across the plot rather than a line down it.
+    That is what the mean line was doing on the X-Y and solution charts.
+
+    Colour is the reference that works here, and it has to key off something
+    static — per-point colours are fixed at build time and cannot follow a
+    formula. Rank position is static: row 1 is rank 1 whatever the numbers do.
+    So the head of the ranking is marked, which is the decision anyway.
+    """
+    return [head if i < top else rest for i in range(n)]
 
 
 def _overlay(ch, ws, ref, name, colour=RED):
@@ -319,17 +344,22 @@ def xy_matrix(wb) -> int:
     """Which candidate causes actually drive the CTQs."""
     ws = wb["X-Y matrix"]
     sh = Sheet(ws)
+    # the mean-line feed this chart used to carry is gone; clear it rather than
+    # leaving an orphaned column of 231s beside the ranked block
+    for r in range(14, 37):
+        for c in (15,):
+            cell = sh.ws.cell(row=r, column=c)
+            if cell.__class__.__name__ != "MergedCell" and cell.value is not None:
+                cell.value = None
+                sh.changed += 1
     blk = ranked_block(sh, 15, 36, sort_col=8, carry=[1, 8], dest=12,
                        label=["Candidate cause", "Weighted total"],
                        fmts={1: "#,##0"})
-    for r in range(15, 37):
-        sh.put(r, 15, f'=IF(N{r}="","",AVERAGE($N$15:$N$36))', fmt="#,##0")
-    sh.put(14, 15, "Mean", bold=True)
-    ch = _bar(ws, "Weighted total by candidate cause — ranked, tallest first",
-              blk["cats"], blk["vals"][0],
-              "Q14", horizontal=True, height=11, width=17, labels=False,
-              name="Weighted total")
-    _overlay(ch, ws, Reference(ws, min_col=15, min_row=15, max_row=36), "Mean score")
+    _bar(ws, "Weighted total by candidate cause — the top three are where you start",
+         Reference(ws, min_col=13, min_row=15, max_row=14 + TOP_N),
+         Reference(ws, min_col=14, min_row=15, max_row=14 + TOP_N),
+         "Q14", horizontal=True, height=9, width=17, labels=False,
+         name="Weighted total", colours=rank_colours(TOP_N))
     return sh.changed
 
 
@@ -419,17 +449,19 @@ def hypothesis_log(wb) -> int:
 def solution_selection(wb) -> int:
     ws = wb["Solution selection"]
     sh = Sheet(ws)
+    for r in range(13, 34):
+        cell = sh.ws.cell(row=r, column=19)
+        if cell.__class__.__name__ != "MergedCell" and cell.value is not None:
+            cell.value = None
+            sh.changed += 1
     blk = ranked_block(sh, 14, 33, sort_col=10, carry=[2, 10], dest=16,
                        label=["Solution", "Weighted score"],
                        fmts={1: "#,##0"})
-    for r in range(14, 34):
-        sh.put(r, 19, f'=IF(R{r}="","",AVERAGE($R$14:$R$33))', fmt="#,##0")
-    sh.put(13, 19, "Mean", bold=True)
-    ch = _bar(ws, "Weighted score by solution — ranked, best first",
-              blk["cats"], blk["vals"][0],
-              "U13", horizontal=True, height=11, width=17, labels=False,
-              name="Weighted score")
-    _overlay(ch, ws, Reference(ws, min_col=19, min_row=14, max_row=33), "Mean score")
+    _bar(ws, "Weighted score by solution — the top three are the shortlist",
+         Reference(ws, min_col=17, min_row=14, max_row=13 + TOP_N),
+         Reference(ws, min_col=18, min_row=14, max_row=13 + TOP_N),
+         "U13", horizontal=True, height=9, width=17, labels=False,
+         name="Weighted score", colours=rank_colours(TOP_N))
     return sh.changed
 
 

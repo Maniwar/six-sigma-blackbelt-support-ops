@@ -36,7 +36,11 @@ def _thin_category_labels(ch, n_cats: int) -> None:
     ax = getattr(ch, "x_axis", None)
     if ax is None or not n_cats:
         return
-    if n_cats > 30:
+    # On a ranked bar chart the category label IS the content — thinning it
+    # hid five of eight causes on the X-Y matrix. Only thin a long time axis.
+    if getattr(ch, "type", None) == "bar":
+        skip = 1
+    elif n_cats > 30:
         skip = 4
     elif n_cats > 18:
         skip = 3

@@ -408,6 +408,30 @@ def test_numeric_other() -> None:
           "control plan: the durability score and the chart count the same rows",
           f"summary {total!r} vs chart feed {feed}")
 
+    # Control limits must come from a frozen baseline, not the whole series.
+    # Recomputing over every point you have is how a drifting process drags its
+    # own limits along and never signals — which the picker tab warns about in
+    # bold while all five estimated-limit charts did exactly that.
+    src = TEMPLATES / "27-control-charts.xlsx"
+    sol = _engine(src).calculate()
+    vals = [408, 415, 402, 431, 419, 396, 424, 410, 438, 405, 417, 429,
+            401, 422, 413, 407, 435, 398, 420, 411, 442, 404, 416, 428]
+    base = int(_read(sol, src.name, "I-MR", "B3"))
+    check(base < len(vals),
+          "the baseline window is shorter than the series, not the whole thing",
+          f"baseline {base} of {len(vals)}")
+    check(approx(_read(sol, src.name, "I-MR", "B6"), sum(vals[:base]) / base),
+          "I-MR centre line comes from the baseline window only",
+          f"got {_read(sol, src.name, 'I-MR', 'B6')!r}")
+    mrs = [abs(vals[i] - vals[i - 1]) for i in range(1, len(vals))]
+    check(approx(_read(sol, src.name, "I-MR", "B7"), sum(mrs[:base - 1]) / (base - 1)),
+          "I-MR average moving range comes from the baseline window only")
+    for sheet, cell in (("Laney p-prime", "B5"), ("Laney u-prime", "B5"),
+                        ("Xbar-R", "B6"), ("Xbar-R", "B7")):
+        v = _read(sol, src.name, sheet, cell)
+        check(isinstance(v, (int, float)),
+              f"{sheet}!{cell} still computes with a frozen baseline", repr(v))
+
     # VSM: "% of lead time" must divide by lead time, not by waiting time.
     src = TEMPLATES / "10-value-stream-map.xlsx"
     with tempfile.TemporaryDirectory() as td:

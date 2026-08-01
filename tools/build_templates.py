@@ -1222,6 +1222,43 @@ def _laney(ns, ks, poisson=False):
     return pbar, sig, z, max(1.0, _mrbar(z) / 1.128)
 
 
+BASE_PTS = 20        # whole weeks, so day-of-week mix is balanced
+
+
+def baseline_input(ws, sheet, width, first, last):
+    """The window the limits are estimated from — frozen, not the whole series.
+
+    Recomputing limits over every point you have is the single most common way
+    SPC is quietly defeated: a process that drifts drags its own limits along
+    with it and never signals. The picker tab says so in bold, and until now
+    all five estimated-limit charts did exactly what it warns against.
+
+    Defaults to 20 points rather than the full count. Defaulting to the full
+    count would preserve the defect silently for everyone who never finds
+    this cell.
+    """
+    # A point index the baseline formulas can filter on. INDEX($B$14:$B$37,$B$3)
+    # is the idiomatic Excel way to say "the first N of this range", but it is a
+    # range-endpoint construction that several tools cannot parse, including the
+    # engine this repo verifies with. SUMIF against an index column is plain,
+    # portable and blank-safe.
+    ws.cell(row=first - 1, column=20, value="pt").font = F_NOTE
+    for i, r in enumerate(range(first, last + 1)):
+        c = ws.cell(row=r, column=20, value=i + 1)
+        c.font = Font(color="FFFFFFFF", size=9)
+        SHOWN[(sheet, "T%d" % r)] = ""
+    ws.column_dimensions["T"].width = 3
+    ws.cell(row=3, column=1, value="Limits frozen from the first").font = F_B
+    c = mark(ws, 3, 2, "in")
+    c.value = BASE_PTS
+    c.number_format = "0"
+    ws.merge_cells(start_row=3, start_column=3, end_row=3, end_column=width)
+    ws.cell(row=3, column=3, value="points — the baseline window. Re-baseline when you have "
+            "deliberately changed the process, never because the chart is signalling.").font = F_NOTE
+    SHOWN[(sheet, "B3")] = str(BASE_PTS)
+    return "$B$3"
+
+
 def _spc_stats(ws, rows, width):
     """The stats band every control-chart tab opens with."""
     band(ws, 4, "The maths, calculated from your data — nothing here is hard-coded", width)
@@ -1254,10 +1291,12 @@ def control_charts():
           "One number per day or week — daily AHT, daily backlog, weekly SLA%. "
           "Not for raw per-contact durations: those are heavily skewed and the limits will lie to you.", 9)
     widths(ws, [16, 13, 14, 11, 11, 11, 11, 11, 20])
+    baseline_input(ws, "I-MR", 9, 14, 37)
     _spc_stats(ws, [
-        ("Points with data", "=COUNT(B14:B37)", "0", "Fewer than 20 and the limits are provisional."),
-        ("Centre line (mean)", "=AVERAGE(B14:B37)", "#,##0.00", "The process average over the baseline window."),
-        ("Average moving range", "=AVERAGE(C15:C37)", "#,##0.00", "Mean gap between consecutive points — this is your short-term variation."),
+        ("Points with data", "=COUNT(B14:B37)", "0", "Total points plotted. The limits use only the baseline window above."),
+        ("Centre line (mean)", '=SUMIF($T$14:$T$37,"<="&$B$3,$B$14:$B$37)/$B$3', "#,##0.00",
+         "The process average over the BASELINE window, not the whole series."),
+        ("Average moving range", '=SUMIF($T$15:$T$37,"<="&$B$3,$C$15:$C$37)/($B$3-1)', "#,##0.00", "Mean gap between consecutive points — this is your short-term variation."),
         ("Sigma estimate", "=B7/1.128", "#,##0.00", "MR-bar / 1.128. Uses only point-to-point movement, so a slow drift does not widen the limits."),
         ("Upper control limit", "=B6+2.66*B7", "#,##0.00", "2.66 = 3 / 1.128. Same thing as mean + 3 sigma."),
         ("Lower control limit", "=B6-2.66*B7", "#,##0.00", "If this goes below zero on a count, treat the lower limit as zero."),
@@ -1336,11 +1375,13 @@ def control_charts():
           "FCR%, SLA met%, QA pass%, reopen%. At thousands of contacts a day an ordinary p-chart's limits are "
           "far too tight and almost every point looks out of control — until the team stops looking at the chart.", 9)
     widths(ws, [14, 14, 13, 11, 12, 10, 11, 11, 22])
+    baseline_input(ws, "Laney p-prime", 9, 14, 37)
     _spc_stats(ws, [
-        ("Overall proportion (p-bar)", "=SUM(C14:C37)/SUM(B14:B37)", "0.00%",
+        ("Overall proportion (p-bar)",
+         '=SUMIF($T$14:$T$37,"<="&$B$3,$C$14:$C$37)/SUMIF($T$14:$T$37,"<="&$B$3,$B$14:$B$37)', "0.00%",
          "Total defectives / total opportunities — NOT the average of the daily percentages."),
-        ("Average moving range of z", "=AVERAGE(G15:G37)", "#,##0.000",
-         "How much the standardised points move period to period."),
+        ("Average moving range of z", '=SUMIF($T$15:$T$37,"<="&$B$3,$G$15:$G$37)/($B$3-1)', "#,##0.000",
+         "How much the standardised points move period to period, over the baseline window."),
         ("Sigma z (Laney adjustment)", "=MAX(1,B6/1.128)", "#,##0.000",
          "This is the whole trick. Sigma z = 1 means no overdispersion and this collapses to an ordinary p-chart. "
          "Above about 1.2 you had a real problem."),
@@ -1411,10 +1452,13 @@ def control_charts():
           "Defects per 100 contacts, escalations per 1,000 tickets, errors per audit. Same overdispersion problem "
           "as percentages, same fix.", 9)
     widths(ws, [14, 15, 13, 12, 12, 10, 11, 11, 22])
+    baseline_input(ws, "Laney u-prime", 9, 14, 37)
     _spc_stats(ws, [
-        ("Overall rate (u-bar)", "=SUM(C14:C37)/SUM(B14:B37)", "#,##0.0000",
+        ("Overall rate (u-bar)",
+         '=SUMIF($T$14:$T$37,"<="&$B$3,$C$14:$C$37)/SUMIF($T$14:$T$37,"<="&$B$3,$B$14:$B$37)', "#,##0.0000",
          "Total defects / total units. Not the average of the daily rates."),
-        ("Average moving range of z", "=AVERAGE(G15:G37)", "#,##0.000", "Movement of the standardised points."),
+        ("Average moving range of z", '=SUMIF($T$15:$T$37,"<="&$B$3,$G$15:$G$37)/($B$3-1)', "#,##0.000",
+         "Movement of the standardised points, over the baseline window."),
         ("Sigma z (Laney adjustment)", "=MAX(1,B6/1.128)", "#,##0.000",
          "1.0 means an ordinary u-chart was fine. Above that, it was not. It never drops below 1 — the adjustment "
          "widens limits, it never tightens them."),
@@ -1481,10 +1525,13 @@ def control_charts():
           "Five sampled handle times per day, five audited tickets per analyst. Getting the subgrouping right is "
           "the hard part: everything inside a subgroup must share the same conditions.", 12)
     widths(ws, [12, 9, 9, 9, 9, 9, 11, 10, 11, 11, 11, 22])
+    baseline_input(ws, "Xbar-R", 12, 14, 37)
     _spc_stats(ws, [
         ("Subgroup size (n)", "=COUNT(B14:F14)", "0", "Change how many observation columns you fill and this follows."),
-        ("Grand average (X-double-bar)", "=AVERAGE(G14:G37)", "#,##0.00", "Average of the subgroup averages."),
-        ("Average range (R-bar)", "=AVERAGE(H14:H37)", "#,##0.00", "Average within-subgroup spread."),
+        ("Grand average (X-double-bar)", '=SUMIF($T$14:$T$37,"<="&$B$3,$G$14:$G$37)/$B$3', "#,##0.00",
+         "Average of the subgroup averages over the BASELINE window."),
+        ("Average range (R-bar)", '=SUMIF($T$14:$T$37,"<="&$B$3,$H$14:$H$37)/$B$3', "#,##0.00",
+         "Average within-subgroup spread over the baseline window."),
         ("A2 for this n", "=IFERROR(LOOKUP(B5,{2;3;4;5;6;7;8;9;10},{1.880;1.023;0.729;0.577;0.483;0.419;0.373;0.337;0.308}),\"n out of range\")",
          "#,##0.000", "Standard constant. Above n=8 most people switch to Xbar-S."),
         ("D4 for this n", "=IFERROR(LOOKUP(B5,{2;3;4;5;6;7;8;9;10},{3.267;2.574;2.282;2.114;2.004;1.924;1.864;1.816;1.777}),\"n out of range\")", "#,##0.000", ""),
