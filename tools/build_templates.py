@@ -2233,7 +2233,13 @@ def erlang():
         asa.value = '=IF(F%d<=$B$13,"",IFERROR(H%d*$B$7/(F%d-$B$13),""))' % (r, r, r)
         asa.number_format = "#,##0.0"
         occ = ws.cell(row=r, column=12)
-        occ.value = '=IFERROR($B$13/F%d,"")' % r
+        # Blank below the offered load, exactly as service level and ASA already
+        # are. Without the guard this row reported occupancy of 6000%, 3000%,
+        # 2000% down the first sixty agent counts — arithmetically load/agents,
+        # and meaningless: below the offered load the queue never clears, so
+        # there is no steady state to be occupied in. Sixty rows of it read as a
+        # broken sheet.
+        occ.value = '=IF(F%d<=$B$13,"",IFERROR($B$13/F%d,""))' % (r, r)
         occ.number_format = "0.0%"
         # Erlang A: the waiting queue is drained by patience as well as by
         # agents, so the same staffing delivers a slightly better service level.
