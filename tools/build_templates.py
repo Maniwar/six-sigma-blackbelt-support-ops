@@ -1137,8 +1137,32 @@ def bounds(*seqs, pad=0.10):
     return lo, hi
 
 
+MARK_COL = 30            # markers live well clear of the plotted area
+
+
+def markers(ws, sheet, first, last, col, header, formula):
+    """A markers-only column: the value where a rule fires, NA() everywhere else.
+
+    NA() is the only thing that reliably leaves a gap. A formula returning ""
+    plots as zero, which on any chart whose axis reaches the floor draws a row
+    of markers along the bottom.
+    """
+    ws.cell(row=first - 1, column=col, value=header).font = F_NOTE
+    # White text, not hidden. A chart will not plot a hidden cell, so the
+    # column has to stay visible — but a reader should not be looking at
+    # twenty rows of #N/A, which is what NA() leaves behind by design.
+    invisible = Font(color="FFFFFFFF", size=9)
+    for r in range(first, last + 1):
+        c = ws.cell(row=r, column=col)
+        c.value = formula(r)
+        c.font = invisible
+        SHOWN[(sheet, "%s%d" % (get_column_letter(col), r))] = ""
+    ws.column_dimensions[get_column_letter(col)].width = 4
+    return Reference(ws, min_col=col, min_row=first, max_row=last)
+
+
 def spc_chart(ws, title_, cats, series_defs, anchor, y_title="", pct=False,
-              height=8, width=19, ylim=None):
+              height=8, width=19, ylim=None, flags=()):
     """A control chart: the data as marked points, the limits as flat lines."""
     ch = LineChart()
     ch.title = title_
@@ -1152,6 +1176,16 @@ def spc_chart(ws, title_, cats, series_defs, anchor, y_title="", pct=False,
         ch.y_axis.scaling.min, ch.y_axis.scaling.max = ylim
     if pct:
         ch.y_axis.numFmt = "0.0%"
+    for ref, name, colour in flags:
+        # markers only: no line at all, so a fired rule reads as a highlight on
+        # the point rather than a second series wandering across the plot
+        fl = Series(ref, title=name)
+        fl.graphicalProperties.line.noFill = True
+        fl.marker = Marker(symbol="circle", size=11)
+        fl.marker.graphicalProperties.solidFill = colour
+        fl.marker.graphicalProperties.line.solidFill = colour
+        fl.smooth = False
+        ch.series.append(fl)
     for ref, name, colour, dashed, marker in series_defs:
         sr = Series(ref, title=name)
         lp = sr.graphicalProperties.line
@@ -1267,19 +1301,34 @@ def control_charts():
     for k, v in (("D", mu), ("E", mu + 2.66 * mrb), ("F", mu - 2.66 * mrb), ("G", mrb), ("H", 3.267 * mrb)):
         for i in range(N_PTS):
             SHOWN[("I-MR", "%s%d" % (k, 14 + i))] = "%.2f" % v
+    # The two rules a control chart is actually read by. Deliberately only two:
+    # the full Nelson set across ten charts drives the family-wise false-alarm
+    # rate to about one signal per chart per fortnight on a perfectly stable
+    # process, which is the tampering this workbook warns against.
+    out_i = markers(ws, "I-MR", 14, 37, MARK_COL, "out of control",
+                    lambda r: f'=IF($B{r}="",NA(),IF(OR($B{r}>$B$9,$B{r}<$B$10),$B{r},NA()))')
+    run_i = markers(ws, "I-MR", 14, 37, MARK_COL + 1, "8 in a row one side",
+                    lambda r: ('=NA()' if r < 21 else
+                               f'=IF(COUNT($B{r-7}:$B{r})<8,NA(),IF(OR(MIN($B{r-7}:$B{r})>$B$6,'
+                               f'MAX($B{r-7}:$B{r})<$B$6),$B{r},NA()))'))
+    out_mr = markers(ws, "I-MR", 14, 37, MARK_COL + 2, "MR out of control",
+                     lambda r: f'=IF($C{r}="",NA(),IF($C{r}>$B$11,$C{r},NA()))')
     cats = Reference(ws, min_col=1, min_row=14, max_row=37)
     spc_chart(ws, "Individuals — is the process stable?", cats, [
         (Reference(ws, min_col=2, min_row=14, max_row=37), "Value", "1F4E79", False, True),
         (Reference(ws, min_col=4, min_row=14, max_row=37), "Centre line", "3F8F5A", False, False),
         (Reference(ws, min_col=5, min_row=14, max_row=37), "UCL", "C0392B", True, False),
         (Reference(ws, min_col=6, min_row=14, max_row=37), "LCL", "C0392B", True, False),
-    ], "K4", ylim=bounds(vals, [mu - 2.66 * mrb, mu + 2.66 * mrb]))
+    ], "K4", ylim=bounds(vals, [mu - 2.66 * mrb, mu + 2.66 * mrb]),
+        flags=[(out_i, "Out of control", "C0392B"),
+               (run_i, "8 in a row one side — shift", "B45309")])
     spc_chart(ws, "Moving range — did it jump between periods?", cats, [
         (Reference(ws, min_col=3, min_row=14, max_row=37), "Moving range", "6B4FA0", False, True),
         (Reference(ws, min_col=7, min_row=14, max_row=37), "MR centre line", "3F8F5A", False, False),
         (Reference(ws, min_col=8, min_row=14, max_row=37), "MR UCL", "C0392B", True, False),
     ], "K22", height=7,
-        ylim=bounds([abs(vals[i] - vals[i - 1]) for i in range(1, len(vals))], [0, 3.267 * mrb]))
+        ylim=bounds([abs(vals[i] - vals[i - 1]) for i in range(1, len(vals))], [0, 3.267 * mrb]),
+        flags=[(out_mr, "Out of control", "C0392B")])
 
     # ---- Laney p' -------------------------------------------------------
     ws = wb.create_sheet("Laney p-prime")
@@ -1337,6 +1386,12 @@ def control_charts():
         u = ws.cell(row=r, column=11, value="=IF(B%d=\"\",\"\",MIN(1,$B$5+3*E%d*$B$7))" % (r, r)); u.number_format = "0.00%"
         l = ws.cell(row=r, column=12, value="=IF(B%d=\"\",\"\",MAX(0,$B$5-3*E%d*$B$7))" % (r, r)); l.number_format = "0.00%"
         c = ws.cell(row=r, column=13, value="=IF(B%d=\"\",\"\",$B$5)" % r); c.number_format = "0.00%"
+    out_p = markers(ws, "Laney p-prime", 14, 37, MARK_COL, "out of control",
+                    lambda r: f'=IF($D{r}="",NA(),IF(OR($D{r}>$K{r},$D{r}<$L{r}),$D{r},NA()))')
+    run_p = markers(ws, "Laney p-prime", 14, 37, MARK_COL + 1, "8 in a row one side",
+                    lambda r: ('=NA()' if r < 21 else
+                               f'=IF(COUNT($D{r-7}:$D{r})<8,NA(),IF(OR(MIN($D{r-7}:$D{r})>$B$5,'
+                               f'MAX($D{r-7}:$D{r})<$B$5),$D{r},NA()))'))
     cats = Reference(ws, min_col=1, min_row=14, max_row=37)
     spc_chart(ws, "Laney p\u2032 — limits that survive 8,000 contacts a day", cats, [
         (Reference(ws, min_col=4, min_row=14, max_row=37), "Proportion", "1F4E79", False, True),
@@ -1346,7 +1401,9 @@ def control_charts():
     ], "O4", pct=True,
         ylim=bounds([ks[i] / float(ns[i]) for i in range(N_PTS)],
                     [max(0.0, pbar - 3 * sigs[i] * sz) for i in range(N_PTS)],
-                    [pbar + 3 * sigs[i] * sz for i in range(N_PTS)]))
+                    [pbar + 3 * sigs[i] * sz for i in range(N_PTS)]),
+        flags=[(out_p, "Out of control", "C0392B"),
+               (run_p, "8 in a row one side — shift", "B45309")])
 
     # ---- Laney u' -------------------------------------------------------
     ws = wb.create_sheet("Laney u-prime")
@@ -1399,6 +1456,12 @@ def control_charts():
         ws.cell(row=r, column=11, value="=IF(B%d=\"\",\"\",$B$5+3*E%d*$B$7)" % (r, r)).number_format = "0.0000"
         ws.cell(row=r, column=12, value="=IF(B%d=\"\",\"\",MAX(0,$B$5-3*E%d*$B$7))" % (r, r)).number_format = "0.0000"
         ws.cell(row=r, column=13, value="=IF(B%d=\"\",\"\",$B$5)" % r).number_format = "0.0000"
+    out_u = markers(ws, "Laney u-prime", 14, 37, MARK_COL, "out of control",
+                    lambda r: f'=IF($D{r}="",NA(),IF(OR($D{r}>$K{r},$D{r}<$L{r}),$D{r},NA()))')
+    run_u = markers(ws, "Laney u-prime", 14, 37, MARK_COL + 1, "8 in a row one side",
+                    lambda r: ('=NA()' if r < 21 else
+                               f'=IF(COUNT($D{r-7}:$D{r})<8,NA(),IF(OR(MIN($D{r-7}:$D{r})>$B$5,'
+                               f'MAX($D{r-7}:$D{r})<$B$5),$D{r},NA()))'))
     cats = Reference(ws, min_col=1, min_row=14, max_row=37)
     spc_chart(ws, "Laney u\u2032 — defects per unit", cats, [
         (Reference(ws, min_col=4, min_row=14, max_row=37), "Rate", "1F4E79", False, True),
@@ -1408,7 +1471,9 @@ def control_charts():
     ], "O4",
         ylim=bounds([ds[i] / float(us[i]) for i in range(N_PTS)],
                     [max(0.0, ubar - 3 * usig[i] * usz) for i in range(N_PTS)],
-                    [ubar + 3 * usig[i] * usz for i in range(N_PTS)]))
+                    [ubar + 3 * usig[i] * usz for i in range(N_PTS)]),
+        flags=[(out_u, "Out of control", "C0392B"),
+               (run_u, "8 in a row one side — shift", "B45309")])
 
     # ---- Xbar-R ---------------------------------------------------------
     ws = wb.create_sheet("Xbar-R")
@@ -1456,13 +1521,23 @@ def control_charts():
     for i in range(N_PTS):
         for col, v in (("I", grand), ("J", grand + 0.577 * rbar), ("K", grand - 0.577 * rbar)):
             SHOWN[("Xbar-R", "%s%d" % (col, 14 + i))] = "%.2f" % v
+    out_x = markers(ws, "Xbar-R", 14, 37, MARK_COL, "out of control",
+                    lambda r: f'=IF($G{r}="",NA(),IF(OR($G{r}>$J{r},$G{r}<$K{r}),$G{r},NA()))')
+    run_x = markers(ws, "Xbar-R", 14, 37, MARK_COL + 1, "8 in a row one side",
+                    lambda r: ('=NA()' if r < 21 else
+                               f'=IF(COUNT($G{r-7}:$G{r})<8,NA(),IF(OR(MIN($G{r-7}:$G{r})>$B$6,'
+                               f'MAX($G{r-7}:$G{r})<$B$6),$G{r},NA()))'))
+    out_r = markers(ws, "Xbar-R", 14, 37, MARK_COL + 2, "R out of control",
+                    lambda r: f'=IF($H{r}="",NA(),IF($H{r}>$O{r},$H{r},NA()))')
     cats = Reference(ws, min_col=1, min_row=14, max_row=37)
     spc_chart(ws, "Xbar — is the average stable?", cats, [
         (Reference(ws, min_col=7, min_row=14, max_row=37), "Subgroup average", "1F4E79", False, True),
         (Reference(ws, min_col=9, min_row=14, max_row=37), "Centre line", "3F8F5A", False, False),
         (Reference(ws, min_col=10, min_row=14, max_row=37), "UCL", "C0392B", True, False),
         (Reference(ws, min_col=11, min_row=14, max_row=37), "LCL", "C0392B", True, False),
-    ], "N4", ylim=bounds(_avgs, [grand - 0.577 * rbar, grand + 0.577 * rbar]))
+    ], "N4", ylim=bounds(_avgs, [grand - 0.577 * rbar, grand + 0.577 * rbar]),
+        flags=[(out_x, "Out of control", "C0392B"),
+               (run_x, "8 in a row one side — shift", "B45309")])
     for i in range(N_PTS):
         r = 14 + i
         ws.cell(row=r, column=14, value="=IF(H%d=\"\",\"\",$B$7)" % r).number_format = "#,##0.00"
@@ -1473,7 +1548,8 @@ def control_charts():
         (Reference(ws, min_col=14, min_row=14, max_row=37), "R centre line", "3F8F5A", False, False),
         (Reference(ws, min_col=15, min_row=14, max_row=37), "R UCL", "C0392B", True, False),
         (Reference(ws, min_col=16, min_row=14, max_row=37), "R LCL", "C0392B", True, False),
-    ], "N22", height=7, ylim=bounds(_rngs, [0, 2.114 * rbar]))
+    ], "N22", height=7, ylim=bounds(_rngs, [0, 2.114 * rbar]),
+        flags=[(out_r, "Out of control", "C0392B")])
 
     # ---- EWMA -----------------------------------------------------------
     ws = wb.create_sheet("EWMA")
@@ -1527,6 +1603,11 @@ def control_charts():
         SHOWN[("EWMA", "E%d" % (16 + i))] = "%.2f" % _emu
         SHOWN[("EWMA", "F%d" % (16 + i))] = "%.2f" % (_emu + hw)
         SHOWN[("EWMA", "G%d" % (16 + i))] = "%.2f" % (_emu - hw)
+    # Out-of-control only. An EWMA is a weighted average of everything before
+    # it, so consecutive points are autocorrelated by construction and a
+    # "8 in a row one side" rule fires on that autocorrelation, not on a shift.
+    out_e = markers(ws, "EWMA", 16, 39, MARK_COL, "out of control",
+                    lambda r: f'=IF($D{r}="",NA(),IF(OR($D{r}>$F{r},$D{r}<$G{r}),$D{r},NA()))')
     cats = Reference(ws, min_col=1, min_row=16, max_row=39)
     spc_chart(ws, "EWMA — the limits widen then settle as evidence accumulates", cats, [
         (Reference(ws, min_col=4, min_row=16, max_row=39), "EWMA", "1F4E79", False, True),
@@ -1534,7 +1615,8 @@ def control_charts():
         (Reference(ws, min_col=6, min_row=16, max_row=39), "UCL", "C0392B", True, False),
         (Reference(ws, min_col=7, min_row=16, max_row=39), "LCL", "C0392B", True, False),
     ], "K4", ylim=bounds(drift, [_emu - 2.7 * _esig * (0.2 / 1.8) ** 0.5,
-                                 _emu + 2.7 * _esig * (0.2 / 1.8) ** 0.5]))
+                                 _emu + 2.7 * _esig * (0.2 / 1.8) ** 0.5]),
+        flags=[(out_e, "Signal — the process has drifted", "C0392B")])
 
     # ---- CUSUM ----------------------------------------------------------
     ws = wb.create_sheet("CUSUM")
@@ -1589,13 +1671,17 @@ def control_charts():
         SHOWN[("CUSUM", "E%d" % (16 + i))] = "%.2f" % sh_v
         SHOWN[("CUSUM", "F%d" % (16 + i))] = "%.2f" % sl_v
         _cusum_shown.extend((sh_v, sl_v))
+    out_c = markers(ws, "CUSUM", 16, 39, MARK_COL, "crossed h",
+                    lambda r: f'=IF($E{r}="",NA(),IF(OR($E{r}>$B$6,$F{r}>$B$6),'
+                              f'MAX($E{r},$F{r}),NA()))')
     cats = Reference(ws, min_col=1, min_row=16, max_row=39)
     spc_chart(ws, "CUSUM — the sum climbs from the day the change landed", cats, [
         (Reference(ws, min_col=5, min_row=16, max_row=39), "SH (evidence it went up)", "1F4E79", False, True),
         (Reference(ws, min_col=6, min_row=16, max_row=39), "SL (evidence it went down)", "6B4FA0", False, True),
         (Reference(ws, min_col=7, min_row=16, max_row=39),
          "Decision limit h — crossing it is the signal", "C0392B", True, False),
-    ], "K4", ylim=bounds([0, 4], _cusum_shown))
+    ], "K4", ylim=bounds([0, 4], _cusum_shown),
+        flags=[(out_c, "Crossed the decision limit", "C0392B")])
 
     # ---- t and g --------------------------------------------------------
     ws = wb.create_sheet("t and g (rare events)")
@@ -1668,6 +1754,27 @@ def control_charts():
     for i in range(N_PTS):
         SHOWN[("t and g (rare events)", "E%d" % (14 + i))] = "%.4f" % _tm
         SHOWN[("t and g (rare events)", "G%d" % (14 + i))] = "{:,.0f}".format(_gm)
+    # The generic "8 above the centre line" rule is wrong on both of these.
+    # Gaps between rare events are exponential: P(gap > mean) is about 0.368,
+    # so a run rule about mean DAYS advertises 0.5^8 and delivers nothing like
+    # it. Run it on the transformed column, which is what the 1/3.6 power is
+    # for. Same problem on the g-chart, where opportunities-between-events are
+    # geometric — there the median is the honest centre for a run rule.
+    out_t = markers(ws, "t and g (rare events)", 14, 37, MARK_COL, "out of control",
+                    lambda r: f'=IF($B{r}="",NA(),IF(OR($C{r}>$B$7+2.66*$B$8,'
+                              f'$C{r}<$B$7-2.66*$B$8),$B{r},NA()))')
+    run_t = markers(ws, "t and g (rare events)", 14, 37, MARK_COL + 1,
+                    "8 in a row one side (transformed)",
+                    lambda r: ('=NA()' if r < 21 else
+                               f'=IF(COUNT($C{r-7}:$C{r})<8,NA(),IF(OR(MIN($C{r-7}:$C{r})>$B$7,'
+                               f'MAX($C{r-7}:$C{r})<$B$7),$B{r},NA()))'))
+    out_g = markers(ws, "t and g (rare events)", 14, 37, MARK_COL + 2, "above the g UCL",
+                    lambda r: f'=IF($F{r}="",NA(),IF($F{r}>$M{r},$F{r},NA()))')
+    run_g = markers(ws, "t and g (rare events)", 14, 37, MARK_COL + 3,
+                    "8 in a row above the median",
+                    lambda r: ('=NA()' if r < 21 else
+                               f'=IF(COUNT($F{r-7}:$F{r})<8,NA(),IF(MIN($F{r-7}:$F{r})>$N{r},'
+                               f'$F{r},NA()))'))
     cats = Reference(ws, min_col=1, min_row=14, max_row=37)
     spc_chart(ws, "t-chart — days between incidents. Rising is good.", cats, [
         (Reference(ws, min_col=2, min_row=14, max_row=37), "Days between", "1F4E79", False, True),
@@ -1675,7 +1782,9 @@ def control_charts():
          "Centre line (back-transformed)", "3F8F5A", False, False),
         (Reference(ws, min_col=10, min_row=14, max_row=37), "UCL", "C0392B", True, False),
         (Reference(ws, min_col=11, min_row=14, max_row=37), "LCL", "C0392B", True, False),
-    ], "N4", ylim=bounds(gaps, [0, (_tm + 2.66 * _tmr) ** 3.6]))
+    ], "N4", ylim=bounds(gaps, [0, (_tm + 2.66 * _tmr) ** 3.6]),
+        flags=[(out_t, "Out of control", "C0392B"),
+               (run_t, "8 in a row one side — sustained change", "B45309")])
     ws.cell(row=13, column=13, value="g UCL").font = F_NOTE
     ws.cell(row=13, column=14, value="g median").font = F_NOTE
     spc_chart(ws, "g-chart — contacts handled between incidents", cats, [
@@ -1684,7 +1793,9 @@ def control_charts():
         (Reference(ws, min_col=14, min_row=14, max_row=37), "Median", "B45309", False, False),
         (Reference(ws, min_col=13, min_row=14, max_row=37), "UCL", "C0392B", True, False),
     ], "Q22", height=7,
-        ylim=bounds(vol, [0, sum(vol) / len(vol) + 3 * ((sum(vol) / len(vol)) ** 2) ** 0.5]))
+        ylim=bounds(vol, [0, sum(vol) / len(vol) + 3 * ((sum(vol) / len(vol)) ** 2) ** 0.5],),
+        flags=[(out_g, "Above the UCL", "C0392B"),
+               (run_g, "8 in a row above the median — sustained improvement", "B45309")])
 
     # ---- picker ---------------------------------------------------------
     ws = wb.create_sheet("Pick your chart", 0)

@@ -42,6 +42,17 @@ NO_CHART_OK = {
 
 ERR_VALUES = ("#REF!", "#VALUE!", "#DIV/0!", "#NAME?", "#N/A", "#NULL!", "#NUM!")
 
+# NA() is the only construction that reliably leaves a gap in a plotted series;
+# "" plots as zero and draws a row of markers along the axis floor. The marker
+# columns are therefore FULL of #N/A by design. Exempt those columns only —
+# whitelisting #N/A globally would blunt the check that catches real breakage.
+NA_BY_DESIGN = {
+    "27-control-charts.xlsx": {"I-MR": "AD:AF", "Laney p-prime": "AD:AE",
+                               "Laney u-prime": "AD:AE", "Xbar-R": "AD:AF",
+                               "EWMA": "AD:AD", "CUSUM": "AD:AD",
+                               "t and g (rare events)": "AD:AG"},
+}
+
 fails: list[str] = []
 warns: list[str] = []
 
@@ -306,6 +317,24 @@ def audit_guided(path: Path, wb) -> None:
         warn(book, "GUIDED", "gridlines left on everywhere — reads like a spreadsheet, not a tool")
 
 
+def _na_ok(book: str, where: str) -> bool:
+    """Is this cell one of the marker columns that is #N/A on purpose?"""
+    import re as _re
+    from openpyxl.utils import column_index_from_string as _ci
+    sheets = NA_BY_DESIGN.get(book)
+    if not sheets:
+        return False
+    m = _re.match(r"^(.*)!([A-Z]+)\d+$", where)
+    if not m:
+        return False
+    # the recalculated keys come back with the sheet name upper-cased
+    span = next((v for k, v in sheets.items() if k.upper() == m.group(1).upper()), None)
+    if not span:
+        return False
+    lo, hi = (_ci(x) for x in span.split(":"))
+    return lo <= _ci(m.group(2)) <= hi
+
+
 def audit_numeric(path: Path) -> None:
     """Recalculate the whole workbook and refuse a single error value."""
     book = path.name
@@ -330,7 +359,10 @@ def audit_numeric(path: Path) -> None:
         except Exception:
             continue
         if isinstance(v, str) and v.strip() in ERR_VALUES:
-            bad.setdefault(v.strip(), []).append(key.split("]")[-1].replace("'", ""))
+            where = key.split("]")[-1].replace("'", "")
+            if v.strip() == "#N/A" and _na_ok(book, where):
+                continue
+            bad.setdefault(v.strip(), []).append(where)
     for err, where in sorted(bad.items()):
         fail(book, "NUMERIC", f"{len(where)} cell(s) evaluate to {err}: {where[:5]}")
 
