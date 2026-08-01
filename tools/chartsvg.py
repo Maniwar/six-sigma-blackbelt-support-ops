@@ -790,6 +790,15 @@ def render(spec: dict, cells: dict, width: int = 900) -> str | None:
                 if s["kind"] == "bar":
                     o.append(f'<rect x="{x:.1f}" y="{y - 8}" width="11" height="11" '
                              f'fill="{s["fill"]}" rx="2"/>')
+                elif s["kind"] == "scatter" and s.get("marker", "none") != "none" \
+                        and not s.get("smooth_line"):
+                    # A cloud of points, so the key shows a point. The stakeholder
+                    # map drew its scatter with a line swatch, which says the dots
+                    # are joined and they are not — the whole reading of that
+                    # chart is where a name sits in a quadrant, not any path
+                    # through them.
+                    o.append(f'<circle cx="{x + 5.5:.1f}" cy="{y - 3}" r="4" '
+                             f'fill="{s["line"]}"/>')
                 else:
                     dash = ' stroke-dasharray="5 4"' if s["dash"] in ("dash", "sysDash", "lgDash") else ""
                     o.append(f'<line x1="{x:.1f}" y1="{y - 3}" x2="{x + 12:.1f}" y2="{y - 3}" '
