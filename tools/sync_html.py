@@ -119,6 +119,27 @@ def _set_attr(attrs: str, name: str, value: str) -> str:
     return attrs + ' %s="%s"' % (name, value)
 
 
+def generated_preview(wbpath: Path) -> str | None:
+    """Build this workbook's preview from the workbook, values and all.
+
+    Same call the built pack has always used. Returns None if it cannot be
+    produced, so the caller falls back to editing the existing markup rather
+    than shipping a blank sheet.
+    """
+    from preview import shown_from, workbook_html
+    import chartsvg
+    try:
+        wb = load_workbook(wbpath)
+        try:
+            shown = shown_from(wb, chartsvg.values_for(wbpath))
+        except Exception:                                        # noqa: BLE001
+            shown = {}                    # no recalculation available
+        return workbook_html(wb, shown)
+    except Exception as exc:                                     # noqa: BLE001
+        print(f"    (could not generate preview for {wbpath.name}: {exc})")
+        return None
+
+
 def rebuild_preview(preview: str, wbpath: Path, stats: dict) -> str:
     wb = load_workbook(wbpath)
     fname = wbpath.name
@@ -252,7 +273,17 @@ def main() -> int:
                     stats["regenerated"] += 1
                 bare = GENERATED[entry["file"]]
             else:
-                bare = rebuild_preview(bare, path, stats)
+                # The other nineteen carried hand-written markup that
+                # rebuild_preview could only ever edit in place: it walks the
+                # <td>s that are already there, so it can correct a value but
+                # cannot add a row. Thirty-one pieces of prose existed in a
+                # workbook and appeared nowhere in its preview — including all
+                # six definitions of the hierarchy of controls and nineteen of
+                # the notes just written into the calculator pack. Generating
+                # the preview from the workbook, exactly as the built pack has
+                # always done, makes the two agree by construction instead of
+                # by whoever remembered to update both.
+                bare = generated_preview(path) or rebuild_preview(bare, path, stats)
             entry["preview"] = inject_charts(bare, path, stats)
         else:
             text = path.read_text(encoding="utf-8")

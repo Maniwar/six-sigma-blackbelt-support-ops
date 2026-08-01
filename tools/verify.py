@@ -563,6 +563,7 @@ def test_sync() -> None:
             _check_preview(entry, path)
             _check_preview_charts(entry, path)
             _check_preview_generated(entry, path)
+            _check_preview_fidelity(entry, path)
         else:
             check(entry.get("content") == path.read_text(encoding="utf-8"),
                   f"{entry['file']}: embedded markdown matches the file on disk")
@@ -746,6 +747,42 @@ def test_tool_links(src: str, tpls: dict) -> None:
                 bad.append(f"{name!r} -> {slug}, which never mentions {words}")
     check(not bad, "every tool links to a template that mentions what the tool is",
           "\n      ".join(bad[:4]))
+
+
+def _check_preview_fidelity(entry: dict, path: Path) -> None:
+    """Everything written in the workbook has to appear in its preview.
+
+    Nineteen previews were hand-written markup that the sync could only edit in
+    place — it rewrites the <td>s already present, so it could correct a value
+    but never add a row. Anything added to those workbooks afterwards existed in
+    the download and appeared nowhere on the page: thirty-one pieces of prose,
+    including all six definitions of the hierarchy of controls and nineteen of
+    the notes written into the calculator pack. Nothing compared the two, so
+    nothing said so.
+
+    Scaffolding columns are excluded because the preview summarises them on
+    purpose — that is the one place where differing is the correct behaviour.
+    """
+    import html as _html
+    sys.path.insert(0, str(ROOT / "tools"))
+    from preview import scaffold_from
+    shown = re.sub(r"\s+", " ", _html.unescape(
+        re.sub(r"<[^>]+>", " ", entry.get("preview", ""))))
+    missing = []
+    for ws in load_workbook(path).worksheets:
+        scaf = scaffold_from(ws)
+        for row in ws.iter_rows():
+            for cell in row:
+                v = cell.value
+                if not (isinstance(v, str) and len(v) >= 40 and not v.startswith("=")):
+                    continue
+                if scaf and cell.column >= scaf:
+                    continue
+                if re.sub(r"\s+", " ", v)[:50] not in shown:
+                    missing.append(f"{ws.title}!{cell.coordinate}")
+    check(not missing, f"{path.name} preview shows what the workbook says",
+          f"{len(missing)} piece(s) of prose are in the workbook and nowhere in "
+          f"the preview: {missing[:4]}")
 
 
 def _check_preview_generated(entry: dict, path: Path) -> None:
