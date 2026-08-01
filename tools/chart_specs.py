@@ -28,6 +28,7 @@ from openpyxl.utils import get_column_letter
 
 CALC = PatternFill("solid", fgColor="FFF2F7FF")
 IN = PatternFill("solid", fgColor="FFFFF9E3")   # "you fill this in"
+EX = PatternFill("solid", fgColor="FFECFAEF")   # "a worked example — delete it"
 F_MICRO = Font(italic=True, size=9, color="FF6B7280")
 F_B = Font(bold=True, size=10)
 
@@ -304,26 +305,70 @@ def data_collection_plan(wb) -> int:
             if cell.__class__.__name__ != "MergedCell" and cell.value is not None:
                 cell.value = None
                 sh.changed += 1
+    # The two columns the reader is actually asked to write in shipped blank on
+    # all six rows: they were told the trap matters, told how to check for it,
+    # and never shown one filled-in answer or told what a good one looks like.
+    # NOTE the separate Sheet — `sh` above is the sample size tab, and writing
+    # this block through it overwrote that tab's own input guidance.
+    audit = next((s for s in wb.sheetnames if "six-trap" in s.lower()), None)
+    sh_a = Sheet(wb[audit]) if audit else None
+    for col, text in () if sh_a is None else (
+        (4, "17% responded. Responders skew heavily to resolved-first-contact "
+            "(78% of them, against 61% of all contacts), so CSAT 4.4 is the "
+            "satisfied minority's score and not the population's."),
+        (5, "Stopped quoting CSAT as a population figure in the charter. Added a "
+            "200-contact outbound sample of non-responders each month, and used "
+            "that as the baseline instead."),
+    ):
+        c = sh_a.put(5, col, text)
+        c.fill = EX
+        c.alignment = Alignment(wrap_text=True, vertical="top")
+    if sh_a is not None:
+        sh_a.put(12, 1,
+                 "How to fill the last two columns. Run the check in column C against "
+                 "your own extract before you write anything — every entry here should "
+                 "be a number you produced, not an impression. WHAT YOU FOUND is the "
+                 "measurement and what it implies for your baseline; ACTION TAKEN is "
+                 "what you changed as a result, because a trap you found and did not "
+                 "act on still contaminates the project. Row 5 is a worked example: "
+                 "delete it and write your own.", note=True)
+        sh_a.ws.row_dimensions[5].height = 58
+        sh.changed += sh_a.changed
+
     r0 = 34                      # below every merged note row on this tab
     sh.label(r0, 1, "How sample size moves with the precision you ask for")
-    sh.put(r0 + 1, 1, "Worst-case proportion (p=0.5), 95% confidence. Halving the "
-                      "margin of error costs you four times the sample.", note=True)
+    # This curve used to hardcode 1.96 and 0.25 — 95% confidence at the
+    # worst-case proportion — so it was a textbook illustration that never moved
+    # whatever the reader typed above it. Anyone can look that up. Reading their
+    # own alpha and their own baseline rate makes it a curve about THEIR study,
+    # and the marker series puts them on it.
+    sh.put(r0 + 1, 1, "Your alpha and your baseline rate, from the yellow cells above. "
+                      "Halving the margin of error costs you four times the sample, "
+                      "which is why the last point of precision is the expensive one.",
+           note=True)
     sh.put(r0 + 2, 1, "Margin of error", bold=True)
     sh.put(r0 + 2, 2, "Sample needed", bold=True)
+    # z(1-alpha/2) squared, times p(1-p) — both read from the reader's inputs,
+    # falling back to the textbook worst case only if they have not typed one.
+    zsq = 'IFERROR(NORMSINV(1-$C$7/2),1.96)^2'
+    pq = 'IF(AND($C$5>0,$C$5<1),$C$5*(1-$C$5),0.25)'
     for i, moe in enumerate([0.10, 0.075, 0.05, 0.04, 0.03, 0.025, 0.02, 0.015, 0.01]):
         r = r0 + 3 + i
         sh.put(r, 1, moe, fmt="0.0%")
-        sh.put(r, 2, f"=CEILING(1.96^2*0.25/A{r}^2,1)", fmt="#,##0")
-    sh.put(r0 + 2, 3, "At 5% margin", bold=True)
+        sh.put(r, 2, f"=CEILING({zsq}*{pq}/A{r}^2,1)", fmt="#,##0")
+    sh.put(r0 + 2, 3, "You are here", bold=True)
     for i in range(9):
         r = r0 + 3 + i
-        sh.put(r, 3, "=CEILING(1.96^2*0.25/0.05^2,1)", fmt="#,##0")
-    _line(sh.ws, "Sample size against margin of error",
+        # A single marker at the margin of error the reader actually asked for,
+        # NA() everywhere else so the series is a point and not a line.
+        sh.put(r, 3, f"=IF(ABS(A{r}-$C$6)<=0.0051,CEILING({zsq}*{pq}/A{r}^2,1),NA())",
+               fmt="#,##0")
+    _line(sh.ws, "Sample size against margin of error — and where your study sits",
           Reference(sh.ws, min_col=1, min_row=r0 + 3, max_row=r0 + 11),
           [(Reference(sh.ws, min_col=2, min_row=r0 + 3, max_row=r0 + 11),
-            "Sample needed", BLUE, False, True),
+            "Sample needed at your alpha and baseline", BLUE, False, True),
            (Reference(sh.ws, min_col=3, min_row=r0 + 3, max_row=r0 + 11),
-            "The usual choice: 5% margin", RED, True, False)],
+            "The change you asked to detect", RED, False, True)],
           f"E{r0}", fmt="#,##0", y_title="Contacts to sample")
     return sh.changed
 
@@ -334,6 +379,28 @@ def data_collection_plan(wb) -> int:
 def value_stream_map(wb) -> int:
     """The whole point of a VSM: touch time is a rounding error next to the wait."""
     ws = wb["Value stream"]
+    # The waiting-states block asked for minutes, an owner and a reason on six
+    # rows and demonstrated none of them, so the hardest column in the workbook
+    # to answer well — "why does it wait?" — had no example of a good answer.
+    sh0 = Sheet(ws)
+    for col, val, wrap in ((2, 960, False),
+                           (4, "Nobody — the case sits until the customer replies", True),
+                           (5, "One email goes out and no reminder ever follows. "
+                               "The clock is not paused, so this wait is the single "
+                               "largest block of lead time in the whole stream.", True)):
+        c = sh0.put(44, col, val)
+        c.fill = EX
+        if wrap:
+            c.alignment = Alignment(wrap_text=True, vertical="top")
+    sh0.put(50, 1,
+            "How to fill this block. Take the minutes from the same extract that "
+            "produced the step table above — the median, not the mean, because a "
+            "handful of week-long waits will otherwise set your whole plan. OWNER "
+            "is whoever can shorten it; if the honest answer is nobody, write that, "
+            "because an unowned wait is the finding. WHY DOES IT WAIT should name "
+            "the mechanism, not the symptom: 'no reminder is sent' is actionable, "
+            "'the customer is slow' is not. Row 44 is a worked example.", note=True)
+    ws.row_dimensions[44].height = 44
     LAST = 28                    # the sheet's own totals sum E10:E28
     cats = Reference(ws, min_col=2, min_row=10, max_row=LAST)
     ch = BarChart()

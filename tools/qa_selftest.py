@@ -278,6 +278,45 @@ def run_markdown() -> tuple[int, int, list[str]]:
     return killed, applied, survivors
 
 
+# -------------------------------------------------------- visual mutants
+# The visual layer this replaces rendered PNGs and told a human to look at
+# them. It made no claim, so it could not fail, so a green run from it meant
+# nothing at all. The replacement asserts — and an assertion is only worth
+# having if it can be shown to fire.
+
+
+def run_visual() -> tuple[int, int, list[str]]:
+    import re as _re
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import qa_visual as V
+    from sync_html import extract_tpls
+    src = (ROOT / "six-sigma-blackbelt-support-ops.html").read_text(encoding="utf-8")
+    _, _, tpls = extract_tpls(src)
+    svg = next((s for e in tpls.values() if e.get("ext") == "xlsx"
+                for s in _re.findall(r'<svg class="xchart".*?</svg>', e["preview"], _re.S)),
+               None)
+    if svg is None:
+        return 0, 0, []
+    muts = [
+        ("visual: label outside the frame",
+         lambda s: _re.sub(r'<text x="[\d.]+"', '<text x="-260"', s, count=1)),
+        ("visual: chart that plots nothing",
+         lambda s: _re.sub(r"<(rect|circle|path)\b[^>]*/?>", "", s)),
+    ]
+    killed = 0
+    survivors = []
+    for name, mutate in muts:
+        V.fails.clear()
+        V.passes[0] = 0
+        V.audit_svg("mutant.xlsx", name, mutate(svg))
+        if V.fails:
+            killed += 1
+        else:
+            survivors.append(f"    SURVIVED [VISUAL] {name}")
+    V.fails.clear()
+    return killed, len(muts), survivors
+
+
 def audit_to_set(path: Path) -> set[str]:
     Q.fails.clear()
     Q.warns.clear()
@@ -346,6 +385,12 @@ def main() -> int:
         docs = len(sorted(TEMPLATES.glob("*.md")))
         print(f"  {'(markdown templates)':36s} {k}/{a} mutants killed"
               f"{'' if k == a else '   <-- a check did not fire'}   across {docs} docs")
+        k, a, s = run_visual()
+        total_k += k
+        total_a += a
+        survivors += s
+        print(f"  {'(preview visuals)':36s} {k}/{a} mutants killed"
+              f"{'' if k == a else '   <-- a check did not fire'}")
     print(f"\n  {total_k}/{total_a} mutants killed across {len(books)} workbooks")
     if survivors:
         print(f"\n{len(survivors)} SURVIVING MUTANT(S) — these checks cannot fail:")

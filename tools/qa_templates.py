@@ -425,13 +425,26 @@ def audit_example(path: Path, wb) -> None:
                 filled = [c for c in cells if c.value not in (None, "")]
                 typeable = any(c.fill and c.fill.patternType
                                and str(c.fill.fgColor.rgb) == FILL_INPUT for c in cells)
-                # (1) a column the example declares and then never demonstrates
-                if head and not filled and not typeable:
+                # (1) a column the example declares and then never demonstrates.
+                #
+                # This used to exempt any column shaded yellow, on the reasoning
+                # that a cell you are asked to fill in may legitimately be
+                # blank. That reasoning is backwards, and it blinded the check
+                # to the columns it matters most for: the reader is asked to
+                # write a paragraph into "What you found" or "Why does it
+                # wait?" and never shown one filled-in example of what a good
+                # answer looks like. Every workbook here ships a worked example
+                # row for exactly this purpose; a yellow column has to appear in
+                # it. Only the REST of the column stays blank.
+                if head and not filled:
                     fail(book, "EXAMPLE",
                          f"{ws.title}!{get_column_letter(col)}{first}:{last} — the "
                          f"example declares a {head!r} column and leaves it empty on "
-                         f"all {n} rows; the reader is told it matters and never "
-                         "shown what goes in it")
+                         f"all {n} rows; "
+                         + ("the reader is asked to fill it in and never shown one "
+                            "filled in" if typeable else
+                            "the reader is told it matters and never shown what "
+                            "goes in it"))
                 # (2) a header that names nothing
                 if head and len(head) <= 3 and head not in ("#", "No", "Qty", "Wk",
                                                             "Day", "RPN", "n", "SL"):

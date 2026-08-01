@@ -53,7 +53,11 @@ RE_SHEET = re.compile(
 # `</figure></div>` occurs exactly once per block — between two figures the
 # markup reads `</figure><figure`, so the non-greedy match cannot stop early.
 RE_CHARTS = re.compile(r'<div class="xcharts">.*?</figure></div>', re.S)
-RE_SHEET_END = re.compile(r"</table></div>")
+# The end of a sheet is its table plus whatever explanatory note follows it,
+# then the closing div. Matching `</table></div>` alone silently stopped
+# matching the moment a note was added after the table, and the charts vanished
+# from those previews rather than moving.
+RE_SHEET_END = re.compile(r"(</table>(?:<p class=\"xscaf\">.*?</p>)?)</div>", re.S)
 
 # Previews that tools/build_templates.py generates from the workbook. For these
 # the generated markup IS the preview; for the older workbooks there is no
@@ -208,12 +212,12 @@ def inject_charts(preview: str, wbpath: Path, stats: dict) -> str:
     order = load_workbook(wbpath, read_only=True).sheetnames
     seen = [0]
 
-    def repl(_m: re.Match) -> str:
+    def repl(m: re.Match) -> str:
         i = seen[0]
         seen[0] += 1
         html = by_sheet.get(order[i], "") if i < len(order) else ""
         stats["charts"] += html.count('<svg class="xchart"')
-        return "</table>" + html + "</div>"
+        return m.group(1) + html + "</div>"
 
     return RE_SHEET_END.sub(repl, preview)
 

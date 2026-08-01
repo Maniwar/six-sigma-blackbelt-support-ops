@@ -730,7 +730,33 @@ def kano():
                           (5, INVF.format(r=7), "Fix it — no credit for doing it, all the blame for not")]:
         c = mark(ws, 7, col, "calc"); c.fill = EX; c.value = f
         SHOWN[("Kano analysis", f"{get_column_letter(col)}7")] = shown
-    mark(ws, 7, 6, "in").fill = EX
+    # "What it means for you" is the column that turns a category into a
+    # decision, and it shipped empty on all nineteen rows — the eight worked
+    # example rows included, so the reader saw eight demonstrations of the
+    # classifier and not one of the conclusion.
+    EXWHY = [
+        "Every reopen is one of these. This is the project.",
+        "Our 14.2% reopen rate breaks this one; fixing it earns no praise, only the absence of complaints.",
+        "Worth building: agents currently re-read the case history on every contact.",
+        "Two transfers a case today. Directly measurable, and it scales.",
+        "Cheap to add on the back of the posting-confirmation fix — send the note when the batch confirms.",
+        "Nice, not urgent. Park it until the must-haves hold.",
+        "Do not spend a day on this.",
+        "Actively harmful — survey fatigue is why our response rate is 17%.",
+    ]
+    for k, why in enumerate(EXWHY):
+        c = mark(ws, 7 + k, 6, "in")
+        c.fill = EX
+        c.value = why
+        c.alignment = Alignment(wrap_text=True, vertical="top")
+    note_cell(ws, 26, 1,
+              "How to fill the last column. The category is arithmetic; this column is "
+              "the decision, and it is the only part of the sheet a sponsor will read. "
+              "Write what the category means for THIS operation — name the metric it "
+              "moves, or say plainly that it is not worth spending on. A Must-have you "
+              "already meet needs one line saying so; a Must-have you fail is your "
+              "project. Rows 7 to 14 are worked examples: delete them and write your "
+              "own.", 6)
     for r in range(8, 26):
         for cc in [1, 2, 3, 6]:
             mark(ws, r, cc, "in").alignment = Alignment(wrap_text=True, vertical="top")
@@ -949,7 +975,12 @@ def pareto():
             sh.fill = EX; rk.fill = EX
         SHOWN[("Pareto", f"C{r}")] = f"{n/total*100:.1f}%"
         SHOWN[("Pareto", f"D{r}")] = str(i + 1)
-        mark(ws, r, 5, "ex" if i == 0 else "in")
+        v = mark(ws, r, 5, "ex" if i == 0 else "in")
+        # The one column that decides whether the Pareto is worth anything, and
+        # it shipped empty on all twenty rows — a Yes/No dropdown with nothing
+        # showing what answering it honestly looks like.
+        if i == 0:
+            v.value = "Yes"          # the column is a Yes/No dropdown
     for r in range(10, 25):
         for cc in [1, 2, 5]:
             mark(ws, r, cc, "in")
@@ -961,6 +992,15 @@ def pareto():
         SHOWN[("Pareto", f"D{r}")] = ""
     dv = DataValidation(type="list", formula1='"Yes,No"', allow_blank=True)
     ws.add_data_validation(dv); dv.add("E5:E24")
+    note_cell(ws, 25, 1,
+              "How to answer the last column, and why it is the one that matters. "
+              "Open 50 tickets at random from your top category and read them. Count "
+              "how many are genuinely that category rather than the code an agent "
+              "picked under time pressure. Answer Yes only if 40 or more of the 50 "
+              "hold up; below that your Pareto is ranking your data-entry habits and "
+              "not your problems, and the business case built on it will not survive "
+              "contact with the process. Row 5 is the worked example: 50 read, 41 held "
+              "up, so Yes.", 5)
 
     # ---- the ranked block the chart actually plots ----------------------
     ws.cell(row=3, column=7, value="RANKED — this is what the chart plots. "

@@ -113,8 +113,44 @@ def _edge_style(cell) -> str:
     return ";".join(bits)
 
 
+def scaffold_from(ws) -> int | None:
+    """First column of the chart-feeding scaffolding, if the sheet has any.
+
+    Every builder parks its helper columns to the right of the content: the
+    marker series a chart needs, a sorted copy of a block, the noise floor. In
+    Excel nobody sees them — they are off the edge and you scroll past. The
+    preview laid them straight into the table beside the data, so a reader met a
+    wall of unheaded numbers (36.55, 77.27, 0, repeated down every row) with
+    nothing anywhere saying what they were.
+
+    No guidance check could have caught it: every one of them inspects columns
+    that have a header, and having no header is exactly what makes these a
+    problem. The precondition of the check was the signature of the defect.
+
+    So they come out of the preview. Anything to the right of the last headed
+    column that carries no header of its own is scaffolding, and the reader is
+    told it exists rather than shown it raw.
+    """
+    headed = 0
+    for row in ws.iter_rows():
+        for c in row:
+            try:
+                dark = (c.fill and c.fill.patternType
+                        and str(c.fill.fgColor.rgb) == "FF333C49")
+            except Exception:                                    # noqa: BLE001
+                dark = False
+            if dark and c.value not in (None, ""):
+                headed = max(headed, c.column)
+    if not headed or headed >= ws.max_column:
+        return None
+    has = any(c.value not in (None, "")
+              for row in ws.iter_rows(min_col=headed + 1) for c in row)
+    return headed + 1 if has else None
+
+
 def sheet_html(ws, shown: dict) -> str:
     """One sheet as the preview's table markup."""
+    hide_from = scaffold_from(ws)
     # merged ranges: the anchor spans, the rest are skipped. Both directions —
     # emitting colspan alone silently drops every vertically merged block and
     # shifts the rest of the grid left.
@@ -128,6 +164,8 @@ def sheet_html(ws, shown: dict) -> str:
                     covered.add((r, c))
 
     max_r, max_c = ws.max_row, ws.max_column
+    if hide_from:
+        max_c = hide_from - 1
     out = ['<table class="xgrid">']
     for r in range(1, max_r + 1):
         cells = []
@@ -172,6 +210,13 @@ def sheet_html(ws, shown: dict) -> str:
             c += span
         out.append("<tr>" + "".join(cells) + "</tr>")
     out.append("</table>")
+    if hide_from:
+        out.append(
+            '<p class="xscaf">Columns %s onward are hidden here: they are working '
+            'cells that feed this sheet&rsquo;s chart &mdash; sorted copies, marker '
+            'series, control-limit constants &mdash; not anything you fill in. They '
+            'are all in the .xlsx if you want them.</p>'
+            % get_column_letter(hide_from))
     return "".join(out)
 
 

@@ -506,6 +506,14 @@ def test_numeric_other() -> None:
 def test_sync() -> None:
     src = HTML.read_text(encoding="utf-8")
     _, _, tpls = extract_tpls(src)
+    # A title and a description are set with textContent, so an HTML entity in
+    # one is shown to the reader literally. The modal read "Control Charts
+    # &mdash; all seven types" for as long as the entry has existed, because the
+    # text was copied out of the card markup where the entity was correct.
+    ent = [f"{s}.{f}" for s, e in tpls.items() for f in ("title", "desc")
+           if isinstance(e.get(f), str) and re.search(r"&(\w+|#\d+);", e[f])]
+    check(not ent, "no template title or description carries a raw HTML entity",
+          ", ".join(ent[:4]))
     check(len(tpls) == 29, f"29 templates registered (found {len(tpls)})")
 
     exts = [e.get("ext") for e in tpls.values()]

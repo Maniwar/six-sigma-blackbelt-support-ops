@@ -8,3 +8,6 @@ __pycache__/
 .venv/
 venv/
 .qa-render/
+
+# Contact sheets from tools/qa_visual.py — regenerated on demand, never shipped
+.qa-visual/
