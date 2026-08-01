@@ -33,14 +33,27 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import chartsvg                                                  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 HTML = ROOT / "six-sigma-blackbelt-support-ops.html"
 DOCS = ROOT / "docs" / "index.html"
 TEMPLATES = ROOT / "templates"
 
+# A sheet's cells end at its `</table>`, NOT at `</table></div>` — charts now
+# sit between those two tags, and a pattern that reached past the table walked
+# the next sheet's rows against this sheet's cells. tools/verify.py imports this
+# and made the same walk, so both were wrong in the same way.
 RE_SHEET = re.compile(
-    r'(<div class="xsheet[^"]*" data-xsheet="(\d+)"><table class="xgrid">)(.*?)(</table></div>)', re.S
+    r'(<div class="xsheet[^"]*" data-xsheet="(\d+)"><table class="xgrid">)(.*?)(</table>)', re.S
 )
+# Charts injected on a previous run, so a re-sync replaces them rather than
+# stacking a second copy underneath the first.
+# `</figure></div>` occurs exactly once per block — between two figures the
+# markup reads `</figure><figure`, so the non-greedy match cannot stop early.
+RE_CHARTS = re.compile(r'<div class="xcharts">.*?</figure></div>', re.S)
+RE_SHEET_END = re.compile(r"</table></div>")
 RE_ROW = re.compile(r"(<tr>)(.*?)(</tr>)", re.S)
 RE_TD = re.compile(r"<td([^>]*)>(.*?)</td>", re.S)
 
@@ -174,10 +187,35 @@ def rebuild_preview(preview: str, wbpath: Path, stats: dict) -> str:
     return RE_SHEET.sub(do_sheet, preview)
 
 
+def inject_charts(preview: str, wbpath: Path, stats: dict) -> str:
+    """Put each sheet's charts under its table.
+
+    The preview rendered cells and nothing else, so every native Excel chart in
+    the pack — and every fix made to one — was invisible to anyone who opened
+    the preview instead of downloading the file. They go in as inline SVG, drawn
+    from the same cells the table above shows.
+    """
+    by_sheet = chartsvg.charts_html(wbpath)
+    if not by_sheet:
+        return preview
+    order = load_workbook(wbpath, read_only=True).sheetnames
+    seen = [0]
+
+    def repl(_m: re.Match) -> str:
+        i = seen[0]
+        seen[0] += 1
+        html = by_sheet.get(order[i], "") if i < len(order) else ""
+        stats["charts"] += html.count('<svg class="xchart"')
+        return "</table>" + html + "</div>"
+
+    return RE_SHEET_END.sub(repl, preview)
+
+
 def main() -> int:
     src = HTML.read_text(encoding="utf-8")
     start, end, tpls = extract_tpls(src)
-    stats = {"title_changed": 0, "title_added": 0, "text_changed": 0, "b64": 0, "md": 0}
+    stats = {"title_changed": 0, "title_added": 0, "text_changed": 0, "b64": 0,
+             "md": 0, "charts": 0}
 
     for slug, entry in tpls.items():
         path = TEMPLATES / entry["file"]
@@ -188,7 +226,12 @@ def main() -> int:
             if new_b64 != entry.get("b64"):
                 entry["b64"] = new_b64
                 stats["b64"] += 1
-            entry["preview"] = rebuild_preview(entry["preview"], path, stats)
+            # Charts come off FIRST. rebuild_preview walks to `</table></div>`
+            # to find the end of a sheet, and a chart block sitting between
+            # those two tags makes that walk run on into the next sheet.
+            bare = RE_CHARTS.sub("", entry["preview"])
+            entry["preview"] = inject_charts(
+                rebuild_preview(bare, path, stats), path, stats)
         else:
             text = path.read_text(encoding="utf-8")
             if text != entry.get("content"):
@@ -207,6 +250,8 @@ def main() -> int:
     print(f"  markdown re-embedded  : {stats['md']}")
     print(f"  tooltips rewritten    : {stats['title_changed']} (added {stats['title_added']})")
     print(f"  preview text updated  : {stats['text_changed']}")
+    print(f"  charts drawn in preview: {stats['charts']}"
+          f" (cache pruned {chartsvg.prune_cache(sorted(TEMPLATES.glob('*.xlsx')))})")
     print(f"  docs/index.html synced ({DOCS.stat().st_size:,} bytes)")
     return 0
 

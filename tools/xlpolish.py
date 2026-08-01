@@ -31,30 +31,50 @@ def _fix_axes(ch) -> None:
         ax.tickLblPos = "low" if ax is getattr(ch, "x_axis", None) else "nextTo"
 
 
-def _thin_category_labels(ch, n_cats: int) -> None:
-    """Twenty-four labels on a 15cm axis is an unreadable smear."""
+# Roughly how many characters of category label a 15cm axis carries before they
+# start colliding, allowing for the rotation Excel applies on its own.
+AXIS_CHARS = 90
+
+
+def _thin_category_labels(ch, labels: list[str]) -> None:
+    """Twenty-four labels on a 15cm axis is an unreadable smear.
+
+    How many fit depends on how WIDE they are, not just how many there are:
+    twenty-five test numbers sit comfortably where twenty-four "Day 12"s do not.
+    Counting alone thinned the hypothesis log to one label in three on an axis
+    with room for every one of them.
+    """
     ax = getattr(ch, "x_axis", None)
-    if ax is None or not n_cats:
+    if ax is None or not labels:
         return
     # On a ranked bar chart the category label IS the content — thinning it
     # hid five of eight causes on the X-Y matrix. Only thin a long time axis.
-    if getattr(ch, "type", None) == "bar":
+    #
+    # This used to read `ch.type == "bar"`, but on a BarChart `.type` is the bar
+    # DIRECTION, so it only ever matched the horizontal ones. Every vertical
+    # column chart — the ranked FMEA, the Pareto — kept being thinned, which is
+    # the same defect the line above says was fixed. Excel rotates labels that
+    # do not fit; it cannot invent one that was skipped.
+    if ch.tagname == "barChart":
         skip = 1
-    elif n_cats > 30:
-        skip = 4
-    elif n_cats > 18:
-        skip = 3
-    elif n_cats > 10:
-        skip = 2
     else:
-        skip = 1
+        need = sum(len(t) + 1 for t in labels)
+        skip = max(1, -(-need // AXIS_CHARS))
     ax.tickLblSkip = skip
     ax.tickMarkSkip = skip
 
 
-def _series_span(ch) -> int:
-    """How many categories the widest series actually plots."""
-    best = 0
+def _cat_labels(ch, wb=None) -> list[str]:
+    """The category labels the widest series actually plots.
+
+    Reads the cells, rather than measuring the range the chart reserves. The
+    value stream map books nineteen rows against nine filled ones; sizing the
+    label thinning off nineteen made Excel show one step in three on a chart
+    with room for all nine — a defect in the file the user downloads, not just
+    in how we preview it. A formula cell counts as one label of average width,
+    since its result is not knowable until Excel opens the file.
+    """
+    best: list[str] = []
     for ser in getattr(ch, "series", []) or []:
         ref = None
         for holder in (getattr(ser, "cat", None), getattr(ser, "xVal", None)):
@@ -66,11 +86,26 @@ def _series_span(ch) -> int:
                 break
         if not ref or "!" not in ref:
             continue
+        sheet, addr = ref.split("!", 1)
         try:
-            c1, r1, c2, r2 = range_boundaries(ref.split("!", 1)[1].replace("$", ""))
-            best = max(best, (r2 - r1 + 1) * (c2 - c1 + 1))
+            c1, r1, c2, r2 = range_boundaries(addr.replace("$", ""))
         except Exception:                                        # noqa: BLE001
             continue
+        sheet = sheet.strip("'")
+        if wb is None or sheet not in wb.sheetnames:
+            got = ["______"] * ((r2 - r1 + 1) * (c2 - c1 + 1))
+        else:
+            ws = wb[sheet]
+            got = []
+            for r in range(r1, r2 + 1):
+                for c in range(c1, c2 + 1):
+                    v = ws.cell(row=r, column=c).value
+                    if v in (None, ""):
+                        continue
+                    got.append("______" if isinstance(v, str) and v.startswith("=")
+                               else str(v))
+        if len(got) > len(best):
+            best = got
     return best
 
 
@@ -139,7 +174,7 @@ def polish_workbook(wb, landscape: bool = True) -> int:
             # and those series silently vanished from the plot.
             ch.plotVisOnly = False
             _fix_axes(ch)
-            _thin_category_labels(ch, _series_span(ch))
+            _thin_category_labels(ch, _cat_labels(ch, wb))
             # openpyxl never round-trips this one, so setting it must not count
             # as a change or every run would re-save and churn the base64 copies
             ch.roundedCorners = False

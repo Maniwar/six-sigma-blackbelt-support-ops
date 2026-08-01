@@ -21,6 +21,12 @@ from xml.etree import ElementTree as ET
 
 from openpyxl.utils import range_boundaries
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from xlpolish import AXIS_CHARS                                  # noqa: E402
+
 C = "{http://schemas.openxmlformats.org/drawingml/2006/chart}"
 A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 
@@ -139,8 +145,12 @@ def _parse(xml: bytes) -> dict:
             marker = ser.find(f"{C}marker/{C}spPr")
             if marker is not None and marker.find(f".//{A}solidFill") is not None:
                 coloured = True
+            cat = ser.find(f"{C}cat/{C}numRef/{C}f")
+            if cat is None:
+                cat = ser.find(f"{C}cat/{C}strRef/{C}f")
             out["series"].append({
                 "name": name, "ref": val.text if val is not None else None,
+                "cat": cat.text if cat is not None else None,
                 "coloured": coloured, "points": len(ser.findall(f"{C}dPt")),
                 "kind": PLOT_KINDS[tag],
             })
@@ -167,6 +177,17 @@ def _cells(wb, ref):
     except Exception:                                            # noqa: BLE001
         return []
     return [ws.cell(row=r, column=c) for r in range(r1, r2 + 1) for c in range(c1, c2 + 1)]
+
+
+def _labels_of(wb, ref) -> list[str]:
+    """The category labels a ref actually holds — blanks dropped, like Excel."""
+    out = []
+    for c in _cells(wb, ref):
+        v = c.value
+        if v in (None, ""):
+            continue
+        out.append("______" if isinstance(v, str) and v.startswith("=") else str(v))
+    return out
 
 
 def _shadow(ws):
@@ -240,9 +261,20 @@ def grade(book: str, ch: dict, wb) -> dict:
                              "different magnitude and the plot frames nothing")
         cat_ax = next((a for a in ch["axes"] if a["kind"] == "catAx"), None)
         skip = int(cat_ax["skip"]) if cat_ax and cat_ax["skip"] else 1
-        if longest > 18 and skip < 2:
-            readable = False
-            notes.append(f"{longest} category labels with no thinning")
+        # This used to read `longest > 18`, counting the rows the chart RESERVES
+        # and ignoring how wide a label is. It therefore demanded thinning on a
+        # value stream map with nine steps, and on a test log whose categories
+        # are the numbers 1 to 25 — both of which fit with room to spare. It is
+        # the same rule the polisher applies, imported rather than restated so
+        # the two cannot drift apart and each vouch for the other's mistake.
+        cats = max((_labels_of(wb, s["cat"]) for s in sers), key=len, default=[])
+        if cats and primary != "bar":
+            need = sum(len(t) + 1 for t in cats)
+            want = max(1, -(-need // AXIS_CHARS))
+            if skip < want:
+                readable = False
+                notes.append(f"{len(cats)} category labels needing 1-in-{want} "
+                             f"thinning, thinned 1-in-{skip}")
     lb = ch["labels"]
     if lb and (lb["showCatName"] or lb["showSerName"] or lb["showLegendKey"]):
         readable = False

@@ -50,6 +50,10 @@ t/g — each on its own tab with a picker that sends you to the right one, and e
 a live formula so the constants are visible rather than buried. A real Ishikawa diagram, spine and bones,
 where each cause box reads the table so the picture redraws as you type.
 
+**And you can see them without opening Excel.** Every chart is redrawn into the on-page preview as inline
+SVG, from the same recalculated cells the table above it shows — combo series, reference lines, secondary
+axes and all. Preview a template and you see what you are about to download.
+
 `tools/qa_templates.py` audits all of it on every change: that each chart resolves to live cells, that each
 input says where its number comes from, that each workbook recalculates without an error value — and it
 renders every workbook through LibreOffice so the charts get looked at rather than assumed.
