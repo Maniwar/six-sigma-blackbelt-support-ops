@@ -227,6 +227,273 @@ VALUES: list[tuple[str, str, str, object]] = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Explanations for standalone label:value rows: (workbook, sheet, cell, text)
+#
+# On the web page every acronym is clickable. In a downloaded workbook nothing
+# is, so a row that reads "DPO | 0.0507" and nothing else told the reader
+# neither what it is nor what to do about it. These are the missing right-hand
+# notes: for a yellow input, where the number comes from and the trap; for a
+# blue calculated cell, what it means and how to read it — never how it is
+# computed, because the formula is already visible.
+#
+# The cell is named explicitly rather than assumed to be column C, because each
+# sheet already has a note column and the note belongs in it: column D on the
+# calculator tabs, which is 72 wide and where every input note already sits.
+# Column C on those tabs is 18 wide, and on "9 ROI and payback" it holds the
+# breakeven series the chart plots — writing there would have broken the chart.
+# ---------------------------------------------------------------------------
+
+NOTES: list[tuple[str, str, str, str]] = [
+    # -- 17 control plan: the durability bar chart's six categories. The plan
+    #    lives or dies on which level its controls sit at, and the levels were
+    #    named but never defined anywhere in the workbook.
+    ("17-control-plan.xlsx", "Control plan", "C39",
+     "Strongest of all: the failure cannot happen because the step is gone. Retiring the manual "
+     "adjustment queue counts here; a better checklist does not."),
+    ("17-control-plan.xlsx", "Control plan", "C40",
+     "The system will not permit the failure — a ticket that cannot be closed while an adjustment "
+     "is still in flight. Survives attrition, busy weeks and everyone forgetting."),
+    ("17-control-plan.xlsx", "Control plan", "C41",
+     "Mistake-proofing: the wrong action is blocked or corrected as it is attempted. Still durable, "
+     "but it can be switched off, so name who owns the setting."),
+    ("17-control-plan.xlsx", "Control plan", "C42",
+     "The failure still happens and something catches it without anyone looking. Useful, but you "
+     "are now managing defects rather than preventing them."),
+    ("17-control-plan.xlsx", "Control plan", "C43",
+     "Depends on a person remembering. Decays with every new hire and every busy week — count "
+     "these honestly rather than relying on them."),
+    ("17-control-plan.xlsx", "Control plan", "C44",
+     "A briefing, a poster, a line in the wiki. Half-life measured in weeks. If most of your "
+     "controls sit here, the process will drift back after handover."),
+
+    # -- 19 calculators, tab 1: five different names for the same defect count.
+    ("19-black-belt-calculators.xlsx", "1 Sigma level", "D9",
+     "DPU = defects per unit: how many things go wrong on the average contact. Above 1.0 the "
+     "typical contact is carrying more than one defect."),
+    ("19-black-belt-calculators.xlsx", "1 Sigma level", "D10",
+     "The denominator everything below is measured against. Change the opportunities-per-unit "
+     "figure and every rate on this tab moves with it, which is why you fix it once and leave it."),
+    ("19-black-belt-calculators.xlsx", "1 Sigma level", "D11",
+     "DPO = defects per opportunity: of all the chances to get something wrong, the share that "
+     "actually went wrong. This is what the sigma scale is built on."),
+    ("19-black-belt-calculators.xlsx", "1 Sigma level", "D12",
+     "DPMO = defects per million opportunities, the same figure scaled up so it stays readable. "
+     "This is the one to quote — published benchmarks are all in DPMO."),
+    ("19-black-belt-calculators.xlsx", "1 Sigma level", "D13",
+     "The share of contacts that get through with no defect at all — a customer's chance of a "
+     "clean experience, which is usually a more sobering number than the sigma level."),
+    ("19-black-belt-calculators.xlsx", "1 Sigma level", "D14",
+     "Your process restated in standard deviations, with no shift added. Use this one when you "
+     "compare yourself against your own history."),
+    ("19-black-belt-calculators.xlsx", "1 Sigma level", "D15",
+     "The headline number, on the convention the industry quotes. It is 1.5 higher than the Z "
+     "above by construction, so say which of the two you are reporting and never mix them."),
+    ("19-black-belt-calculators.xlsx", "1 Sigma level", "D25",
+     "Where you land on the published ladder. Read the band you are actually in, not the one the "
+     "rounded sigma level lets you claim."),
+
+    # -- 19 calculators, tab 2: kappa. Row 14 (Verdict) is skipped: B14 is
+    #    merged across B:D, so there is no free cell on that row.
+    ("19-black-belt-calculators.xlsx", "2 QA agreement (kappa)", "D10",
+     "The size of the study. Below about 50 items kappa bounces around too much to act on, and "
+     "below 30 it is not worth calculating."),
+    ("19-black-belt-calculators.xlsx", "2 QA agreement (kappa)", "D11",
+     "Raw agreement — the share of items the two scored the same way. It flatters you badly: two "
+     "analysts who pass everything agree 95% of the time while measuring nothing."),
+    ("19-black-belt-calculators.xlsx", "2 QA agreement (kappa)", "D12",
+     "What the two would have matched on by luck alone, given how often each says pass. The higher "
+     "your pass rate the higher this is, which is exactly why raw agreement misleads."),
+    ("19-black-belt-calculators.xlsx", "2 QA agreement (kappa)", "D13",
+     "Agreement with the luck stripped out: 0 is no better than guessing, 1 is perfect. This is the "
+     "number to report, and it is always lower than the raw figure above."),
+    ("19-black-belt-calculators.xlsx", "2 QA agreement (kappa)", "D20",
+     "Your kappa against the bars everyone uses. Below 0.6 the scores are not a measurement system "
+     "yet — fix the rubric and re-calibrate before anything is built on them."),
+
+    # -- 19 calculators, tab 3: capability. Row 17 (Verdict) is skipped: B17 is
+    #    merged across B:D.
+    ("19-black-belt-calculators.xlsx", "3 SLA capability", "D9",
+     "SLA = service level agreement. How far the average sits below what you promised, in hours. "
+     "Negative means the average contact already breaches and no amount of tuning will save it."),
+    ("19-black-belt-calculators.xlsx", "3 SLA capability", "D10",
+     "The width of your process, in the units of your promise. Compare it with the headroom above: "
+     "if it is the larger of the two, you are manufacturing breaches."),
+    ("19-black-belt-calculators.xlsx", "3 SLA capability", "D11",
+     "Your headroom counted in standard deviations. Around 3 or more is a process that breaches "
+     "rarely; around 1 is one that breaches most weeks."),
+    ("19-black-belt-calculators.xlsx", "3 SLA capability", "D12",
+     "The breach rate this model expects. Treat it as a floor — support durations have a long "
+     "right tail, so the real rate is normally higher than this, sometimes much higher."),
+    ("19-black-belt-calculators.xlsx", "3 SLA capability", "D13",
+     "Ppu = one-sided process performance: headroom divided by spread. 1.33 is the usual bar for "
+     "'capable'; below 1.0 customers notice. It says nothing about whether the promise was sane."),
+
+    # -- 19 calculators, tab 4: Little's Law.
+    ("19-black-belt-calculators.xlsx", "4 Backlog and lead time", "D9",
+     "How long the average customer waits, given the backlog you hold and the rate you close at. "
+     "Headcount and effort are not in this calculation, and cannot be argued into it."),
+    ("19-black-belt-calculators.xlsx", "4 Backlog and lead time", "D10",
+     "The same wait in hours, which is usually the unit your SLA and your customers speak in."),
+    ("19-black-belt-calculators.xlsx", "4 Backlog and lead time", "D11",
+     "The most open work you can hold and still deliver the target wait. This is your work-in-"
+     "progress limit — enforce it in the tool, because a limit in a document is a suggestion."),
+    ("19-black-belt-calculators.xlsx", "4 Backlog and lead time", "D12",
+     "The one-off clear-down that has to happen before the cap can hold. Plan it as a separate "
+     "push with a start and an end date, or the limit gets abandoned in week one."),
+    ("19-black-belt-calculators.xlsx", "4 Backlog and lead time", "D17",
+     "What customers experience today, drawn against the promise below."),
+    ("19-black-belt-calculators.xlsx", "4 Backlog and lead time", "D18",
+     "The wait you want to commit to. The distance between the two bars is backlog, not effort."),
+    ("19-black-belt-calculators.xlsx", "4 Backlog and lead time", "D21",
+     "Today's open work against the ceiling below. Everything above the ceiling is wait the "
+     "customer feels and the team cannot work off by trying harder."),
+    ("19-black-belt-calculators.xlsx", "4 Backlog and lead time", "D22",
+     "The ceiling that delivers your target. Hold more than this and the promise fails as "
+     "arithmetic, whatever the team does."),
+
+    # -- 19 calculators, tab 5: PCE.
+    ("19-black-belt-calculators.xlsx", "5 Process efficiency", "D8",
+     "The customer's entire wait, restated in the same unit as the work so the two can be compared "
+     "honestly. Everything here that is not touch time is queue."),
+    ("19-black-belt-calculators.xlsx", "5 Process efficiency", "D9",
+     "Queue time: the part of the wait when nobody was working on the issue. In support this is "
+     "nearly all of it, and it is where the improvement lives."),
+    ("19-black-belt-calculators.xlsx", "5 Process efficiency", "D10",
+     "PCE = process cycle efficiency, the share of the customer's wait that was actual work. "
+     "1-8% is normal in support. Below about 5%, making agents faster cannot move it — you have to "
+     "remove a waiting state."),
+    ("19-black-belt-calculators.xlsx", "5 Process efficiency", "D15",
+     "The touch time, drawn to scale against the wait. It is usually a sliver, and the sliver is "
+     "the argument."),
+    ("19-black-belt-calculators.xlsx", "5 Process efficiency", "D16",
+     "The queue time. Every hour of it is a handoff, an approval or a reply being waited on — and "
+     "each one is a candidate for removal."),
+
+    # -- 19 calculators, tab 6: staffing without queueing.
+    ("19-black-belt-calculators.xlsx", "6 Staffing", "D10",
+     "One Erlang is one agent busy for the whole hour. This is the work that arrives, before any "
+     "allowance for queueing, breaks or occupancy. It is the floor, never the answer."),
+    ("19-black-belt-calculators.xlsx", "6 Staffing", "D11",
+     "Bodies logged in and taking contacts, once you accept that nobody handles contacts every "
+     "minute they are available."),
+    ("19-black-belt-calculators.xlsx", "6 Staffing", "D12",
+     "Headcount that exists purely to cover breaks, meetings, training and absence. Show it "
+     "separately — it is the line Finance always challenges, and it is defensible when named."),
+    ("19-black-belt-calculators.xlsx", "6 Staffing", "D13",
+     "FTE = full-time equivalent: what actually goes on the payroll. This model has no queueing in "
+     "it, so if you are staffing to a service-level promise use 28-erlang-staffing.xlsx instead."),
+    ("19-black-belt-calculators.xlsx", "6 Staffing", "D16",
+     "The work itself. Everything stacked above this is overhead you should be able to name."),
+    ("19-black-belt-calculators.xlsx", "6 Staffing", "D17",
+     "The gap between the work arriving and the people needed to absorb it without running agents "
+     "flat out all day."),
+    ("19-black-belt-calculators.xlsx", "6 Staffing", "D18",
+     "Paid time that is never on a contact. Usually the largest single block, and the one most "
+     "often left out of a business case."),
+    ("19-black-belt-calculators.xlsx", "6 Staffing", "D19",
+     "The total you are asking for. Presenting it as three named parts is how the request survives "
+     "a budget conversation."),
+
+    # -- 19 calculators, tab 7: handle-time benefit.
+    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "D11",
+     "AHT = average handle time. The raw hours of talk, hold and after-call work your change "
+     "removes across a year."),
+    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "D12",
+     "More than the handle-hours above, because agents are never occupied every minute — freeing "
+     "an hour of handle time frees rather more than an hour of payroll."),
+    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "D13",
+     "The same saving expressed as whole people, at 1,760 productive hours a year. This is the "
+     "unit an executive actually hears."),
+    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "D14",
+     "The value before anything is discounted for what decays at rollout. Never quote this figure "
+     "on its own."),
+    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "D15",
+     "The number to take to Finance — and still only real if the freed capacity is harvested. Read "
+     "the trap below before you claim it."),
+    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "D20",
+     "The claim before realisation is applied."),
+    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "D21",
+     "What belongs in the business case. Showing the discount rather than burying it is what stops "
+     "the conversation happening later, in front of the steering committee."),
+
+    # -- 19 calculators, tab 8: avoided contacts.
+    ("19-black-belt-calculators.xlsx", "8 Benefit — avoided contacts", "D11",
+     "The gap you are closing, in percentage POINTS, not as a percentage change. 14.2% down to 8% "
+     "is 6.2 points — describing it as a 44% reduction is how these numbers lose credibility."),
+    ("19-black-belt-calculators.xlsx", "8 Benefit — avoided contacts", "D12",
+     "Contacts that simply never happen. Unlike a handle-time saving this needs no harvesting "
+     "argument, because the work is not there to be redeployed."),
+    ("19-black-belt-calculators.xlsx", "8 Benefit — avoided contacts", "D13",
+     "Avoided contacts at your fully-loaded cost per contact, before realisation is applied."),
+    ("19-black-belt-calculators.xlsx", "8 Benefit — avoided contacts", "D14",
+     "The defensible number. Realisation is higher here than on handle-time work because an "
+     "avoided contact is unambiguously avoided."),
+    ("19-black-belt-calculators.xlsx", "8 Benefit — avoided contacts", "D20",
+     "The claim before realisation is applied."),
+    ("19-black-belt-calculators.xlsx", "8 Benefit — avoided contacts", "D21",
+     "What belongs in the business case. A wide gap between the two bars means your target is "
+     "running ahead of the causes you have actually verified."),
+
+    # -- 19 calculators, tab 9: the three numbers Finance asks for.
+    ("19-black-belt-calculators.xlsx", "9 ROI and payback", "D10",
+     "Benefit arriving a year from now is worth less than cash today, so it is discounted. This is "
+     "year one in today's money."),
+    ("19-black-belt-calculators.xlsx", "9 ROI and payback", "D11",
+     "Year two, discounted twice. It shows zero if you modelled fewer years than this."),
+    ("19-black-belt-calculators.xlsx", "9 ROI and payback", "D12",
+     "Year three, discounted three times. It shows zero if you modelled fewer years than this."),
+    ("19-black-belt-calculators.xlsx", "9 ROI and payback", "D13",
+     "How long before the benefit has repaid what you spent. Under 18 months is generally an easy "
+     "sell; past three years the assumptions matter more than the answer."),
+    ("19-black-belt-calculators.xlsx", "9 ROI and payback", "D14",
+     "ROI = return on investment: what you got back less what you spent, as a share of what you "
+     "spent. It ignores the time value of money, so it always flatters — quote it beside the net "
+     "present value below, never instead of it."),
+    ("19-black-belt-calculators.xlsx", "9 ROI and payback", "D15",
+     "NPV = net present value: every year's benefit brought back to today's money, minus the "
+     "investment. Above zero the project beat the cost of the money. This is the one Finance "
+     "trusts."),
+    ("19-black-belt-calculators.xlsx", "9 ROI and payback", "D21",
+     "The hole you start in — everything spent before any benefit lands. The line climbs from here "
+     "and crosses zero at payback."),
+]
+
+
+def patch_notes(wb, wbname: str) -> int:
+    """Write the explanations above, styled as the notes already on the sheet.
+
+    Wrapping is decided by the column, not applied blindly. Wrapping text into a
+    26-wide column and then sizing the row for a 90-character line clips it —
+    the reader sees a truncated sentence and no scroll bar. A narrow column is
+    left unwrapped so the text overflows across the empty cells beside it, which
+    is what a plain note in column C has always done on these sheets.
+    """
+    n = 0
+    for name, sheet, cell, text in NOTES:
+        if name != wbname:
+            continue
+        ws = wb[sheet]
+        c = ws[cell]
+        if c.__class__.__name__ == "MergedCell":
+            raise SystemExit(f"{wbname} {sheet}!{cell} is inside a merged range")
+        if c.value not in (None, "") and c.value != text:
+            raise SystemExit(f"{wbname} {sheet}!{cell} already holds {c.value!r}")
+        if c.value != text:
+            c.value = text
+            n += 1
+        c.font = Font(italic=True, size=9, color="FF6B7280")
+        width = ws.column_dimensions[c.column_letter].width or 8.43
+        if width >= 40:
+            c.alignment = Alignment(wrap_text=True, vertical="top")
+            lines = 1 + int(len(text) / (width * 0.95))
+            ws.row_dimensions[c.row].height = max(
+                ws.row_dimensions[c.row].height or 0, 13 * lines)
+        else:
+            c.alignment = Alignment(wrap_text=False, vertical="center")
+    return n
+
+
 def patch_formulas(verbose: bool = True) -> int:
     """Apply every patch. Returns the number of cells changed."""
     by_file: dict[str, list] = {}
@@ -239,6 +506,8 @@ def patch_formulas(verbose: bool = True) -> int:
             )
     for wbname, sheet, cell, value in VALUES:
         by_file.setdefault(wbname, []).append((sheet, cell, value))
+    for wbname, *_ in NOTES:
+        by_file.setdefault(wbname, [])
 
     changed = 0
     for wbname in sorted(by_file):
@@ -253,6 +522,7 @@ def patch_formulas(verbose: bool = True) -> int:
                 ws[cell] = value
                 local += 1
         _style_new_cells(wb)
+        local += patch_notes(wb, wbname)
         local += _add_validations(wb, wbname)
         local += add_examples(wb, wbname)
         local += add_charts(wb, wbname)

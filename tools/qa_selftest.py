@@ -194,6 +194,57 @@ def m_untitled_chart(wb):
     return None
 
 
+def m_bare_row(wb):
+    """A name and a number, and nothing telling the reader what it is."""
+    for ws in wb.worksheets:
+        if any(ws.title.lower().startswith(g) for g in Q.GUIDE_TABS):
+            continue
+        shadow = Q.merged_shadow(ws)
+        r = ws.max_row + 3
+        if (r, 1) in shadow or (r, 2) in shadow:
+            continue
+        ws.cell(row=r, column=1, value="DPO")
+        c = ws.cell(row=r, column=2, value=0.0507)
+        c.number_format = "0.0000"
+        c.fill = PatternFill("solid", fgColor=Q.FILL_CALC)
+        return f"added an unexplained label:value row at {ws.title}!A{r}"
+    return None
+
+
+def m_strip_row_note(wb):
+    """Take the explanation off a CALCULATED row that already has one.
+
+    This is the one that matters. m_bare_row only proves the check notices a row
+    invented for it; this proves it defends the notes actually in the workbook,
+    and it targets a blue cell on purpose — GUIDED reads yellow only, so if
+    ROWLABEL ever stops firing nothing else in the harness covers the row.
+    """
+    for ws in wb.worksheets:
+        if any(ws.title.lower().startswith(g) for g in Q.GUIDE_TABS):
+            continue
+        shadow = Q.merged_shadow(ws)
+        for r in range(1, ws.max_row + 1):
+            lab, val = ws.cell(row=r, column=1).value, ws.cell(row=r, column=2)
+            if not (isinstance(lab, str) and lab.strip()) or val.value in (None, ""):
+                continue
+            try:
+                rgb = str(val.fill.fgColor.rgb) if val.fill and val.fill.patternType else ""
+            except Exception:                                    # noqa: BLE001
+                rgb = ""
+            if rgb != Q.FILL_CALC or Q._speaks_for_itself(val):
+                continue
+            notes = [c for c in Q.ROWLABEL_COLS
+                     if (r, c) not in shadow
+                     and isinstance(ws.cell(row=r, column=c).value, str)
+                     and len(ws.cell(row=r, column=c).value) >= 12]
+            if not notes:
+                continue
+            for c in notes:
+                ws.cell(row=r, column=c).value = None
+            return f"blanked the note beside {ws.title}!A{r} ({lab.strip()[:30]!r})"
+    return None
+
+
 MUTANTS = [
     ("empty declared column", m_empty_column, "EXAMPLE"),
     ("opaque header, no legend", m_opaque_header, "EXAMPLE"),
@@ -202,6 +253,8 @@ MUTANTS = [
     ("unexplained yellow input", m_naked_input, "GUIDED"),
     ("chart wired to an emptied block", m_empty_series, "CHARTS"),
     ("chart with no title", m_untitled_chart, "CHARTS"),
+    ("label and number, no explanation", m_bare_row, "ROWLABEL"),
+    ("explanation stripped off a calculated row", m_strip_row_note, "ROWLABEL"),
 ]
 
 
@@ -358,6 +411,16 @@ def run_visual() -> tuple[int, int, list[str]]:
          lambda s: _re.sub(r'<text x="[\d.]+"', '<text x="-260"', s, count=1)),
         ("visual: chart that plots nothing",
          lambda s: _re.sub(r"<(rect|circle|path)\b[^>]*/?>", "", s)),
+        # Two labels at the same coordinates. The first attempt at this mutant
+        # slid a right-edge axis label 90px left, which lands in empty space and
+        # collides with nothing — it survived, and the check looked decorative
+        # when it was the mutant that was wrong. Duplicating a label in place
+        # guarantees the overlap the check exists to find.
+        ("visual: two labels written over each other",
+         lambda s: (lambda m: s.replace(m.group(0), m.group(0) + m.group(1)
+                                        + "Average wait per step" + m.group(3), 1)
+                    if m else s)(
+             _re.search(r'(<text x="[\d.]+" y="[\d.]+" class="cl">)([^<]{6,})(</text>)', s))),
     ]
     killed = 0
     survivors = []
@@ -420,6 +483,7 @@ def audit_to_set(path: Path) -> set[str]:
     Q.audit_charts(path, wb)
     Q.audit_guided(path, wb)
     Q.audit_example(path, wb)
+    Q.audit_rowlabel(path, wb)
     return set(Q.fails)
 
 

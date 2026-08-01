@@ -529,6 +529,79 @@ def audit_jargon(path: Path, wb) -> None:
                     break
 
 
+ROWLABEL_COLS = range(3, 10)          # C..I — every column a note could sit in
+RE_LITERAL = re.compile(r'"([^"]*)"')
+
+
+def _speaks_for_itself(cell) -> bool:
+    """Does this value read as a sentence, so a note beside it would repeat it?
+
+    Two signals have to agree, because either alone is wrong.
+
+    The number format decides whether the cell produces a NUMBER. Text alone is
+    not enough: the Erlang staffing cell is
+    ``=IFERROR(INDEX(...),"raise the range")`` — it returns a headcount, and the
+    only long string in it is the error message. Judging by the literals would
+    have exempted a bare number on the strength of text the reader never sees.
+
+    The literal decides whether that text is an explanation or a label. A
+    verdict cell returns "EXCELLENT — fit for purpose", which tells the reader
+    what to do; a factor cell holds "Authority limit", which is a name and needs
+    a note like any other. Twenty-five characters is where one becomes the
+    other.
+    """
+    fmt = cell.number_format or "General"
+    if any(ch in fmt for ch in "0#"):                # produces a number
+        return False
+    v = cell.value
+    lits = RE_LITERAL.findall(v) if isinstance(v, str) and v.startswith("=") else \
+        ([v] if isinstance(v, str) else [])
+    return max((len(s) for s in lits), default=0) >= 25
+
+
+def audit_rowlabel(path: Path, wb) -> None:
+    """A label in column A beside a filled value in B has to say what it is.
+
+    This is the JARGON check turned ninety degrees. That one asks whether a
+    COLUMN header is readable to someone outside the discipline; it walks the
+    banded tables, so it only ever sees cells that sit under a header. A
+    standalone row — "DPO | 0.0507" and nothing else — has no header by
+    construction, so the entire class was invisible to it. Same defect, other
+    axis, which is why the header check never fired on any of the 77.
+
+    GUIDED does not cover it either: it inspects yellow cells only, so every
+    CALCULATED row could print a bare number forever. Those are the rows that
+    most need a sentence — the reader did not type the value and has nothing
+    telling them what it is saying.
+    """
+    book = path.name
+    bare: list[str] = []
+    for ws in wb.worksheets:
+        if any(ws.title.lower().startswith(g) for g in GUIDE_TABS):
+            continue
+        for r in range(1, ws.max_row + 1):
+            lab = ws.cell(row=r, column=1).value
+            val = ws.cell(row=r, column=2)
+            if not (isinstance(lab, str) and lab.strip()):
+                continue
+            try:
+                rgb = str(val.fill.fgColor.rgb) if val.fill and val.fill.patternType else ""
+            except Exception:                                    # noqa: BLE001
+                rgb = ""
+            if rgb not in (FILL_INPUT, FILL_CALC) or val.value in (None, ""):
+                continue
+            note = " ".join(
+                str(ws.cell(row=r, column=c).value) for c in ROWLABEL_COLS
+                if isinstance(ws.cell(row=r, column=c).value, str))
+            if len(note.strip()) >= 12 or _speaks_for_itself(val):
+                continue
+            bare.append(f"{ws.title}!A{r} {lab.strip()[:32]!r}")
+    if bare:
+        fail(book, "ROWLABEL",
+             f"{len(bare)} label:value row(s) with a filled value and no explanation "
+             f"beside it — the reader sees a name and a number: {bare[:5]}")
+
+
 def _na_ok(book: str, where: str) -> bool:
     """Is this cell one of the marker columns that is #N/A on purpose?"""
     import re as _re
@@ -784,6 +857,7 @@ def main() -> int:
         guidance = 2 if len(fails) == before else 1
         audit_example(path, wb)
         audit_jargon(path, wb)
+        audit_rowlabel(path, wb)
         charts += n
         if rubric:
             graded += audit_rubric(path, wb, guidance)

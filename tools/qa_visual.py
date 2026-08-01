@@ -103,13 +103,13 @@ def text_boxes(svg_text: str):
             x0, x1 = x - w / 2, x + w / 2
         else:
             x0, x1 = x, x + w
-        out.append((x0, x1, y, txt, vb))
+        out.append((x0, x1, y, txt, vb, bool(rot)))
     return out
 
 
 def audit_svg(book: str, title: str, svg_text: str) -> None:
     """The two things a person notices immediately and no structural check sees."""
-    for x0, x1, y, txt, vb in text_boxes(svg_text):
+    for x0, x1, y, txt, vb, _rot in text_boxes(svg_text):
         if not vb:
             continue
         # 2px of slack: the width model is an estimate, the defect is not.
@@ -129,6 +129,29 @@ def audit_svg(book: str, title: str, svg_text: str) -> None:
     marks = len(re.findall(r"<(rect|circle|path)\b", svg_text))
     check(marks >= 2, f"[INK] {book} · {title}",
           f"only {marks} drawn mark(s) — the chart resolves but plots nothing")
+
+    # Two labels written over each other. This was reported by a reader — the
+    # axis title and the legend were laid out at the same height and printed
+    # through one another — and until now it was only ever checked by eye.
+    # Rotated runs are exempt: a -38° category axis packs its labels close on
+    # purpose and their boxes overlap without the glyphs ever touching.
+    # text_boxes carries the rotation flag itself. Re-deriving it by zipping
+    # against a fresh element walk silently misaligned — that walk includes the
+    # empty <text> nodes text_boxes drops, so every box after the first blank
+    # was paired with the wrong element and the check could not fire at all.
+    flat = [(x0, x1, y, txt) for x0, x1, y, txt, _vb, rot
+            in text_boxes(svg_text) if not rot]
+    for i, (ax0, ax1, ay, atxt) in enumerate(flat):
+        for bx0, bx1, by, btxt in flat[i + 1:]:
+            if abs(ay - by) > 7:                     # different lines entirely
+                continue
+            overlap = min(ax1, bx1) - max(ax0, bx0)
+            if overlap > 6:
+                check(False, f"[OVERLAP] {book} · {title}",
+                      f"{atxt[:26]!r} and {btxt[:26]!r} share the same line and "
+                      f"overlap by {overlap:.0f}px — they print through each other")
+                return
+    passes[0] += 1
 
 
 # -------------------------------------------------------------------- render

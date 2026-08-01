@@ -1204,7 +1204,8 @@ def flow():
     band(ws, 10, "WHAT THAT MEANS", 4)
     outs = [("Lead time today (days)", '=IFERROR(B5/B6,"")', "3.82",
              "Backlog ÷ closing rate. Nothing else affects it."),
-            ("Lead time today (hours)", '=IFERROR(B5/B6*24,"")', "91.6", ""),
+            ("Lead time today (hours)", '=IFERROR(B5/B6*24,"")', "91.6",
+             "The same wait in hours, which is usually the unit your promise and your SLA are written in."),
             ("Backlog cap to hit your target", '=IFERROR(B6*B7,"")', "2,200",
              "This is your queue-level WIP limit."),
             ("Backlog you must remove first", '=IFERROR(MAX(0,B5-B6*B7),"")', "2,000",
@@ -1226,6 +1227,15 @@ def flow():
     c = mark(ws, 21, 2, "calc"); c.value = "=B11"; c.number_format = "#,##0.00"
     ws.cell(row=22, column=1, value="Lead time promised").font = F_B
     c = mark(ws, 22, 2, "calc"); c.value = "=B7"; c.number_format = "#,##0.00"
+    # The chart reads these two rows. Left bare they were a label and a number
+    # with nothing to say what the reader is looking at.
+    for r, txt in ((21, "What customers actually experience now — the same figure as above, repeated "
+                        "here so the chart can draw it against the promise."),
+                   (22, "The wait you want to commit to. The gap between the two bars is backlog, not "
+                        "effort: closing it means capping the work, not pushing the team harder.")):
+        n = ws.cell(row=r, column=4, value=txt); n.font = F_NOTE
+        n.alignment = Alignment(wrap_text=True, vertical="top")
+        ws.row_dimensions[r].height = 28
     SHOWN[("WIP and lead time", "B21")] = "3.82"
     SHOWN[("WIP and lead time", "B22")] = "2.00"
     bar(ws, "Where you are against what you promised (days)",
@@ -1843,7 +1853,10 @@ def control_charts():
         ("Target / pre-change mean", "=AVERAGE(B16:B27)", "#,##0.00",
          "Set this from the BEFORE window only. Including the after period hides the very shift you are testing for."),
         ("Average moving range", "=AVERAGE(C17:C27)", "#,##0.00", "Baseline window only, for the same reason."),
-        ("Sigma estimate", "=B8/1.128", "#,##0.00", ""),
+        ("Sigma estimate", "=B8/1.128", "#,##0.00",
+         "The process's ordinary spread, taken from point-to-point movement rather than from a "
+         "standard deviation — one bad week inflates a standard deviation and this resists that. "
+         "Every CUSUM value below is counted in these units, so if this is wrong the whole chart is."),
     ], 9)
     ws.cell(row=5, column=2).fill = IN
     ws.cell(row=6, column=2).fill = IN
@@ -1910,7 +1923,10 @@ def control_charts():
          "of the limits."),
         ("Transformed mean", "=AVERAGE(C14:C37)", "#,##0.0000",
          "Gaps between rare events are exponential, not normal. The 1/3.6 power (Nelson) makes them near-normal so ordinary limits apply."),
-        ("Transformed MR-bar", "=AVERAGE(D15:D37)", "#,##0.0000", ""),
+        ("Transformed MR-bar", "=AVERAGE(D15:D37)", "#,##0.0000",
+         "MR-bar = the average moving range, the typical step from one point to the next. It is the "
+         "spread the limits below are built from, and it is measured on the transformed scale, not in "
+         "days — do not try to read it as a number of days."),
         ("t-chart UCL / LCL (days)", "=TEXT((B7+2.66*B8)^3.6,\"#,##0.0\")&\"  /  \"&TEXT(MAX(0,(B7-2.66*B8))^3.6,\"#,##0.0\")",
          "@", "Limits are computed on the transformed scale and then converted back to days."),
         ("Average opportunities between (g-chart)", "=AVERAGE(F14:F37)", "#,##0.00", "Use this instead of days when volume swings — 'contacts between misses' beats 'days between misses'."),
@@ -2116,7 +2132,9 @@ def erlang():
          "Talk + hold + after-call work. Leaving ACW out is the most common staffing error, and it "
          "understates the requirement by whatever ACW actually is."),
         ("Answer target (seconds)", 20, "0", "The 20 in '80% in 20 seconds'."),
-        ("Target service level", 0.80, "0%", "The 80."),
+        ("Target service level", 0.80, "0%",
+         "The 80. SL = service level, the share of contacts answered inside your target time — this "
+         "cell and the one above are the whole promise, and both come from whoever signed it."),
         ("Shrinkage", 0.30, "0%",
          "Everything you pay for that is not on the phone: breaks, training, meetings, coaching, "
          "absence. 26-30% is typical. Measure yours rather than borrowing this number."),
@@ -2140,9 +2158,15 @@ def erlang():
          '=IFERROR(INDEX($F$22:$F$121,MATCH(1,$O$22:$O$121,0)),"raise the range")',
          "0", "The smallest number of agents that meets your target.", True),
         ("Service level at that staffing",
-         '=IFERROR(INDEX($J$22:$J$121,MATCH($B$14,$F$22:$F$121,0)),"")', "0.0%", "", False),
+         '=IFERROR(INDEX($J$22:$J$121,MATCH($B$14,$F$22:$F$121,0)),"")', "0.0%",
+         "What you would actually deliver at that headcount. It normally overshoots the target, "
+         "because agents come in whole numbers and the one that takes you over the line buys a lot "
+         "of service level. Do not shave it back off — the next interval will need it.", False),
         ("Average speed of answer (seconds)",
-         '=IFERROR(INDEX($K$22:$K$121,MATCH($B$14,$F$22:$F$121,0)),"")', "#,##0.0", "", False),
+         '=IFERROR(INDEX($K$22:$K$121,MATCH($B$14,$F$22:$F$121,0)),"")', "#,##0.0",
+         "ASA = average speed of answer, in seconds — averaged over everyone, including the callers "
+         "answered instantly. It is not the wait a queued caller feels, which is much longer. Report "
+         "service level to customers and ASA to operations.", False),
         ("Occupancy at that staffing",
          '=IFERROR(INDEX($L$22:$L$121,MATCH($B$14,$F$22:$F$121,0)),"")', "0.0%",
          "Sustained above about 85% and attrition rises while handle time drifts up. If this is "
