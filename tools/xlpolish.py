@@ -121,6 +121,124 @@ def _header_row(ws) -> int | None:
     return None
 
 
+# Plain English for every term of art this pack puts in a column header. The
+# page makes these clickable; a downloaded workbook cannot, so the reader meets
+# "MR of z" and "A2 for this n" with nothing to click and no way to guess. Every
+# guidance check we had inspected whether a header EXISTS, never whether a
+# person outside the discipline could read it.
+GLOSSES = {
+    "OBS": "OBS 1..n are your individual measurements in one subgroup — one row per period",
+    "CL": "CL = centre line, the average the chart is drawn around",
+    "UCL": "UCL / LCL = upper and lower control limits, ±3 sigma from the centre line",
+    "LCL": "UCL / LCL = upper and lower control limits, ±3 sigma from the centre line",
+    "MR": "MR = moving range, the gap between one point and the one before it",
+    "R-bar": "R-bar = the average range within your subgroups",
+    "X-double-bar": "X-double-bar = the average of the subgroup averages",
+    "A2": "A2, D3, D4 = standard constants that depend only on your subgroup size",
+    "D3": "A2, D3, D4 = standard constants that depend only on your subgroup size",
+    "D4": "A2, D3, D4 = standard constants that depend only on your subgroup size",
+    "u-bar": "u-bar = defects per unit across the whole baseline, not the average of daily rates",
+    "p-bar": "p-bar = the overall proportion across the whole baseline",
+    "sigma z": "sigma z = the Laney adjustment; 1.0 means a plain chart was fine, above that it was not",
+    "z": "z = your rate restated in standard deviations, so periods of different size compare",
+    "p-value": "p-value = the chance of seeing a difference this big if nothing had really changed",
+    "CI": "CI = confidence interval, the range the true value plausibly sits in",
+    "Effect size": "Effect size = how big the difference is, in units a manager can act on",
+    "ASA": "ASA = average speed of answer, in seconds",
+    "SL": "SL = service level, the share of contacts answered inside your target time",
+    "Occupancy": "Occupancy = the share of logged-in time an agent is actually handling contacts",
+    "Erlang A": "Erlang A = the staffing model that allows for callers hanging up; Erlang C assumes nobody does",
+    "WFM": "WFM = Workforce Management, the team that owns schedules and headcount",
+    "Champion": "Champion = the executive who owns the problem and clears the obstacles",
+    "Black Belt": "Black Belt = the person running the project day to day",
+    "AB": "AB, AC, BC = interaction columns: the product of two factor columns, +1 or -1",
+    "AC": "AB, AC, BC = interaction columns: the product of two factor columns, +1 or -1",
+    "BC": "AB, AC, BC = interaction columns: the product of two factor columns, +1 or -1",
+    "RPN": "RPN = risk priority number, severity x occurrence x detection",
+}
+_GL_LOW = {k.lower(): v for k, v in GLOSSES.items()}
+
+
+def _header_rows(ws):
+    """(row, {col: label}) for every dark banded header row on the sheet."""
+    rows = {}
+    for row in ws.iter_rows():
+        for c in row:
+            try:
+                dark = (c.fill and c.fill.patternType
+                        and str(c.fill.fgColor.rgb) == "FF333C49")
+            except Exception:                                    # noqa: BLE001
+                dark = False
+            if dark and isinstance(c.value, str) and c.value.strip():
+                rows.setdefault(c.row, {})[c.column] = c.value.strip()
+    return rows
+
+
+def explain_headers(wb) -> int:
+    """Write a plain-English key under any header row that uses jargon.
+
+    Placed in the first blank row above the header, never by inserting one — an
+    inserted row shifts every formula and chart range on the sheet.
+    """
+    from openpyxl.styles import Alignment, Font
+    n = 0
+    for ws in wb.worksheets:
+        if ws.title.lower().startswith(("how to use", "read me", "legend")):
+            continue
+        for hrow, cols in _header_rows(ws).items():
+            seen, wanted = set(), []
+            for label in cols.values():
+                for term, gloss in GLOSSES.items():
+                    t = term.lower()
+                    lab = label.lower()
+                    hit = (lab == t or lab.startswith(t + " ") or
+                           lab.endswith(" " + t) or (" " + t + " ") in lab)
+                    if hit and gloss not in seen:
+                        seen.add(gloss)
+                        wanted.append(gloss)
+            if not wanted:
+                continue
+            key = "Key: " + " · ".join(wanted)
+            above = hrow - 1
+            if above < 1:
+                continue
+            width = max(cols) if cols else 6
+            # The band above a header is not always merged from column A — the
+            # DOE's legend spans B..G, so anchoring on column 1 found an empty
+            # cell, then refused to write because the row was merged.
+            anchor = next(
+                (ws.cell(row=above, column=c) for c in range(1, width + 1)
+                 if isinstance(ws.cell(row=above, column=c).value, str)
+                 and ws.cell(row=above, column=c).value.strip()),
+                ws.cell(row=above, column=1))
+            existing = [ws.cell(row=above, column=c).value for c in range(1, width + 1)]
+            has_text = any(v not in (None, "") for v in existing)
+
+            if has_text:
+                # Almost always the section band that introduces the table —
+                # exactly where a reader looks for what the columns mean. Append
+                # to it rather than inserting a row, because inserting shifts
+                # every formula and chart range on the sheet.
+                if not isinstance(anchor.value, str) or "Key: " in anchor.value:
+                    continue
+                anchor.value = anchor.value.rstrip(" ·") + "  ·  " + key
+            else:
+                if any((above, c) in {(r, cc) for rng in ws.merged_cells.ranges
+                                      for r in range(rng.min_row, rng.max_row + 1)
+                                      for cc in range(rng.min_col, rng.max_col + 1)}
+                       for c in range(1, width + 1)):
+                    continue
+                ws.merge_cells(start_row=above, start_column=1,
+                               end_row=above, end_column=width)
+                anchor = ws.cell(row=above, column=1, value=key)
+                anchor.font = Font(italic=True, size=9, color="FF6B7280")
+            anchor.alignment = Alignment(wrap_text=True, vertical="center")
+            ws.row_dimensions[above].height = max(
+                14, 12 * (1 + len(str(anchor.value)) // 110))
+            n += 1
+    return n
+
+
 def polish_workbook(wb, landscape: bool = True) -> int:
     """Print setup, frozen headers and chart legibility, for every sheet.
 
@@ -128,7 +246,7 @@ def polish_workbook(wb, landscape: bool = True) -> int:
     a real change (patch_workbooks.py, to keep the embedded base64 stable) can
     tell whether this pass did anything.
     """
-    changed = 0
+    changed = explain_headers(wb)
     for ws in wb.worksheets:
         before = (ws.page_setup.fitToWidth, ws.page_setup.orientation, ws.freeze_panes)
 

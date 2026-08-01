@@ -480,6 +480,54 @@ def audit_example(path: Path, wb) -> None:
                      "that cannot be about any particular row is not guidance")
 
 
+def audit_jargon(path: Path, wb) -> None:
+    """A term of art in a column header has to be explained on the sheet.
+
+    The page makes every one of these clickable. A downloaded workbook cannot,
+    so the reader meets "MR of z", "A2 for this n" and "OBS 1" with nothing to
+    click and no way to guess — and every guidance check we had asked whether a
+    header EXISTS, never whether a person outside the discipline could read it.
+    The opaque-header rule above only fires at three characters or fewer, so
+    "SIGMA U" and "Effect 95% CI" sailed through it.
+
+    The glosses live in xlpolish, which is what writes them, so the check and
+    the fix cannot disagree about what counts as jargon.
+    """
+    from xlpolish import GLOSSES
+    book = path.name
+    for ws in wb.worksheets:
+        if any(ws.title.lower().startswith(g) for g in GUIDE_TABS):
+            continue
+        # Everything readable on the sheet, so a gloss anywhere counts.
+        prose = " ".join(
+            str(c.value) for row in ws.iter_rows() for c in row
+            if isinstance(c.value, str) and len(c.value) > 25).lower()
+        for hrow, first, last, cols in _blocks(ws):
+            for col, head in sorted(cols.items()):
+                if not (isinstance(head, str) and head.strip()):
+                    continue
+                lab = head.strip().lower()
+                for term in GLOSSES:
+                    t = term.lower()
+                    if not (lab == t or lab.startswith(t + " ")
+                            or lab.endswith(" " + t) or f" {t} " in lab):
+                        continue
+                    # Ask for the canonical gloss verbatim. Guessing at the
+                    # shape of an explanation ("term =", "term /") reported the
+                    # Xbar-R sheet as unexplained while the explanation sat two
+                    # rows above the header, in a wording the guess did not
+                    # anticipate. The fix writes GLOSSES[term]; the check looks
+                    # for GLOSSES[term]; neither can drift from the other.
+                    if GLOSSES[term].lower() in prose:
+                        continue
+                    fail(book, "JARGON",
+                         f"{ws.title}!{get_column_letter(col)}{hrow} — column headed "
+                         f"{head.strip()!r} uses {term!r} and nothing on the sheet says "
+                         "what it means; on the page it would be clickable, in Excel "
+                         "it is not")
+                    break
+
+
 def _na_ok(book: str, where: str) -> bool:
     """Is this cell one of the marker columns that is #N/A on purpose?"""
     import re as _re
@@ -696,6 +744,7 @@ def main() -> int:
         audit_guided(path, wb)
         guidance = 2 if len(fails) == before else 1
         audit_example(path, wb)
+        audit_jargon(path, wb)
         charts += n
         if rubric:
             graded += audit_rubric(path, wb, guidance)
