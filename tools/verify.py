@@ -457,6 +457,28 @@ def test_numeric_other() -> None:
               "the sheet says so when the baseline window exceeds the data",
               repr(warn_txt))
 
+    # The breakeven chart must agree with the NPV cell on the same screen. It
+    # was hardwired to four points while "Years to model" is validated 1-10, so
+    # a five-year model showed $196,620 on the chart and $400,918 in the cell
+    # labelled NET PRESENT VALUE.
+    for yrs in (3, 5, 10):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td) / CALC
+            shutil.copyfile(TEMPLATES / CALC, tmp)
+            wb = load_workbook(tmp)
+            wb["9 ROI and payback"]["B7"] = yrs
+            wb.save(tmp)
+            sol = _engine(tmp).calculate()
+            last = None
+            for r in range(21, 32):
+                v = _read(sol, CALC, "9 ROI and payback", f"B{r}")
+                if isinstance(v, (int, float)):
+                    last = v
+            npv = _read(sol, CALC, "9 ROI and payback", "B15")
+            check(approx(last, npv, 1e-4),
+                  f"ROI: the chart's last point equals NPV at {yrs} years",
+                  f"chart {last!r} vs NPV {npv!r}")
+
     # VSM: "% of lead time" must divide by lead time, not by waiting time.
     src = TEMPLATES / "10-value-stream-map.xlsx"
     with tempfile.TemporaryDirectory() as td:

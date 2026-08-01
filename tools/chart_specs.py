@@ -71,7 +71,8 @@ class Sheet:
 
 
 def _bar(ws, title, cats, vals, anchor, colours=None, horizontal=False,
-         fmt=None, height=7.5, width=15, labels=True, gap=60, name=None):
+         fmt=None, height=7.5, width=15, labels=True, gap=60, name=None,
+         ranked=False):
     ch = BarChart()
     ch.type = "bar" if horizontal else "col"
     ch.style = 10
@@ -87,11 +88,15 @@ def _bar(ws, title, cats, vals, anchor, colours=None, horizontal=False,
         ch.series[0].tx = SeriesLabel(v=name)
     ch.x_axis.delete = False
     ch.y_axis.delete = False
-    if horizontal:
+    if horizontal and ranked:
         # Excel draws category 1 at the BOTTOM of a horizontal bar chart, so a
-        # ranked list reads upside down. Flip the CATEGORY axis — which for a
-        # bar chart is x_axis, not y_axis; reversing y_axis runs the values
-        # from 300 down to 0 and moves the labels to the wrong side.
+        # RANKED list reads upside down. Flip the CATEGORY axis — which for a
+        # bar chart is x_axis, not y_axis.
+        #
+        # Only for rankings. This was applied to every horizontal bar and hit
+        # the DPMO chart, which is a SCALE: it turned the sigma ladder upside
+        # down so 2 sigma sat at the top, and pinned "YOU" below 6 sigma while
+        # it sits numerically between 3 and 4.
         ch.x_axis.scaling.orientation = "maxMin"
     if fmt:
         ch.y_axis.numFmt = fmt
@@ -347,7 +352,7 @@ def xy_matrix(wb) -> int:
     # the mean-line feed this chart used to carry is gone; clear it rather than
     # leaving an orphaned column of 231s beside the ranked block
     for r in range(14, 37):
-        for c in (15,):
+        for c in (10, 15):          # J is where the mean feed actually lived
             cell = sh.ws.cell(row=r, column=c)
             if cell.__class__.__name__ != "MergedCell" and cell.value is not None:
                 cell.value = None
@@ -359,7 +364,7 @@ def xy_matrix(wb) -> int:
          Reference(ws, min_col=13, min_row=15, max_row=14 + TOP_N),
          Reference(ws, min_col=14, min_row=15, max_row=14 + TOP_N),
          "Q14", horizontal=True, height=9, width=17, labels=False,
-         name="Weighted total", colours=rank_colours(TOP_N))
+         name="Weighted total", colours=rank_colours(TOP_N), ranked=True)
     return sh.changed
 
 
@@ -461,7 +466,7 @@ def solution_selection(wb) -> int:
          Reference(ws, min_col=17, min_row=14, max_row=13 + TOP_N),
          Reference(ws, min_col=18, min_row=14, max_row=13 + TOP_N),
          "U13", horizontal=True, height=9, width=17, labels=False,
-         name="Weighted score", colours=rank_colours(TOP_N))
+         name="Weighted score", colours=rank_colours(TOP_N), ranked=True)
     return sh.changed
 
 
@@ -626,18 +631,25 @@ def calculators(wb) -> int:
     sh.put(20, 1, "Year", bold=True)
     sh.put(20, 2, "Cumulative", bold=True)
     sh.put(20, 3, "Breakeven", bold=True)
+    # The chart was hardwired to four points while "Years to model" is validated
+    # 1-10 and the NPV cell computes across the whole horizon. Set it to 5 and
+    # NPV read $400,918 while the chart's last point stayed at $196,620 — a
+    # $204k disagreement between a chart and the cell labelled NET PRESENT VALUE
+    # on the same screen. It now follows the input, and gaps beyond it with
+    # NA() so the line stops rather than dropping to zero.
     sh.put(21, 1, "Year 0")
     sh.put(21, 2, "=-B5", fmt='"$"#,##0')
     sh.put(21, 3, 0, fmt='"$"#,##0')
-    for i in range(1, 4):
+    for i in range(1, 11):
         r = 21 + i
         sh.put(r, 1, f"Year {i}")
-        sh.put(r, 2, f"=B{r - 1}+B{9 + i}", fmt='"$"#,##0')
-        sh.put(r, 3, 0, fmt='"$"#,##0')
+        sh.put(r, 2, f'=IF({i}>$B$7,NA(),B{r - 1}+IFERROR($B$6/(1+$B$8)^{i},0))',
+               fmt='"$"#,##0')
+        sh.put(r, 3, f'=IF({i}>$B$7,NA(),0)', fmt='"$"#,##0')
     _line(sh.ws, "Cumulative discounted position — it crosses zero at payback",
-          Reference(sh.ws, min_col=1, min_row=21, max_row=24),
-          [(Reference(sh.ws, min_col=2, min_row=21, max_row=24), "Cumulative", BLUE, False, True),
-           (Reference(sh.ws, min_col=3, min_row=21, max_row=24), "Breakeven", RED, True, False)],
+          Reference(sh.ws, min_col=1, min_row=21, max_row=31),
+          [(Reference(sh.ws, min_col=2, min_row=21, max_row=31), "Cumulative", BLUE, False, True),
+           (Reference(sh.ws, min_col=3, min_row=21, max_row=31), "Breakeven", RED, True, False)],
           "E4", fmt='"$"#,##0', height=9, width=18)
     changed += sh.changed
     return changed
