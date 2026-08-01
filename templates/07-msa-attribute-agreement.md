@@ -22,6 +22,14 @@
 
 
 
+
+
+
+
+
+
+
+
 **Measurement being validated:** <QA scoring / disposition coding / intent tagging / severity classification>
 
 ## 1. Study design

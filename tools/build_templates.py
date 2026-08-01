@@ -1302,6 +1302,14 @@ def baseline_input(ws, sheet, width, first, last):
     ws.merge_cells(start_row=3, start_column=3, end_row=3, end_column=width)
     ws.cell(row=3, column=3, value="points — the baseline window. Re-baseline when you have "
             "deliberately changed the process, never because the chart is signalling.").font = F_NOTE
+    # rows 1-2 are the merged title block and row 3 columns 3..width carry the
+    # merged note, so the warning sits just past the note's right edge
+    w = ws.cell(row=3, column=width + 1)
+    w.value = ('=IF(COUNT($B$%d:$B$%d)=0,"",IF($B$3>COUNT($B$%d:$B$%d),'
+               '"only "&COUNT($B$%d:$B$%d)&" points — limits use those",""))'
+               % (first, last, first, last, first, last))
+    w.font = Font(bold=True, size=9, color="FFC0392B")
+    SHOWN[(sheet, "%s3" % get_column_letter(width + 1))] = ""
     SHOWN[(sheet, "B3")] = str(BASE_PTS)
     return "$B$3"
 
@@ -1341,9 +1349,9 @@ def control_charts():
     baseline_input(ws, "I-MR", 9, 14, 37)
     _spc_stats(ws, [
         ("Points with data", "=COUNT(B14:B37)", "0", "Total points plotted. The limits use only the baseline window above."),
-        ("Centre line (mean)", '=SUMIF($T$14:$T$37,"<="&$B$3,$B$14:$B$37)/$B$3', "#,##0.00",
+        ("Centre line (mean)", '=IFERROR(SUMIF($T$14:$T$37,"<="&$B$3,$B$14:$B$37)/COUNTIFS($T$14:$T$37,"<="&$B$3,$B$14:$B$37,">"&-9.9E+307),"")', "#,##0.00",
          "The process average over the BASELINE window, not the whole series."),
-        ("Average moving range", '=SUMIF($T$15:$T$37,"<="&$B$3,$C$15:$C$37)/($B$3-1)', "#,##0.00", "Mean gap between consecutive points — this is your short-term variation."),
+        ("Average moving range", '=IFERROR(SUMIF($T$15:$T$37,"<="&$B$3,$C$15:$C$37)/COUNTIFS($T$15:$T$37,"<="&$B$3,$C$15:$C$37,">"&-9.9E+307),"")', "#,##0.00", "Mean gap between consecutive points — this is your short-term variation."),
         ("Sigma estimate", "=B7/1.128", "#,##0.00", "MR-bar / 1.128. Uses only point-to-point movement, so a slow drift does not widen the limits."),
         ("Upper control limit", "=B6+2.66*B7", "#,##0.00", "2.66 = 3 / 1.128. Same thing as mean + 3 sigma."),
         ("Lower control limit", "=B6-2.66*B7", "#,##0.00", "If this goes below zero on a count, treat the lower limit as zero."),
@@ -1427,7 +1435,7 @@ def control_charts():
         ("Overall proportion (p-bar)",
          '=SUMIF($T$14:$T$37,"<="&$B$3,$C$14:$C$37)/SUMIF($T$14:$T$37,"<="&$B$3,$B$14:$B$37)', "0.00%",
          "Total defectives / total opportunities — NOT the average of the daily percentages."),
-        ("Average moving range of z", '=SUMIF($T$15:$T$37,"<="&$B$3,$G$15:$G$37)/($B$3-1)', "#,##0.000",
+        ("Average moving range of z", '=IFERROR(SUMIF($T$15:$T$37,"<="&$B$3,$G$15:$G$37)/COUNTIFS($T$15:$T$37,"<="&$B$3,$G$15:$G$37,">"&-9.9E+307),"")', "#,##0.000",
          "How much the standardised points move period to period, over the baseline window."),
         ("Sigma z (Laney adjustment)", "=MAX(1,B6/1.128)", "#,##0.000",
          "This is the whole trick. Sigma z = 1 means no overdispersion and this collapses to an ordinary p-chart. "
@@ -1504,7 +1512,7 @@ def control_charts():
         ("Overall rate (u-bar)",
          '=SUMIF($T$14:$T$37,"<="&$B$3,$C$14:$C$37)/SUMIF($T$14:$T$37,"<="&$B$3,$B$14:$B$37)', "#,##0.0000",
          "Total defects / total units. Not the average of the daily rates."),
-        ("Average moving range of z", '=SUMIF($T$15:$T$37,"<="&$B$3,$G$15:$G$37)/($B$3-1)', "#,##0.000",
+        ("Average moving range of z", '=IFERROR(SUMIF($T$15:$T$37,"<="&$B$3,$G$15:$G$37)/COUNTIFS($T$15:$T$37,"<="&$B$3,$G$15:$G$37,">"&-9.9E+307),"")', "#,##0.000",
          "Movement of the standardised points, over the baseline window."),
         ("Sigma z (Laney adjustment)", "=MAX(1,B6/1.128)", "#,##0.000",
          "1.0 means an ordinary u-chart was fine. Above that, it was not. It never drops below 1 — the adjustment "
@@ -1575,9 +1583,9 @@ def control_charts():
     baseline_input(ws, "Xbar-R", 12, 14, 37)
     _spc_stats(ws, [
         ("Subgroup size (n)", "=COUNT(B14:F14)", "0", "Change how many observation columns you fill and this follows."),
-        ("Grand average (X-double-bar)", '=SUMIF($T$14:$T$37,"<="&$B$3,$G$14:$G$37)/$B$3', "#,##0.00",
+        ("Grand average (X-double-bar)", '=IFERROR(SUMIF($T$14:$T$37,"<="&$B$3,$G$14:$G$37)/COUNTIFS($T$14:$T$37,"<="&$B$3,$G$14:$G$37,">"&-9.9E+307),"")', "#,##0.00",
          "Average of the subgroup averages over the BASELINE window."),
-        ("Average range (R-bar)", '=SUMIF($T$14:$T$37,"<="&$B$3,$H$14:$H$37)/$B$3', "#,##0.00",
+        ("Average range (R-bar)", '=IFERROR(SUMIF($T$14:$T$37,"<="&$B$3,$H$14:$H$37)/COUNTIFS($T$14:$T$37,"<="&$B$3,$H$14:$H$37,">"&-9.9E+307),"")', "#,##0.00",
          "Average within-subgroup spread over the baseline window."),
         ("A2 for this n", "=IFERROR(LOOKUP(B5,{2;3;4;5;6;7;8;9;10},{1.880;1.023;0.729;0.577;0.483;0.419;0.373;0.337;0.308}),\"n out of range\")",
          "#,##0.000", "Standard constant. Above n=8 most people switch to Xbar-S."),

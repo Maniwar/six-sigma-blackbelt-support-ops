@@ -432,6 +432,31 @@ def test_numeric_other() -> None:
         check(isinstance(v, (int, float)),
               f"{sheet}!{cell} still computes with a frozen baseline", repr(v))
 
+    # The baseline divisor must be what SUMIF actually summed, not the window
+    # the user asked for. Dividing 15 pasted points by a baseline of 20 put the
+    # centre line 25% low and every limit with it, silently — a defect the
+    # freeze introduced and the picker tab itself anticipates by warning that
+    # 20-25 points is the working minimum.
+    src = TEMPLATES / "27-control-charts.xlsx"
+    vals = [408, 415, 402, 431, 419, 396, 424, 410, 438, 405, 417, 429,
+            401, 422, 413, 407, 435, 398, 420, 411, 442, 404, 416, 428]
+    with tempfile.TemporaryDirectory() as td:
+        tmp = Path(td) / src.name
+        shutil.copyfile(src, tmp)
+        wb = load_workbook(tmp)
+        ws = wb["I-MR"]
+        for i in range(15, 24):                 # leave only 15 points
+            ws.cell(row=14 + i, column=2).value = None
+        wb.save(tmp)
+        sol = _engine(tmp).calculate()
+        check(approx(_read(sol, src.name, "I-MR", "B6"), sum(vals[:15]) / 15),
+              "the baseline divides by the points that exist, not the window requested",
+              repr(_read(sol, src.name, "I-MR", "B6")))
+        warn_txt = _read(sol, src.name, "I-MR", "J3")
+        check(isinstance(warn_txt, str) and "only 15" in warn_txt,
+              "the sheet says so when the baseline window exceeds the data",
+              repr(warn_txt))
+
     # VSM: "% of lead time" must divide by lead time, not by waiting time.
     src = TEMPLATES / "10-value-stream-map.xlsx"
     with tempfile.TemporaryDirectory() as td:

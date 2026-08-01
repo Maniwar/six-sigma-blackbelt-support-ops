@@ -22,6 +22,14 @@
 
 
 
+
+
+
+
+
+
+
+
 **The two-key rule:** a root cause is accepted only with a statistical result **and** a
 described physical mechanism verified at the gemba. Statistics without mechanism is
 correlation. Mechanism without statistics is opinion.

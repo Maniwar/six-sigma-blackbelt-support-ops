@@ -185,6 +185,10 @@ EXAMPLE = {
         "% of gap explained": "79%",
     },
     "04-operational-definition": {
+        '**Owner**': 'A. Okafor, Billing Ops Manager — owns the definition, not just the number',
+        '**Known limitations**': 'Excludes chat until the channel field is backfilled; understates by roughly 0.4 points',
+        '**Related metrics it must reconcile with**': 'Contact rate (same denominator) and the Ops weekly reopen tile (currently 1.8 pts apart — see the lineage doc)',
+        'Disagreements and resolution': 'Reporting counted same-reason reopens only; operations wanted any-reason. Resolved 2026-04-24 in favour of any-reason, and the baseline was recut.',
         "**Metric name**": "7-day reopen rate, billing adjustments",
         "**Plain-language description**": "Share of resolved billing tickets the customer reopens within 7 days",
         "**What is counted (numerator)**": "Tickets with a reopen event 0<t<=168h after first Resolved",
@@ -239,6 +243,10 @@ EXAMPLE = {
         "Standard shown to appraisers?": "No",
     },
     "08-msa-gage-rr": {
+        'Total Gage R&R': '28.4 | 8.1 | Marginal — usable for ranking, not for judging an individual agent',
+        '— Repeatability (equipment)': '11.2 | 3.2 | Acceptable',
+        '— Reproducibility (appraiser)': '26.1 | 7.4 | The analysts disagree more than the tool does',
+        'Part-to-part': '95.9 | 27.3 | Good spread across the sampled range',
         'Total Gage R&R': '28.4 | 8.1 | Marginal — investigate before relying on it',
         '— Repeatability (equipment)': '11.2 | 3.2 | Acceptable',
         '— Reproducibility (appraiser)': '26.1 | 7.4 | The analysts disagree more than the tool does',
@@ -260,6 +268,17 @@ EXAMPLE = {
         "Part-to-part": "95.9%",
     },
     "09-baseline-document": {
+        'Normality assessment (probability plot, not just the p-value)': 'Probability plot near-linear; Anderson-Darling p = 0.03, which at 12 weekly points is not a concern',
+        'Bimodality present? If so, resolved by stratifying on': 'No. Checked by stratifying on site and on tenure band — one distribution in both',
+        'Rolled throughput yield across tiers': '55.6% — first-pass yield compounds badly across four steps',
+        'Black Belt': 'M. Berenji | | 2026-06-05',
+        'Process owner': 'A. Okafor | | 2026-06-05',
+        '**Finance partner**': 'J. Lindqvist | | 2026-06-08',
+        'Master Black Belt': 'S. Iyer | | 2026-06-08',
+        'DPU / DPO / DPMO': '0.142 / 0.0284 / 28,400',
+        'Opportunities per unit (program standard)': '5 — fixed at programme level, never renegotiated mid-project',
+        'Z from data (long-term)': '1.90',
+        'Sigma level (with 1.5\u03c3 shift)': '3.40',
         'UCL / LCL': '17.1% / 11.3%',
         'Special causes found': 'One week (w/c 2026-02-16) above the UCL — a billing platform release',
         'Special causes excluded (and why)': 'None excluded. The release is a real process condition and will recur.',
@@ -314,6 +333,9 @@ EXAMPLE = {
         "End date": "2026-07-27 (8 whole weeks)",
     },
     "18-handover-and-benefit-validation": {
+        'Master Black Belt': 'S. Iyer | | 2026-11-20',
+        '90-day': '2027-02-12 | A. Okafor | 7.9% | Held | No action',
+        '**180-day re-audit**': '2027-05-14 | A. Okafor | 8.4% | Drifting | Reopen: check whether the deferred-close rule is still enforced after the platform upgrade',
         'Contact-mix chi-square, baseline vs post (p)': '0.38 — no material mix shift',
         'Mix-adjusted effect': '-4.7 points (unadjusted -4.9)',
         'Baseline metric': '14.2%',
@@ -347,6 +369,11 @@ EXAMPLE = {
         "**Last step** (process ends when…)": "the adjustment has posted and the customer has confirmed",
     },
     "03-voc-ctq-tree": {
+        'Survey verbatims': 'All billing CSAT responses | Census, 12 weeks | 2,180 | Insights team | Apr-Jun',
+        'Contact transcripts': 'All billing contacts | Topic model, then 200 read by hand | 8,400 | Black Belt | May',
+        'Customer interviews': 'Customers with a disputed charge | Purposive, 6 sessions | 6 | Black Belt | May',
+        'Complaint / escalation review': 'All formal billing complaints | Census, 12 weeks | 61 | Complaints team | Apr-Jun',
+        'Churn exit reasons': 'Cancelling accounts | Census | 340 | Retention | Apr-Jun',
         'Survey verbatims': 'CSAT free text, billing | All billing CSAT responses | Census, 12 weeks | 2,180 | Insights | Apr-Jun | Only 14% respond — survivorship',
         'Contact transcripts': 'Chat and email, billing queue | All contacts | Topic model, then 200 read by hand | 8,400 | Black Belt | May | Voice excluded, so phone-only issues are invisible',
         'Customer interviews': 'Customers with a disputed charge | Reopened tickets | Purposive, 6 sessions | 6 | Black Belt | May | Recruited from reopens, so biased toward failure',
@@ -395,16 +422,26 @@ def fill_row(line: str, values: dict) -> str:
     if not label or label.startswith("-") or label.lower() == "field":
         return line
     body = [c.strip() for c in cells[2:-1]]
-    if any(body):                      # already filled in
-        return line
     val = values.get(label)
-    if not val:
-        return line
-    parts = [p.strip() for p in val.split("|")]
-    while len(parts) < len(body):
-        parts.append("")
-    filled = " | ".join(f"*{p}*" if p else "" for p in parts[:len(body)])
-    return f"| {cells[1].strip()} | {filled} |"
+    if not val or not any(c == "" for c in body):
+        return line                    # nothing to say, or nothing left to fill
+    if any(c.startswith("*") for c in body):
+        return line                    # already carries an example — re-running
+                                       # must not shift the columns along again
+    # Fill the BLANKS in order and leave anything already there alone. Skipping
+    # a row because one cell was pre-filled left every wide table empty — the
+    # row label sits in the second column on those, so they always looked full.
+    # keep empty parts: a signature row is "Name | | Date", and dropping the
+    # blank shifted the date into the signature column
+    parts = [x.strip() for x in val.split("|")]
+    out, i = [], 0
+    for c in body:
+        if c == "" and i < len(parts):
+            out.append("*%s*" % parts[i] if parts[i] else "")
+            i += 1
+        else:
+            out.append(c)
+    return "| %s | %s |" % (cells[1].strip(), " | ".join(out))
 
 
 def main() -> int:
@@ -415,7 +452,12 @@ def main() -> int:
             print(f"  missing: {path.name}")
             continue
         text = path.read_text(encoding="utf-8")
-        if MARK in text:                              # rewrite, do not stack
+        # Filling tables is a ONE-TIME operation. It writes into whichever cells
+        # are still blank, so running it twice walks the values one column along
+        # and puts the date in the signature box. The how-to block is safe to
+        # rewrite; the tables are not.
+        done = MARK in text
+        if done:
             text = re.sub(re.escape(MARK) + r".*?\n---\n", "", text, count=1, flags=re.S)
         lines = text.split("\n")
         # the block goes after the H1 title
@@ -423,7 +465,7 @@ def main() -> int:
             if line.startswith("# "):
                 lines.insert(i + 1, "\n" + block(name))
                 break
-        values = EXAMPLE.get(name, {})
+        values = {} if done else EXAMPLE.get(name, {})
         if values:
             lines = [fill_row(ln, values) if ln.startswith("|") else ln for ln in lines]
         out = "\n".join(lines)
