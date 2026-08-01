@@ -238,6 +238,221 @@ def audit_svg(book: str, title: str, svg_text: str) -> None:
 # -------------------------------------------------------------------- render
 
 
+# ------------------------------------------------------- the Word export
+# verify.py exercises the business case's HTML and its workbook, and stops at
+# the docx marker because the Word writer needs a DOM and node has not got one.
+# So nothing ever ran it, and the charts had been missing from every Word copy
+# of the business case: emBar draws a bar as an empty coloured div, an empty
+# element carries no text, and the writer only ever collected text. Finance got
+# four charts' worth of labels and numbers with a blank column down the middle.
+# The only honest way to test it is the browser the readers use.
+WORD_JS = """
+var base={vol:480000,cpc:6.8,rate:14.0,hr:38,occ:82,aht:420,ahtsave:14,agents:120,
+  shrink:32,shrinktgt:28,target:8.0,harvest:'reduce',realz:80,years:3,disc:10,
+  bbmonths:9,bbcost:120000,training:35000,eng:60000,tooling:8000};
+var gross=195840, real=gross*0.8, inv=223000, npv=196620;
+var m={gross:gross,real:real,inv:inv,npv:npv,pb:inv/real,roi:1,fte:1,realz:0.8,
+       detail:[['Improvement','a to b','6.0 pts']]};
+var ctx={m:m,V:base,S:{arch:'rate'},
+  a:{n:'Reduce rework and reopens',d:'d',metric:'Reopen rate',kind:'rate'}};
+var X=window.__X, html=X.bizHTML(ctx), bytes=X.DOCX.build('Business case', html);
+function emit(id, text){
+  var d=document.createElement('div'); d.id=id; d.textContent=text;
+  document.body.appendChild(d);
+}
+emit('__out', btoa(Array.from(bytes,function(b){return String.fromCharCode(b);}).join('')));
+
+/* And what the reader actually sees. A bar's length is only meaningful next to
+   the other bars, so measure them where they are laid out rather than trusting
+   the percentages: the ones that cross zero are nested inside a half-width
+   cell, and reading a percentage off that markup is what hid the bug. */
+var host=document.createElement('div');
+host.style.cssText='position:absolute;left:-9999px;top:0;width:900px';
+host.innerHTML=html; document.body.appendChild(host);
+var geo=[];
+[].slice.call(host.querySelectorAll('table[data-chart]')).forEach(function(t){
+  var rows=[].slice.call(t.rows).map(function(tr){
+    var cell=tr.cells[1], bar=cell.querySelector('div[style*="background"]');
+    var b=bar?bar.getBoundingClientRect():null, c=cell.getBoundingClientRect();
+    return {label:(tr.cells[0].textContent||'').trim(),
+            value:(tr.cells[2].textContent||'').trim(),
+            x: b?b.left-c.left:0, w: b?b.width:0, cw:c.width};
+  });
+  geo.push(rows);
+});
+host.remove();
+emit('__geo', JSON.stringify(geo));
+"""
+# Handed out where they are defined: the export code lives inside the page's
+# own IIFE, so there is nothing to reach from the outside.
+WORD_ANCHOR = "return {build:build};\n})();"
+
+
+def word_document() -> tuple[str, list] | None:
+    """document.xml and the on-screen bar geometry, from the page's real code."""
+    import base64
+    import tempfile
+    import zipfile
+
+    if not Path(CHROME).exists():
+        return None
+    src = HTML.read_text(encoding="utf-8")
+    if src.count(WORD_ANCHOR) != 1:
+        check(False, "[WORD] the docx module is where the harness expects it",
+              "the anchor moved, so the Word export is going untested")
+        return None
+    src = src.replace(WORD_ANCHOR, WORD_ANCHOR + "\nwindow.__X={DOCX:DOCX,bizHTML:bizHTML};")
+    # The first </body> in the file is inside a JS string, not the document's.
+    head, sep, tail = src.rpartition("</body>")
+    src = head + "<script>window.addEventListener('load',function(){" + WORD_JS + "});</script>" + sep + tail
+    with tempfile.TemporaryDirectory() as td:
+        page = Path(td) / "page.html"
+        page.write_text(src, encoding="utf-8")
+        r = subprocess.run(
+            [CHROME, "--headless", "--disable-gpu", "--virtual-time-budget=9000",
+             "--dump-dom", f"file://{page}"], capture_output=True, text=True, timeout=180)
+    m = re.search(r'<div id="__out">([A-Za-z0-9+/=]*)</div>', r.stdout)
+    g = re.search(r'<div id="__geo">(.*?)</div>', r.stdout, re.S)
+    if not m or not m.group(1) or not g:
+        check(False, "[WORD] the business case exports as a Word document",
+              "the page produced no bytes")
+        return None
+    geo = json.loads(g.group(1).replace("&quot;", '"').replace("&amp;", "&"))
+    with tempfile.TemporaryDirectory() as td:
+        f = Path(td) / "c.docx"
+        f.write_bytes(base64.b64decode(m.group(1)))
+        try:
+            return zipfile.ZipFile(f).read("word/document.xml").decode(), geo
+        except Exception as ex:                                  # noqa: BLE001
+            check(False, "[WORD] the exported document is a readable package", str(ex))
+            return None
+
+
+W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+
+
+def _bars(tbl: ET.Element) -> list[tuple[int, int, str]]:
+    """(offset, length, fill) for every bar drawn inside one chart table."""
+    out = []
+    for tr in tbl.findall(f"{W}tr"):
+        for tc in tr.findall(f"{W}tc"):
+            inner = tc.find(f"{W}tbl")
+            if inner is None:
+                continue
+            off, length, fill = 0, 0, ""
+            for cell in inner.find(f"{W}tr").findall(f"{W}tc"):
+                pr = cell.find(f"{W}tcPr")
+                w = int(pr.find(f"{W}tcW").get(f"{W}w"))
+                shd = pr.find(f"{W}shd")
+                if shd is None:
+                    if not length:
+                        off += w
+                else:
+                    length, fill = w, shd.get(f"{W}fill")
+            out.append((off, length, fill))
+    return out
+
+
+def _money(s: str) -> float:
+    """The number a reader sees beside a bar. '−$39,168' is negative."""
+    neg = s.strip().startswith(("−", "-"))
+    digits = re.sub(r"[^0-9.]", "", s)
+    return (-1 if neg else 1) * float(digits or 0)
+
+
+def audit_screen_bars(geo: list) -> None:
+    """A bar has to be as long as the number it stands for, next to its siblings.
+
+    Bars that cross zero are drawn inside one half of a split cell, so their CSS
+    width is a percentage of that half. It used to be written out as a
+    percentage of the whole axis, which made every negative bar short by the
+    ratio of the halves — the realisation haircut, a fifth of the gross, drew at
+    a thirtieth of it. Only measuring the laid-out boxes catches that.
+    """
+    for i, rows in enumerate(geo, 1):
+        vals = [_money(r["value"]) for r in rows]
+        span = (max(vals + [0]) - min(vals + [0])) or 1
+        cw = rows[0]["cw"] or 1
+        bad = []
+        for r, v in zip(rows, vals):
+            want = abs(v) / span * cw
+            if abs(r["w"] - want) > max(3.0, want * 0.04):
+                bad.append(f"{r['label']} {r['value']} drew {r['w']:.0f}px, "
+                           f"should be {want:.0f}px")
+        check(not bad, f"[SCREEN] chart {i}: every bar is as long as its number",
+              "; ".join(bad[:3]))
+        # Positive and negative bars are laid out in different cells, so a
+        # common zero line is not something the markup gives you for free.
+        zeros = {round(r["x"] + r["w"] if v < 0 else r["x"]) for r, v in zip(rows, vals) if v}
+        check(len(zeros) == 1, f"[SCREEN] chart {i}: the bars share one zero line",
+              f"zero lands at {sorted(zeros)}")
+
+
+def audit_word_charts() -> None:
+    got = word_document()
+    if got is None:
+        return
+    doc, geo = got
+    check(len(geo) == 4, "[SCREEN] the business case draws all four charts",
+          f"found {len(geo)}")
+    if len(geo) == 4:
+        audit_screen_bars(geo)
+    root = ET.fromstring(doc)
+    body = root.find(f"{W}body")
+    # A chart table is the one the writer left unbordered.
+    charts = [t for t in body.findall(f"{W}tbl")
+              if t.find(f"{W}tblPr/{W}tblBorders") is None]
+    check(len(charts) == 4, "[WORD] all four business-case charts reach the document",
+          f"found {len(charts)}")
+    if len(charts) != 4:
+        return
+
+    # Split equally, a three-column chart gives the bars a third of the page and
+    # the labels a third they do not need.
+    for i, tbl in enumerate(charts):
+        cols = [int(g.get(f"{W}w")) for g in tbl.findall(f"{W}tblGrid/{W}gridCol")]
+        check(len(cols) == 3 and cols[1] > cols[0] > cols[2],
+              f"[WORD] chart {i + 1} gives the page to the bars, not the labels", str(cols))
+
+    total = 0
+    for i, tbl in enumerate(charts):
+        rows = tbl.findall(f"{W}tr")
+        bars = _bars(tbl)
+        # querySelectorAll used to reach through the nested bar tables, so each
+        # bar contributed a blank row of its own to the chart around it.
+        check(len(rows) == len(bars),
+              f"[WORD] chart {i + 1} has one row per bar and no phantom rows",
+              f"{len(rows)} rows against {len(bars)} bars")
+        check(all(b[1] > 0 for b in bars),
+              f"[WORD] chart {i + 1} draws a bar on every row",
+              f"{sum(1 for b in bars if not b[1])} row(s) came through empty")
+        total += len(bars)
+    check(total == 14, "[WORD] every bar in the business case is drawn",
+          f"{total} of 14")
+
+    # The bridge is gross, the haircut, and what is left. A negative bar has to
+    # finish exactly where the positive ones start, and lengths have to hold the
+    # ratio of the values they stand for: the haircut is a fifth of the gross,
+    # and it used to be drawn at a thirtieth of it.
+    bridge = _bars(charts[0])
+    if len(bridge) != 3:
+        check(False, "[WORD] the bridge chart still has its three bars", str(len(bridge)))
+        return
+    off, ln, fill = zip(*bridge)
+    check(fill == ("2F6FEB", "DC2626", "15A34A"),
+          "[WORD] the bridge keeps its gross / haircut / realised colours", str(fill))
+    zero = off[0]
+    check(off[1] + ln[1] == zero and off[2] == zero,
+          "[WORD] the bridge's bars share one zero line",
+          f"negative ends at {off[1] + ln[1]}, positives start at {off[0]}/{off[2]}")
+    check(abs(ln[1] / ln[0] - 0.2) < 0.02,
+          "[WORD] the haircut is drawn at a fifth of the gross, as it is",
+          f"ratio {ln[1] / ln[0]:.3f}")
+    check(abs(ln[2] / ln[0] - 0.8) < 0.02,
+          "[WORD] the realised bar is drawn at four fifths of the gross",
+          f"ratio {ln[2] / ln[0]:.3f}")
+
+
 def preview_page(entry: dict, css: str) -> str:
     pv = re.sub(r'class="xsheet"', 'class="xsheet on"', entry["preview"])
     return (
@@ -294,6 +509,7 @@ def main() -> int:
             charts += 1
 
     print(f"Looked at {charts} chart(s) across the previews.")
+    audit_word_charts()
     if "--no-render" not in sys.argv:
         n = render(tpls, css)
         if n:

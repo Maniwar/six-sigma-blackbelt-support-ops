@@ -65,6 +65,19 @@ class Sheet:
             c.fill = CALC
         return c
 
+    def clear(self, row, cols):
+        """Take out cells a moved block has left behind.
+
+        These eight workbooks are patched in place and never rebuilt, so a
+        header row that shifts down by one leaves its old copy sitting on the
+        sheet with nothing to remove it.
+        """
+        for c in cols:
+            cell = self.ws.cell(row=row, column=c)
+            if cell.value is not None:
+                cell.value = None
+                self.changed += 1
+
     def label(self, row, col, text):
         c = self.put(row, col, text, bold=True)
         c.alignment = Alignment(wrap_text=True, vertical="center")
@@ -344,7 +357,10 @@ def data_collection_plan(wb) -> int:
     # and the marker series puts them on it.
     sh.put(r0 + 1, 1, "Your alpha and your baseline rate, from the yellow cells above. "
                       "Halving the margin of error costs you four times the sample, "
-                      "which is why the last point of precision is the expensive one.",
+                      "which is why the last point of precision is the expensive one. "
+                      "Nothing in this block is for you to fill in, and YOU ARE HERE is "
+                      "blank on every row but the margin of error you asked for — that "
+                      "one point is the marker sitting on the curve.",
            note=True)
     sh.put(r0 + 2, 1, "Margin of error", bold=True)
     sh.put(r0 + 2, 2, "Sample needed", bold=True)
@@ -630,23 +646,35 @@ def calculators(wb) -> int:
     # 3 — the capability picture: your distribution against the SLA
     sh = Sheet(wb["3 SLA capability"])
     sh.label(19, 1, "Your resolution-time distribution against the SLA limit")
-    sh.put(20, 1, "Hours", bold=True)
-    sh.put(20, 2, "How often", bold=True)
-    sh.put(20, 3, "SLA limit", bold=True)
+    # Forty-one rows of formulas, one column of them blank almost all the way
+    # down, and nothing on the sheet saying what any of it was. A reader who
+    # cannot tell plumbing from content has to assume the blanks are cells they
+    # failed to fill in.
+    sh.put(20, 1, "Everything below is drawn by formula from the three numbers you typed "
+                  "above — there is nothing here to fill in. HOURS runs from four standard "
+                  "deviations below your average to four above. HOW OFTEN is the height of "
+                  "the curve at that point: a relative frequency, not a count of contacts. "
+                  "SLA LIMIT MARKER is deliberately blank on every row but the one your "
+                  "limit falls on — that single point is what draws the red line, and it "
+                  "moves when you change the limit.", note=True)
+    sh.clear(20, (2, 3))          # the old header row
+    sh.put(21, 1, "Hours", bold=True)
+    sh.put(21, 2, "How often", bold=True)
+    sh.put(21, 3, "SLA limit marker", bold=True)
     for i in range(41):
-        r = 21 + i
+        r = 22 + i
         sh.put(r, 1, f"=MAX(0,$B$6-4*$B$7)+({i}/40)*(8*$B$7)", fmt="0.00")
         sh.put(r, 2, f"=IFERROR(NORMDIST(A{r},$B$6,$B$7,FALSE),\"\")", fmt="0.0000")
         # 0 everywhere except the spike drew a RED LINE along the entire
         # baseline, and red is this repo's colour for a limit or a breach — so
         # the chart carried two red references. NA() leaves a gap instead.
-        sh.put(r, 3, f"=IF(ABS(A{r}-$B$5)<=(8*$B$7)/80,MAX($B$21:$B$61),NA())", fmt="0.0000")
+        sh.put(r, 3, f"=IF(ABS(A{r}-$B$5)<=(8*$B$7)/80,MAX($B$22:$B$62),NA())", fmt="0.0000")
     ch = _line(sh.ws, "Where you sit against the SLA — area past the red line is a breach",
-               Reference(sh.ws, min_col=1, min_row=21, max_row=61),
-               [(Reference(sh.ws, min_col=2, min_row=21, max_row=61),
+               Reference(sh.ws, min_col=1, min_row=22, max_row=62),
+               [(Reference(sh.ws, min_col=2, min_row=22, max_row=62),
                  "Your process", BLUE, False, False)],
                "E4", height=9, width=18, y_title="Relative frequency")
-    _vrule(ch, Reference(sh.ws, min_col=3, min_row=21, max_row=61), "SLA limit")
+    _vrule(ch, Reference(sh.ws, min_col=3, min_row=22, max_row=62), "SLA limit")
     changed += sh.changed
 
     # 4 — Little's Law, as a picture
@@ -719,28 +747,37 @@ def calculators(wb) -> int:
     # 9 — the breakeven chart Finance asks for
     sh = Sheet(wb["9 ROI and payback"])
     sh.label(19, 1, "Cumulative position in today's money")
-    sh.put(20, 1, "Year", bold=True)
-    sh.put(20, 2, "Cumulative", bold=True)
-    sh.put(20, 3, "Breakeven", bold=True)
+    sh.put(20, 1, "Chart data, calculated from your numbers above — nothing here is for you "
+                  "to fill in. CUMULATIVE starts at minus the investment and adds each "
+                  "year's benefit discounted back to today, so the year it first turns "
+                  "positive is your payback. BREAKEVEN is zero on every row on purpose: it "
+                  "is the line the cumulative has to cross. Rows past the horizon you set "
+                  "in 'Years to model' are blank rather than zero, so the chart stops "
+                  "there instead of diving to the floor.", note=True)
+    sh.clear(20, (2, 3))          # the old header row
+    sh.clear(21, (4,))            # and the note that used to sit beside Year 0
+    sh.put(21, 1, "Year", bold=True)
+    sh.put(21, 2, "Cumulative", bold=True)
+    sh.put(21, 3, "Breakeven", bold=True)
     # The chart was hardwired to four points while "Years to model" is validated
     # 1-10 and the NPV cell computes across the whole horizon. Set it to 5 and
     # NPV read $400,918 while the chart's last point stayed at $196,620 — a
     # $204k disagreement between a chart and the cell labelled NET PRESENT VALUE
     # on the same screen. It now follows the input, and gaps beyond it with
     # NA() so the line stops rather than dropping to zero.
-    sh.put(21, 1, "Year 0")
-    sh.put(21, 2, "=-B5", fmt='"$"#,##0')
-    sh.put(21, 3, 0, fmt='"$"#,##0')
+    sh.put(22, 1, "Year 0")
+    sh.put(22, 2, "=-B5", fmt='"$"#,##0')
+    sh.put(22, 3, 0, fmt='"$"#,##0')
     for i in range(1, 11):
-        r = 21 + i
+        r = 22 + i
         sh.put(r, 1, f"Year {i}")
         sh.put(r, 2, f'=IF({i}>$B$7,NA(),B{r - 1}+IFERROR($B$6/(1+$B$8)^{i},0))',
                fmt='"$"#,##0')
         sh.put(r, 3, f'=IF({i}>$B$7,NA(),0)', fmt='"$"#,##0')
     _line(sh.ws, "Cumulative discounted position — it crosses zero at payback",
-          Reference(sh.ws, min_col=1, min_row=21, max_row=31),
-          [(Reference(sh.ws, min_col=2, min_row=21, max_row=31), "Cumulative", BLUE, False, True),
-           (Reference(sh.ws, min_col=3, min_row=21, max_row=31), "Breakeven", RED, True, False)],
+          Reference(sh.ws, min_col=1, min_row=22, max_row=32),
+          [(Reference(sh.ws, min_col=2, min_row=22, max_row=32), "Cumulative", BLUE, False, True),
+           (Reference(sh.ws, min_col=3, min_row=22, max_row=32), "Breakeven", RED, True, False)],
           "E4", fmt='"$"#,##0', height=9, width=18)
     changed += sh.changed
     return changed

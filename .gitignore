@@ -11,3 +11,6 @@ venv/
 
 # Contact sheets from tools/qa_visual.py — regenerated on demand, never shipped
 .qa-visual/
+
+# Work parked mid-review — never shipped, never committed
+.wip/

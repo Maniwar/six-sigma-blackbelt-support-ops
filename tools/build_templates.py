@@ -2589,7 +2589,12 @@ def gage_rr():
     cat = Reference(ws, min_col=1, min_row=vr["Total Gage R&R"], max_row=vr["Part-to-part"])
     val = Reference(ws, min_col=5, min_row=vr["Total Gage R&R"], max_row=vr["Part-to-part"])
     lim = n + 4
-    ws.cell(row=lim, column=1, value="30% line").font = F_NOTE
+    # "30% line" beside four cells reading 30% told the reader nothing about why
+    # a number they never entered was repeated four times across their results.
+    ws.cell(row=lim, column=1,
+            value="30% reference line — chart plumbing, not a result. The same number "
+                  "repeated once per bar is what lets the chart draw one flat line "
+                  "across all four of them.").font = F_NOTE
     for i in range(4):
         c = ws.cell(row=lim, column=2 + i, value=0.30)
         c.number_format = "0%"

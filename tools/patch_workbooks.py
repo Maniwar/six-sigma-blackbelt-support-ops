@@ -454,7 +454,7 @@ NOTES: list[tuple[str, str, str, str]] = [
      "NPV = net present value: every year's benefit brought back to today's money, minus the "
      "investment. Above zero the project beat the cost of the money. This is the one Finance "
      "trusts."),
-    ("19-black-belt-calculators.xlsx", "9 ROI and payback", "D21",
+    ("19-black-belt-calculators.xlsx", "9 ROI and payback", "D22",
      "The hole you start in — everything spent before any benefit lands. The line climbs from here "
      "and crosses zero at payback."),
 ]

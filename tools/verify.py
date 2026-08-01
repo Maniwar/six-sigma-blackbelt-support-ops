@@ -632,7 +632,7 @@ def test_numeric_other() -> None:
             wb.save(tmp)
             sol = _engine(tmp).calculate()
             last = None
-            for r in range(21, 32):
+            for r in range(22, 33):
                 v = _read(sol, CALC, "9 ROI and payback", f"B{r}")
                 if isinstance(v, (int, float)):
                     last = v
