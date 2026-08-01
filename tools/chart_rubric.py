@@ -63,6 +63,10 @@ INTENT = {
     ("25-pareto-and-distribution.xlsx", "Pareto —"): RANK,
     ("25-pareto-and-distribution.xlsx", "Mean, median and p90"): COMPARE,
     ("28-erlang-staffing.xlsx", "Service level against agents"): THRESHOLD,
+    # Four named sources side by side with the 30% standard laid over them —
+    # the same shape as DPMO-against-the-scale. THRESHOLD is for a series
+    # crossing a limit over time; here there is no time, only four sources.
+    ("29-msa-gage-rr.xlsx", "Where your measurement error is"): COMPARE,
     ("26-kanban-and-wip.xlsx", "Where you are against"): COMPARE,
     ("27-control-charts.xlsx", "Individuals —"): TREND,
     ("27-control-charts.xlsx", "Moving range —"): TREND,

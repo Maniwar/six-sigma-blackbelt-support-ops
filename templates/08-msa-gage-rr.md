@@ -15,15 +15,38 @@
 
 ---
 
-**Measurement being validated:** <observer-timed task / timestamp-derived metric>
+**Measurement being validated:** *handle time on a billing adjustment, in minutes, as the analyst clocks it — not the CRM timestamp, which is a different gage and has to be validated separately*
+
+## How to work this out
+
+You do not have to do this by hand. **`29-msa-gage-rr.xlsx`** in this same pack is the
+crossed ANOVA: type the 90 readings into the yellow grid and every number in the tables
+below appears, with each sum of squares written as a formula you can point at.
+
+The arithmetic it runs, so you know what you are signing:
+
+- Split the total variation into **parts**, **appraisers**, **part × appraiser** and
+  **repeatability**, using a sum of squares for each — `SS = DEVSQ(block)` in Excel terms.
+- Turn each mean square into a **variance component**. Repeatability is the error mean
+  square directly; the others are differences between mean squares, divided by how many
+  readings sit behind each. A negative result means the term is not real, so it is set to
+  zero and pooled into error.
+- **Gage R&R** = repeatability + reproducibility. **Total** = Gage R&R + part-to-part.
+- **% Contribution** compares variances: `component ÷ total`. **% Study variation**
+  compares standard deviations: `√component ÷ √total`. That is why the two columns differ
+  so much, and why the verdict is read off the second one.
+- **ndc** = `1.41 × (SD part-to-part ÷ SD Gage R&R)`, truncated to a whole number.
+
+If you are running this in Minitab it is *Stat → Quality Tools → Gage Study → Gage R&R
+(Crossed)*, ANOVA method. The numbers below are from the workbook.
 
 ## 1. Study design (crossed, ANOVA method)
 
 | Field | Value |
 |---|---|
-| Parts / items (n) | (minimum 10, spanning the real range) |
-| Appraisers / observers (n) | (minimum 3) |
-| Replicates | (minimum 2, ideally 3) |
+| Parts / items (n) | *10 — spanning 5.2 to 15.9 minutes, deliberately including the two slowest cases we could find* (minimum 10, spanning the real range) |
+| Appraisers / observers (n) | *3 QA analysts, the three who score billing contacts* (minimum 3) |
+| Replicates | *3* (minimum 2, ideally 3) |
 | Order randomized? | *Yes* |
 | Appraisers blinded to prior measurement? | *Yes* |
 
@@ -31,16 +54,20 @@
 
 | Source | Variance component | % Contribution | % Study variation |
 |---|---|---|---|
-| Total Gage R&R | *28.4% study variation — marginal, investigate before use* |  |  |
-| — Repeatability (equipment) | *11.2%* |  |  |
-| — Reproducibility (appraiser) | *26.1% — the analysts disagree more than the tool does* |  |  |
-| Part-to-part | *95.9%* |  |  |
-| **Total variation** | *100.0* | 100% | 100% |
+| Total Gage R&R | *0.6973* | *8.1%* | *28.4% — marginal, investigate before use* |
+| — Repeatability (equipment) | *0.1088* | *1.3%* | *11.2%* |
+| — Reproducibility (appraiser) | *0.5886* | *6.8%* | *26.1% — the analysts disagree more than the tool does* |
+| Part-to-part | *7.9407* | *91.9%* | *95.9%* |
+| **Total variation** | *8.6380* | 100% | 100% |
 
 | Measure | Value | Verdict |
 |---|---|---|
 | % Study variation | *28.4%* | <10% acceptable · 10–30% marginal · >30% unacceptable |
 | Number of distinct categories (ndc) | *4* | want ≥ 5 |
+
+*Read the split, not just the headline. Reproducibility is more than double repeatability,
+so the gage is not the problem — the three analysts are applying the definition
+differently. Buying a better timer would change nothing.*
 
 ## 3. Bias, linearity and stability
 

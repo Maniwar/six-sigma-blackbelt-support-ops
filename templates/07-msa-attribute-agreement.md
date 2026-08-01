@@ -52,20 +52,39 @@ data in decisions).
 > Report raw agreement **and** kappa together. At high prevalence of one category, raw
 > agreement can be 95% while kappa is near zero.
 
+**How to work this out.** The formula is one line:
+kappa = (observed agreement − expected agreement) / (1 − expected agreement).
+Expected agreement is what two analysts would have hit by luck alone, given how often
+each of them says "pass". *Worked on the "resolution confirmed" item below: both
+analysts pass about 70% of contacts, so luck alone gets them to 0.70 × 0.70 + 0.30 ×
+0.30 = 0.58. They actually agreed on 80% of the 50 contacts. kappa = (0.80 − 0.58) /
+(1 − 0.58) = 0.22 / 0.42 = 0.52 — 80% agreement, of which nearly three-quarters was
+luck.* Tab **2 QA agreement (kappa)** of `19-black-belt-calculators.xlsx` in this pack
+does the same arithmetic from a raw pass/fail grid, including Fleiss' kappa for more
+than two appraisers; the sample size, and the power it buys you, come from the sample
+size calculator in `05-data-collection-plan.xlsx`. The overall figures above are for
+the contact-level pass/fail verdict, which is why they sit below the per-item numbers
+in section 4 — the verdict flips whenever any single item does.
+
 ## 3. Results — by appraiser
 
 | Appraiser | Within-appraiser % | vs standard % | Bias direction (lenient / strict) |
 |---|---|---|---|
-| | | | |
+| *QA-01* | *88% (44 of the 50 re-scores matched)* | *80%* | *Strict — fails "resolution confirmed" unless the closing note quotes the customer back* |
+| *QA-02* | *84% (42 of 50)* | *76%* | *Lenient — accepts the agent's own note that the customer was happy as confirmation* |
+| *QA-03* | *62% (31 of 50)* | *62%* | *No stable direction — the 19 contacts scored differently on the re-score split both ways* |
+| *QA-04* | *78% (39 of 50)* | *66%* | *Lenient — treats an adjustment raised but not yet posted as confirmed* |
 
 ## 4. Results — by rubric item / category
 **This is the actionable table.** Rubric items are not equally reliable.
 
 | Rubric item / category | Kappa | Agreement % | Verdict | Action |
 |---|---|---|---|---|
-| | | | | |
-| | | | | |
-| | | | | |
+| *Item 1 — customer identity verified* | *0.89* | *98%* | *Good (>0.80)* | *No change. Use it as the calibration anchor — it is the item analysts already agree on* |
+| *Item 2 — adjustment amount matches the disputed charge* | *0.84* | *96%* | *Good (>0.80)* | *No change. Re-measure quarterly with the blind re-score audit* |
+| *Item 3 — correct reason code applied* | *0.71* | *82%* | *Marginal (0.60–0.80)* | *Collapse the five reason codes to three. "Proration misunderstood" and "wrong plan applied" are picked interchangeably; merge or write a decision rule that separates them* |
+| *Item 4 — resolution confirmed* | *0.52* | *80%* | *Unacceptable (<0.60)* | *Rewrite the item. "Confirmed" must mean the adjustment is visible as posted on the account, not that the agent said the customer was happy. Re-test before any reopen figure is used in a decision — this is the item the whole project rests on* |
+| *Item 7 — empathy demonstrated* | *0.58* | *84%* | *Unacceptable (<0.60)* | *Write a partial-credit rule with worked examples, or drop the item. More calibration meetings on the current wording will not move it* |
 
 > Typical pattern: objective items ("verified customer identity") score >0.9;
 > subjective items ("demonstrated empathy") score 0.2–0.4. The fix for an unmeasurable

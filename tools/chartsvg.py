@@ -125,7 +125,17 @@ def _series(ser, kind: str, idx: int) -> dict:
         cache = ser.find(f"{C}tx/{C}strRef/{C}strCache/{C}pt/{C}v")
         name = (cache.text or "").strip() if cache is not None else ""
     marker = _val(ser.find(f"{C}marker"), f"{C}symbol") or ("circle" if kind == "scatter" else "none")
+    # Per-point colours. Several charts colour each bar to carry meaning — the
+    # Kano categories, the control hierarchy, the components of variation —
+    # and rendering them all one colour throws that meaning away.
+    points = {}
+    for dp in ser.findall(f"{C}dPt"):
+        at = _val(dp, f"{C}idx")
+        fill = _fill_of(dp.find(f"{C}spPr"))
+        if at is not None and fill:
+            points[int(at)] = fill
     return {
+        "points": points,
         "kind": kind,
         "name": name,
         "fill": _fill_of(sp) or colour or PALETTE[idx % len(PALETTE)],
@@ -477,6 +487,14 @@ def render(spec: dict, cells: dict, width: int = 900) -> str | None:
     #      on the sheets, and it is no more acceptable here.
     title = spec["title"]
     title_lines = _wrap(title, 72) if title else []
+    # A series whose every bar carries its own colour has no single swatch to
+    # show, and drawing one in the series colour claims a colour no bar uses.
+    # The categories are labelled on the axis, so the entry adds nothing.
+    for g in plot_groups:
+        for s in g["series"]:
+            if s["kind"] == "bar" and s["points"] and len(s["points"]) >= len(
+                    [y for y in s["ys"] if y is not None]):
+                s["name"] = ""
     legend_names = [s["name"] for g in plot_groups for s in g["series"] if s["name"]]
     show_legend = spec["has_legend"] and len(legend_names) > 1
     legend_lines = _wrap(" · ".join(legend_names), 84) if show_legend else []
@@ -495,7 +513,7 @@ def render(spec: dict, cells: dict, width: int = 900) -> str | None:
         pad_r = 16 + max(28, 7.0 * max(len(t) for t in ylab2)) + (16 if ax_sec.get("title") else 0)
 
     top = 16 + 20 * len(title_lines)
-    CAT_CAP = 22
+    CAT_CAP = 26
     rotate = False
     # The workbook's own tickLblSkip is sized for the range the chart reserves
     # (the VSM books 19 rows), not for the seven the example fills, so trusting
@@ -524,7 +542,7 @@ def render(spec: dict, cells: dict, width: int = 900) -> str | None:
         # which is how the Pareto shipped reading "stment not posted at c".
         if rotate:
             cat_h = 14 + math.sin(math.radians(38)) * 6.2 * longest
-            pad_l = max(pad_l, min(150, math.cos(math.radians(38)) * 6.2 * longest + 8))
+            pad_l = max(pad_l, min(165, math.cos(math.radians(38)) * 6.2 * longest + 8))
         else:
             cat_h = 26
     axt_h = 18 if ax_cat.get("title") else 0
@@ -648,7 +666,7 @@ def render(spec: dict, cells: dict, width: int = 900) -> str | None:
                         x1 = sx_val(y, lo, hi)
                         o.append(f'<rect x="{min(x0, x1):.1f}" y="{y0:.1f}" '
                                  f'width="{abs(x1 - x0):.1f}" height="{bh:.1f}" '
-                                 f'fill="{s["fill"]}" rx="1"/>')
+                                 f'fill="{s["points"].get(i, s["fill"])}" rx="1"/>')
                         if s["labels"]:
                             lx, anc = ((max(x0, x1) + 5, "start") if y >= 0
                                        else (min(x0, x1) - 5, "end"))
@@ -660,7 +678,8 @@ def render(spec: dict, cells: dict, width: int = 900) -> str | None:
                         yb = sy(run[i] if stacked else max(lo, min(0, hi)), lo, hi)
                         yt = sy((run[i] + y) if stacked else y, lo, hi)
                         o.append(f'<rect x="{x0:.1f}" y="{min(yb, yt):.1f}" width="{w:.1f}" '
-                                 f'height="{max(1.0, abs(yt - yb)):.1f}" fill="{s["fill"]}" rx="1"/>')
+                                 f'height="{max(1.0, abs(yt - yb)):.1f}" '
+                                 f'fill="{s["points"].get(i, s["fill"])}" rx="1"/>')
                         if s["labels"] and not stacked:
                             o.append(f'<text x="{x0 + w / 2:.1f}" y="{min(yb, yt) - 5:.1f}" '
                                      f'class="cv" text-anchor="middle">'

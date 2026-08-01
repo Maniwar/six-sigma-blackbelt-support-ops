@@ -208,6 +208,76 @@ MUTANTS = [
 # --------------------------------------------------------------------- run
 
 
+# ------------------------------------------------------- markdown mutants
+# The MARKDOWN layer is the newest, and it found 97 real defects on its first
+# run — which is exactly the profile of a check that will pass forever
+# afterwards and never be questioned again. These two put it back in front of
+# the defects it was written for.
+
+
+def md_empty_column(text: str):
+    """Blank out one column of one table, on every row."""
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if not Q.RE_MD_ROW.match(line) or i + 1 >= len(lines):
+            continue
+        if not Q.RE_MD_RULE.match(lines[i + 1]):
+            continue
+        head = [c.strip() for c in Q.RE_MD_ROW.match(line).group(1).split("|")]
+        if len(head) < 2 or any(h.strip(" *").lower() in ("signature", "signed")
+                                for h in head):
+            continue
+        j, n = i + 2, 0
+        while j < len(lines) and Q.RE_MD_ROW.match(lines[j]) \
+                and not Q.RE_MD_RULE.match(lines[j]):
+            cells = [c for c in Q.RE_MD_ROW.match(lines[j]).group(1).split("|")]
+            if len(cells) == len(head):
+                cells[-1] = "  "
+                lines[j] = "|" + "|".join(cells) + "|"
+                n += 1
+            j += 1
+        if n:
+            return "\n".join(lines), f"emptied column {head[-1]!r} on {n} row(s)"
+    return None, None
+
+
+def md_strip_method(text: str):
+    """Take away every statement of how the arithmetic is done."""
+    if not Q.RE_ARITH.search(text) or not Q.RE_METHOD.search(text):
+        return None, None
+    out = Q.RE_METHOD.sub("something", text)
+    return out, "removed every formula, method and workbook pointer"
+
+
+MD_MUTANTS = [("markdown: empty declared column", md_empty_column),
+              ("markdown: arithmetic with no method", md_strip_method)]
+
+
+def run_markdown() -> tuple[int, int, list[str]]:
+    killed = applied = 0
+    survivors = []
+    with tempfile.TemporaryDirectory() as td:
+        for doc in sorted(TEMPLATES.glob("*.md")):
+            text = doc.read_text(encoding="utf-8")
+            Q.fails.clear()
+            Q.audit_markdown(doc)
+            baseline = set(Q.fails)
+            for name, mutate in MD_MUTANTS:
+                out, what = mutate(text)
+                if out is None:
+                    continue
+                tmp = Path(td) / doc.name
+                tmp.write_text(out, encoding="utf-8")
+                applied += 1
+                Q.fails.clear()
+                Q.audit_markdown(tmp)
+                if [f for f in set(Q.fails) - baseline if "[MARKDOWN]" in f]:
+                    killed += 1
+                else:
+                    survivors.append(f"    SURVIVED [MARKDOWN] {name} on {doc.name} — {what}")
+    return killed, applied, survivors
+
+
 def audit_to_set(path: Path) -> set[str]:
     Q.fails.clear()
     Q.warns.clear()
@@ -268,6 +338,14 @@ def main() -> int:
         survivors += s
         flag = "" if k == a else "   <-- a check did not fire"
         print(f"  {book.name:36s} {k}/{a} mutants killed{flag}")
+    if not only:
+        k, a, s = run_markdown()
+        total_k += k
+        total_a += a
+        survivors += s
+        docs = len(sorted(TEMPLATES.glob("*.md")))
+        print(f"  {'(markdown templates)':36s} {k}/{a} mutants killed"
+              f"{'' if k == a else '   <-- a check did not fire'}   across {docs} docs")
     print(f"\n  {total_k}/{total_a} mutants killed across {len(books)} workbooks")
     if survivors:
         print(f"\n{len(survivors)} SURVIVING MUTANT(S) — these checks cannot fail:")

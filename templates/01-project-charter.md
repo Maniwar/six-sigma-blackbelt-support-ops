@@ -44,14 +44,14 @@ Reduce / increase `<metric>` from `<baseline>` to `<target>` by `<date>`, while 
 
 | Item | Value | Source |
 |---|---|---|
-| Baseline volume (annual) | *266,000 billing tickets a year (the 61,400 in the baseline document is one quarter)* |  |
-| Baseline metric | *14.2% reopened within 7 days* |  |
-| Target metric | *8.0%* |  |
-| Units avoided / improved | *16,492 reopens avoided a year — 266,000 x 6.2 points* |  |
-| Unit cost basis ($) | *$6.80 fully-loaded cost per contact* |  |
-| **Gross annual benefit** | *$112,146* |  |
-| Realization factor | *0.85 — agreed with Finance, reflects partial harvest in year one* |  |
-| **Realized annual benefit** | *$95,324* |  |
+| Baseline volume (annual) | *266,000 billing tickets a year (the 61,400 in the baseline document is one quarter)* | *Warehouse table `dw_ticket_fact`, queue = Billing, 12 months to 31 May — pulled by the reporting team 3 Jun* |
+| Baseline metric | *14.2% reopened within 7 days* | *Zendesk view "Billing adj — reopened <7d", 1 Mar to 31 May, counted per OD-BIL-004 v2 — pulled 1 Jun* |
+| Target metric | *8.0%* | *FY26 support quality plan, section 4 — the rate the non-billing queues already run at* |
+| Units avoided / improved | *16,492 reopens avoided a year — 266,000 x 6.2 points* | *Arithmetic, not a system: 266,000 x (14.2% less 8.0%). Checked in 19-black-belt-calculators.xlsx* |
+| Unit cost basis ($) | *$6.80 fully-loaded cost per contact* | *Finance cost-to-serve model FY26 v3, billing contact line — agent time, telephony and overhead; issued 12 Feb* |
+| **Gross annual benefit** | *$112,146* | *16,492 x $6.80 on the benefit sheet of 19-black-belt-calculators.xlsx — walked through with J. Lindqvist 12 Jun* |
+| Realization factor | *0.85 — agreed with Finance, reflects partial harvest in year one* | *Program benefit accounting policy v4, section 3.2; rate set by J. Lindqvist at the Define tollgate* |
+| **Realized annual benefit** | *$95,324* | *$112,146 x 0.85, same benefit sheet — the number Finance validates against at closure* |
 
 **Benefit type** (select one, per the program benefit accounting policy):
 - [ ] Hard — headcount reduction
@@ -62,7 +62,10 @@ Reduce / increase `<metric>` from `<baseline>` to `<target>` by `<date>`, while 
 - [ ] Cost avoidance — compliance / risk
 
 **Harvest mechanism** (required — how does this reach the P&L?):
->
+> *Hiring avoidance against the approved plan. 16,492 reopens avoided a year at 412 s
+> of handle time is 1,887 agent hours, about 1.2 FTE at 1,530 handling hours a head.
+> WFM removes 1.2 FTE from the Q4 Tier 1 requisition rather than cutting current
+> heads; the amended requisition is what Finance validates against at closure.*
 
 Signed by Finance: ____________________  Date: __________
 Signed by WFM:     ____________________  Date: __________
@@ -93,15 +96,21 @@ Signed by WFM:     ____________________  Date: __________
 > Derivation (work backwards from the benefit model — anything smaller is a null
 > result regardless of its p-value):
 >
+> *Finance will not book a project below $50,000 realized. $50,000 ÷ 0.85 is $58,824
+> gross; at $6.80 a contact that is 8,650 reopens avoided, which on 266,000 contacts a
+> year is 3.3 points. So a drop smaller than 3.3 points (14.2% to 10.9%) is a null
+> result however small its p-value. The p-value itself comes from a two-proportion
+> test of baseline reopens against pilot reopens — run it in
+> `13-hypothesis-test-log.xlsx`, which picks the test and prints the decision rule.*
 
 ## 6. Team and RACI
 
 | Name | Role | R/A/C/I | Time commitment | Manager confirmed |
 |---|---|---|---|---|
-| | Black Belt | A | | |
-| | Champion | A | | |
-| | Process owner | R | | |
-| | | | | |
+| *M. Berenji* | Black Belt | A | *2 days a week until Control closes* | *Yes — R. Mehta confirmed 14 Mar, QA rota backfilled* |
+| *R. Mehta, Support Director* | Champion | A | *2 h a month plus a half day at each tollgate* | *Yes — standing item in the Support leadership review, 16 Mar* |
+| *A. Okafor, Billing Ops* | Process owner | R | *4 h a week, one full day in each tollgate week* | *Yes — confirmed 18 Mar, Billing Ops on-call swapped to cover* |
+| *R. Okonjo, Tier 1 team lead* | *Subject matter expert, Tier 1* | *C* | *8 h a week to tollgate 3, then 4 h a week* | *Yes — confirmed 20 Mar, hours backfilled from the flex pool* |
 
 <!-- Exactly one A per row. -->
 
@@ -111,7 +120,9 @@ direction, and who has agreed to adjust targets?
 
 | Scorecard / metric | Owner | Expected direction | Target adjusted? | Agreed by |
 |---|---|---|---|---|
-| | | | | |
+| *AHT, Tier 1 billing queue* | *R. Okonjo, Tier 1 team lead* | *Up. Verifying the posting before closing adds roughly 40 s to a 412 s contact* | *Yes — team target moved from 412 s to 450 s for the pilot quarter, still inside the 468 s upper control limit* | *R. Mehta, 22 Mar* |
+| *Cases cleared per analyst, Billing Ops daily run* | *A. Okafor, Billing Ops* | *Down at first. Checking the account against the posting file is an extra step on every case* | *Yes — 60 cases a day cut to 52 until the posting batch moves* | *A. Okafor, 22 Mar* |
+| *QA pass rate on the "resolution confirmed" rubric item* | *L. Haddad, QA manager* | *Down on paper. The rubric item is being tightened, so scores fall before they rise* | *Yes — held flat instead of the planned rise to 92% until the re-calibrated rubric has 4 weeks of data* | *L. Haddad, 4 Jun* |
 
 Signed by affected ops leader: ____________________  Date: __________
 
@@ -129,7 +140,9 @@ Signed by affected ops leader: ____________________  Date: __________
 
 | Risk / dependency | Impact | Mitigation | Owner |
 |---|---|---|---|
-| | | | |
+| *The 02:00 posting batch is run by the billing platform vendor; the window sits in the contract, not in our gift* | *If it cannot move, anything raised after 17:00 still waits overnight and the 960-minute wait survives the project* | *Change request raised at Define, not at Improve. Fallback agreed with the vendor: a second 14:00 run for adjustments under $250* | *A. Okafor, Billing Ops* |
+| *QA analysts agree only moderately on the "resolution confirmed" rubric item — first-pass kappa 0.52* | *The primary metric is read off that item, so the 14.2% baseline could be wrong in either direction* | *Re-calibrate the rubric and re-run the attribute agreement study before the Measure tollgate closes — see 07-msa-attribute-agreement.md* | *L. Haddad, QA manager* |
+| *Adjustment volume roughly doubles over the billing cycle peak, the 12th to the 18th of each month* | *A pilot that dodges the peak will not generalise; one that straddles it confounds the change with volume* | *Pilot runs a full billing cycle and the read blocks on cycle week — protocol in 16-pilot-protocol.md* | *M. Berenji* |
 
 ## 10. Data access confirmed
 - [ ] Ticketing / CRM

@@ -574,6 +574,97 @@ def audit_rubric(path: Path, wb, guidance: int) -> list[dict]:
     return out
 
 
+# --------------------------------------------------------------- markdown
+# Eleven of the twenty-eight templates are markdown documents, and until now not
+# one check had ever opened one: every layer above globs *.xlsx. That is the
+# whole reason 08-msa-gage-rr shipped an ANOVA results table with its
+# "% Contribution" and "% Study variation" columns empty on all five rows and no
+# method anywhere in the file — the identical defect the EXAMPLE layer catches
+# in a workbook, sitting in a file the audit did not glob.
+
+
+RE_MD_ROW = re.compile(r"^\s*\|(.+)\|\s*$")
+# The dash is required. `[\s:|-]+` also matches `| | | |`, so a row that was
+# empty in EVERY column read as a second header rule and was dropped from the
+# body — the check could see a half-empty table but not a wholly empty one,
+# which is the case it exists for.
+RE_MD_RULE = re.compile(r"^\s*\|[\s:|-]*-[\s:|-]*\|\s*$")
+
+# Words that mean a number has to be worked out rather than looked up. A
+# document that asks for one owes the reader the arithmetic.
+RE_ARITH = re.compile(
+    r"\b(kappa|sigma level|dpmo|ndc|%\s*(study|contribution|grr)|p-value|"
+    r"confidence interval|sample size|power|npv|payback|roi|"
+    r"variance component|std ?dev|standard deviation|cpk|ppk|takt|"
+    r"cycle efficiency|yield)\b", re.I)
+
+# How that arithmetic may be discharged: a formula, a named method with a
+# reference, or a pointer at the workbook that does it.
+RE_METHOD = re.compile(
+    r"(=\s*[A-Za-z(]|[÷×]|\bformula\b|\bcalculat|\bhow to work (it|this) out\b|"
+    r"\.xlsx\b|\bworkbook\b|\bcalculator\b|\bMinitab\b|\bANOVA table\b)", re.I)
+
+
+def md_tables(text: str):
+    """Every pipe table as (header cells, [body rows]), with its line numbers."""
+    lines = text.splitlines()
+    out, i = [], 0
+    while i < len(lines):
+        m = RE_MD_ROW.match(lines[i])
+        if m and i + 1 < len(lines) and RE_MD_RULE.match(lines[i + 1]):
+            head = [c.strip() for c in m.group(1).split("|")]
+            body, j = [], i + 2
+            while j < len(lines) and RE_MD_ROW.match(lines[j]) \
+                    and not RE_MD_RULE.match(lines[j]):
+                body.append(([c.strip() for c in
+                              RE_MD_ROW.match(lines[j]).group(1).split("|")], j + 1))
+                j += 1
+            out.append((head, body, i + 1))
+            i = j
+        else:
+            i += 1
+    return out
+
+
+def audit_markdown(path: Path) -> None:
+    """A document template has to be as fillable-in as a workbook."""
+    book = path.name
+    text = path.read_text(encoding="utf-8")
+
+    for head, body, line in md_tables(text):
+        if not body:
+            continue
+        # A sign-off block is blank on purpose: the worked example must not
+        # forge a signature, and a date filled in for you is worse than useless.
+        # The exemption is scoped to tables that actually have a signature
+        # column, so a "Date" in a data table is still expected to carry one.
+        signing = any(h.strip(" *").lower() in ("signature", "signed") for h in head)
+        for col, name in enumerate(head):
+            if not name or name.startswith("**Total"):
+                continue
+            if signing and name.strip(" *").lower() in (
+                    "signature", "signed", "date", "initials"):
+                continue
+            # A Total row does not count as filling a column. The Gage R&R
+            # results table carried "100%" on its total line and nothing on any
+            # of the four component rows above it, which is the column being
+            # empty in every way that matters to a reader.
+            got = [row[col].strip(" *") for row, _ in body
+                   if col < len(row) and not row[0].strip(" *").lower().startswith("total")]
+            if got and not any(got):
+                fail(book, "MARKDOWN",
+                     f"line {line}: column {name!r} is declared and then left "
+                     f"empty on all {len(got)} rows — a worked example that "
+                     "fills none of a column has not shown the reader anything")
+
+    # A number the reader has to derive, with nothing saying how.
+    asked = sorted({m.group(0).lower() for m in RE_ARITH.finditer(text)})
+    if asked and not RE_METHOD.search(text):
+        fail(book, "MARKDOWN",
+             f"asks for {', '.join(asked[:4])} but never says how to work any "
+             "of it out — no formula, no method, no workbook to send them to")
+
+
 def main() -> int:
     fast = "--fast" in sys.argv
     visual = "--visual" in sys.argv
@@ -599,7 +690,13 @@ def main() -> int:
         print(f"  {path.name:36s} sheets={len(wb.worksheets):2d}  charts={n:2d}{note}")
         if not fast:
             audit_numeric(path)
-    print(f"\n  {charts} charts across {len(books)} workbooks")
+    docs = sorted(TEMPLATES.glob("*.md"))
+    if only:
+        docs = [d for d in docs if any(o in d.name for o in only)]
+    for path in docs:
+        audit_markdown(path)
+    print(f"\n  {charts} charts across {len(books)} workbooks, "
+          f"{len(docs)} markdown template(s) audited")
     if rubric and graded:
         ok = sum(1 for g in graded if g["ships"])
         print(f"\n  SCORECARD — {ok}/{len(graded)} charts clear the bar "

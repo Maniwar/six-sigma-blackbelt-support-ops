@@ -64,13 +64,25 @@ support improvement programs.**
 > If you must change it, say so explicitly in the tollgate and treat the result as
 > exploratory.
 
+> **How to work this out.** A sample size needs four inputs and no opinions: the
+> baseline rate you are starting from, the smallest difference that would be worth
+> acting on, alpha (how often you will accept a false alarm) and power (how often you
+> want to catch a real effect when there is one). Type them into the "Sample size
+> calculator" tab of `05-data-collection-plan.xlsx` in this pack. For this pilot:
+> baseline 14.2%, detect a drop to 11%, alpha 0.05, power 80% — the calculator returns
+> 1,685 billing adjustments per group, 3,370 across both arms. The 6,900 in the table
+> above is the same calculator asked a harder question: the threshold we pre-registered
+> is much tighter than 3.2 points. Halving the difference you insist on detecting
+> roughly quadruples the tickets you need, so decide the threshold first and let it set
+> the duration.
+
 ## 4. Counter-balancing metrics (tracked from day one)
 
 | Metric | Baseline | Tolerance | Why it might move |
 |---|---|---|---|
-| | | | |
-| | | | |
-| | | | |
+| *Mean handle time, billing adjustments* | *412 s (control limits 468 / 363)* | *No more than +8% (445 s), and no point above the 468 s upper limit* | *Agents now come back to a ticket they used to finish on first touch, and the second touch lands in the same handle-time bucket* |
+| *CSAT, billing adjustments* | *4.11 out of 5* | *No decline greater than 0.15* | *The customer is told the case stays open until the credit posts, which some of them read as "not fixed yet"* |
+| *Billing tickets still open after 3 working days* | *3.2% (31 of the 966 baseline-month adjustment contacts)* | *No more than 6%* | *The rule deliberately holds tickets open until the posting confirms, so a Friday adjustment waits over the weekend. Past 6% it is postings failing, not postings waiting* |
 
 ## 5. Success and kill criteria
 

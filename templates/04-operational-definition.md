@@ -40,7 +40,11 @@
 
 | Record ID | Field values | Counted? | Why |
 |---|---|---|---|
-| | | | |
+| *TCK-118204* | *First Resolved 4 Mar 09:12. Reopened 12 Mar 08:40 — 191 hours later, same customer, same unposted credit* | *No (numerator); yes (denominator)* | *The window is 168 hours from first Resolved and this misses it by a day. It is the same failure and it still stings, but a rolling 7-day metric that quietly stretches to 8 days is no longer the metric two people agreed on. It stays in the denominator as a resolved billing ticket* |
+| *TCK-118377* | *Credit posted correctly on 9 Mar. Reopened 11 Mar because the replacement handset had not arrived — nothing to do with billing* | *Yes* | *Any-reason reopen. Reporting wanted same-reason only; that disagreement was settled on 2026-04-24 in favour of any reason, because the customer experiences one contact, not a reason code. Excluded from the numerator only if the ticket is re-tagged out of the billing population altogether* |
+| *TCK-118391 / TCK-118392* | *Same customer emails at 14:02 and calls at 14:41 about the same disputed charge. Neither ticket had reached Resolved. 118392 merged into 118391 at 15:10* | *No — counted once, as one ticket* | *This is a duplicate contact, not a reopen: a reopen is measured from first Resolved and there was no first Resolved yet. The merge collapses 118392 into the survivor, which keeps 118391's timestamps, so the pair contributes one row to the denominator and nothing to the numerator* |
+| *TCK-118412* | *Resolved 17 Mar, reopened 18 Mar, resolved again 19 Mar, reopened again 22 Mar. Both reopens inside 168 hours of the first Resolved* | *Yes — once* | *First Resolved only, and a second reopen does not double-count. The ticket is one defective outcome however many times it bounces; counting it twice would let a single badly handled account move the rate. The second reopen is kept as a severity flag, not as a second defect* |
+| *TCK-118455* | *Resolved 20 Mar 16:48. Reopened 21 Mar 02:14 by the batch service account after the nightly posting failed. No customer contact before or since* | *No* | *The metric says the customer reopens it, and this customer never did — the system noticed first, which is the behaviour we want. Counting it would mix the failure with its own early warning. Tracked separately as a posting failure so the fix still sees it, and if auto-reopen ever notifies the customer this record class comes back in* |
 
 ## Two-observer test
 Two people independently applied this definition to the same 20 records.

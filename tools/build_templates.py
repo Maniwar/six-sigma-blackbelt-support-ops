@@ -2222,8 +2222,328 @@ def erlang():
     return wb, "28-erlang-staffing.xlsx"
 
 
+# ------------------------------------------------------------- 29 GAGE R&R
+# The continuous MSA had a document and no workbook, so the one table that
+# matters — variance components, % study variation, ndc — shipped with its
+# columns empty and no method anywhere in the file. "ANOVA method" is not an
+# instruction. This is the arithmetic, with every step visible.
+
+PARTS, OPS, REPS = 10, 3, 3
+
+# Ninety readings, in minutes: ten parts down, then A/B/C × three trials across.
+# A study whose parts do not span the real range flatters itself, so these span
+# 5.2 to 15.9 minutes. Appraiser B reads consistently long and C consistently
+# short, which is what makes reproducibility (26.1%) dominate repeatability
+# (11.2%) — the finding the document reports, and the reason the fix is a
+# calibration session rather than a new tool. Recalculating this grid gives
+# 28.4% study variation and ndc 4 exactly, which is what 08-msa-gage-rr.md says.
+_READINGS = [
+    [7.01, 7.26, 7.98, 8.37, 8.43, 7.80, 7.36, 6.89, 7.05],
+    [9.15, 8.68, 8.95, 9.79, 10.04, 10.42, 8.55, 7.90, 8.43],
+    [12.39, 12.17, 12.90, 13.33, 13.55, 13.40, 12.53, 11.45, 11.60],
+    [6.40, 6.70, 5.66, 6.99, 6.81, 7.65, 6.09, 5.53, 5.19],
+    [11.02, 10.14, 11.16, 11.68, 11.40, 11.84, 10.52, 10.30, 10.20],
+    [14.62, 14.93, 14.79, 15.91, 15.83, 15.44, 13.78, 13.82, 13.81],
+    [7.96, 7.66, 8.25, 9.03, 9.48, 9.64, 7.73, 7.56, 8.22],
+    [11.47, 11.83, 11.55, 12.90, 12.79, 12.99, 11.52, 11.83, 11.04],
+    [7.33, 7.68, 7.33, 8.55, 8.73, 9.20, 7.52, 7.20, 7.97],
+    [13.08, 13.37, 12.91, 14.19, 14.11, 14.28, 12.60, 12.93, 12.71],
+]
+
+
+def gage_rr():
+    wb = Workbook(); wb.remove(wb.active)
+    ws = wb.create_sheet("Gage R&R study")
+    W = 14
+    title(ws, "Measurement System Analysis — continuous Gage R&R (crossed, ANOVA)",
+          "How much of the variation you are about to analyse is the measurement "
+          "rather than the process. Type the yellow cells; everything else calculates.", W)
+
+    band(ws, 4, "THE STUDY — what you measured, and what you will compare it against", W)
+    for r, (lab, val, fmt, hint) in enumerate([
+        ("What is being measured",
+         "Handle time on a billing adjustment, in minutes", None,
+         "Name the measurement, not the metric. 'Handle time from the CRM timestamps' "
+         "and 'handle time as the analyst clocks it' are two different gages."),
+        ("Parts / items in the study", PARTS, "0",
+         "Ten minimum, and they must span the RANGE YOU ACTUALLY SEE. Sampling ten "
+         "routine contacts is the single most common way a study flatters the gage."),
+        ("Appraisers / observers", OPS, "0",
+         "Three minimum. Fewer and reproducibility is a guess."),
+        ("Replicates (each appraiser measures each part this many times)", REPS, "0",
+         "Two minimum, three is better. Randomise the order and blind them to their "
+         "own previous answer, or you are measuring memory."),
+        ("Tolerance width (upper spec − lower spec), same units", 12.0, "0.0",
+         "Only if you have a spec. Leave it if you do not — %study variation is the "
+         "reading that matters either way. Here: an 18-minute SLA less a 6-minute floor."),
+    ], start=5):
+        ws.cell(row=r, column=1, value=lab).font = F_B
+        c = mark(ws, r, 2, "in")
+        c.value = val
+        if fmt:
+            c.number_format = fmt
+        note_cell(ws, r, 3, hint, W)
+        note(ws, r, 2, hint)
+
+    band(ws, 11, "THE MEASUREMENTS — one row per part, three trials per appraiser", W)
+    hdr = ["Part"]
+    for o in range(OPS):
+        for t in range(REPS):
+            hdr.append(f"{chr(65 + o)} trial {t + 1}")
+    hdr += ["Part mean", "Part range", "Widest trial spread"]
+    header(ws, 12, hdr)
+    first, last = 13, 12 + PARTS
+    for i in range(PARTS):
+        r = first + i
+        ws.cell(row=r, column=1, value=f"Part {i + 1}").font = F_B
+        for o in range(OPS):
+            for t in range(REPS):
+                col = 2 + o * REPS + t
+                c = mark(ws, r, col, "in")
+                c.value = _READINGS[i][o * REPS + t]
+                c.number_format = "0.00"
+        lo, hi = get_column_letter(2), get_column_letter(1 + OPS * REPS)
+        for col, f, fmt in ((11, f"=AVERAGE({lo}{r}:{hi}{r})", "0.00"),
+                            (12, f"=MAX({lo}{r}:{hi}{r})-MIN({lo}{r}:{hi}{r})", "0.00"),
+                            (13, "=MAX(" + ",".join(
+                                f"MAX({get_column_letter(2 + o * REPS)}{r}:"
+                                f"{get_column_letter(1 + (o + 1) * REPS)}{r})-"
+                                f"MIN({get_column_letter(2 + o * REPS)}{r}:"
+                                f"{get_column_letter(1 + (o + 1) * REPS)}{r})"
+                                for o in range(OPS)) + ")", "0.00")):
+            cc = mark(ws, r, col, "calc")
+            cc.value, cc.number_format = f, fmt
+            SHOWN[("Gage R&R study", cc.coordinate)] = ""
+    note_cell(ws, last + 1, 1,
+              "Widest trial spread is the repeatability signal you can read without any "
+              "arithmetic: if one appraiser cannot reproduce their own answer on the same "
+              "part, no amount of ANOVA will rescue the study.", W)
+
+    # ---- ANOVA. Every sum of squares is a DEVSQ over a block you can point at.
+    grid = f"B{first}:{get_column_letter(1 + OPS * REPS)}{last}"
+    band(ws, last + 3, "STEP 1 — the means the ANOVA is built from", W)
+    m = last + 4
+    header(ws, m, ["Mean", "Value", "What it is"] + [""] * (W - 3))
+    rows = [("Grand mean", f"=AVERAGE({grid})",
+             "Every measurement in the study, averaged.")]
+    for o in range(OPS):
+        c1 = get_column_letter(2 + o * REPS)
+        c2 = get_column_letter(1 + (o + 1) * REPS)
+        rows.append((f"Appraiser {chr(65 + o)} mean",
+                     f"=AVERAGE({c1}{first}:{c2}{last})",
+                     f"All {PARTS * REPS} readings appraiser {chr(65 + o)} took. "
+                     "Spread between these three is reproducibility."))
+    for i, (lab, f, why) in enumerate(rows, start=m + 1):
+        ws.cell(row=i, column=1, value=lab).font = F_B
+        c = mark(ws, i, 2, "calc")
+        c.value, c.number_format = f, "0.0000"
+        SHOWN[("Gage R&R study", c.coordinate)] = ""
+        note_cell(ws, i, 3, why, W)
+    gm = f"$B${m + 1}"
+    op_first, op_last = m + 2, m + 1 + OPS
+
+    # cell means (part × appraiser), the block SS_int needs
+    cm = m + 2 + OPS
+    band(ws, cm, "STEP 2 — the part × appraiser cell means", W)
+    header(ws, cm + 1, ["Part"] + [f"Appraiser {chr(65 + o)}" for o in range(OPS)]
+           + [""] * (W - 1 - OPS))
+    cf, cl = cm + 2, cm + 1 + PARTS
+    for i in range(PARTS):
+        r = cf + i
+        ws.cell(row=r, column=1, value=f"Part {i + 1}").font = F_B
+        for o in range(OPS):
+            c1 = get_column_letter(2 + o * REPS)
+            c2 = get_column_letter(1 + (o + 1) * REPS)
+            c = mark(ws, r, 2 + o, "calc")
+            c.value = f"=AVERAGE({c1}{first + i}:{c2}{first + i})"
+            c.number_format = "0.0000"
+            SHOWN[("Gage R&R study", c.coordinate)] = ""
+    note_cell(ws, cl + 1, 1,
+              "One number per part per appraiser. If a row is flat across the appraisers "
+              "the part is easy to measure; if it is not, that part and that appraiser "
+              "disagree, and the interaction term below is what prices that.", W)
+
+    # ---- the ANOVA table itself
+    a = cl + 3
+    band(ws, a, "STEP 3 — ANOVA. Each sum of squares is DEVSQ over one block above", W)
+    header(ws, a + 1, ["Source", "Sum of squares", "df", "Mean square",
+                       "Where the sum of squares comes from"] + [""] * (W - 5))
+    part_means = f"K{first}:K{last}"
+    op_means = f"B{op_first}:B{op_last}"
+    cell_means = f"B{cf}:{get_column_letter(1 + OPS)}{cl}"
+    ss_rows = [
+        ("Parts", f"={OPS * REPS}*DEVSQ({part_means})", PARTS - 1,
+         f"Spread of the {PARTS} part means, times the {OPS * REPS} readings behind each."),
+        ("Appraisers", f"={PARTS * REPS}*DEVSQ({op_means})", OPS - 1,
+         f"Spread of the {OPS} appraiser means, times the {PARTS * REPS} readings behind each."),
+        ("Part × appraiser", None, (PARTS - 1) * (OPS - 1),
+         "What is left of the cell-mean spread once parts and appraisers are taken out — "
+         "the appraisers disagreeing about particular parts rather than in general."),
+        ("Repeatability (error)", None, PARTS * OPS * (REPS - 1),
+         "What is left of the total once the cell means are taken out: the same appraiser, "
+         "the same part, a different answer."),
+        ("Total", f"=DEVSQ({grid})", PARTS * OPS * REPS - 1,
+         "Every reading against the grand mean."),
+    ]
+    r0 = a + 2
+    ws_ss = {}
+    for i, (lab, f, df, why) in enumerate(ss_rows):
+        r = r0 + i
+        ws.cell(row=r, column=1, value=lab).font = F_B
+        ws_ss[lab] = r
+        c = mark(ws, r, 2, "calc")
+        c.number_format = "0.0000"
+        SHOWN[("Gage R&R study", c.coordinate)] = ""
+        d = mark(ws, r, 3, "calc")
+        d.value, d.number_format = df, "0"
+        ms = mark(ws, r, 4, "calc")
+        ms.value = f"=IF($C${r}=0,0,$B${r}/$C${r})"
+        ms.number_format = "0.0000"
+        SHOWN[("Gage R&R study", ms.coordinate)] = ""
+        note_cell(ws, r, 5, why, W)
+    ss_cells = f"{REPS}*DEVSQ({cell_means})"
+    ws.cell(row=ws_ss["Parts"], column=2).value = ss_rows[0][1]
+    ws.cell(row=ws_ss["Appraisers"], column=2).value = ss_rows[1][1]
+    ws.cell(row=ws_ss["Part × appraiser"], column=2).value = (
+        f"={ss_cells}-$B${ws_ss['Parts']}-$B${ws_ss['Appraisers']}")
+    ws.cell(row=ws_ss["Repeatability (error)"], column=2).value = (
+        f"=$B${ws_ss['Total']}-{ss_cells}")
+    ws.cell(row=ws_ss["Total"], column=2).value = ss_rows[4][1]
+    MS = {k: f"$D${v}" for k, v in ws_ss.items()}
+
+    # ---- variance components
+    v = ws_ss["Total"] + 2
+    band(ws, v, "STEP 4 — variance components, and the two numbers you report", W)
+    header(ws, v + 1, ["Source", "Variance component", "% Contribution",
+                       "Study variation (6σ)", "% Study variation", "Verdict"]
+           + [""] * (W - 6))
+    # A negative component means the term is not real; AIAG pools it into error.
+    rep = f"MAX(0,{MS['Repeatability (error)']})"
+    inter = f"MAX(0,({MS['Part × appraiser']}-{MS['Repeatability (error)']})/{REPS})"
+    oper = f"MAX(0,({MS['Appraisers']}-{MS['Part × appraiser']})/{PARTS * REPS})"
+    prt = f"MAX(0,({MS['Parts']}-{MS['Part × appraiser']})/{OPS * REPS})"
+    vc_rows = [
+        ("Total Gage R&R", f"={rep}+{oper}+{inter}",
+         "Everything the measurement contributes. This is the number you report."),
+        ("Repeatability", f"={rep}",
+         "Same appraiser, same part, a different answer. The instrument or the procedure — fix it with a clearer definition or a tighter method."),
+        ("Reproducibility", f"={oper}+{inter}",
+         "Different appraisers, same part. The people — fix it with calibration sessions and a rubric, not with a new tool."),
+        ("Part-to-part", f"={prt}",
+         "Real process variation. You WANT this to dominate — it is the signal."),
+        ("Total variation", None,
+         "Gage R&R plus part-to-part. Percentages below are shares of this."),
+    ]
+    vr = {}
+    for i, (lab, f, why) in enumerate(vc_rows):
+        r = v + 2 + i
+        vr[lab] = r
+        ws.cell(row=r, column=1, value=lab).font = (
+            Font(size=11) if lab in ("Repeatability", "Reproducibility") else F_B)
+        c = mark(ws, r, 2, "calc")
+        c.value, c.number_format = f, "0.00000"
+        SHOWN[("Gage R&R study", c.coordinate)] = ""
+        note_cell(ws, r, 7, why, W)
+    tot = vr["Total variation"]
+    ws.cell(row=tot, column=2).value = f"=$B${vr['Total Gage R&R']}+$B${vr['Part-to-part']}"
+    for lab, r in vr.items():
+        pc = mark(ws, r, 3, "calc")
+        pc.value, pc.number_format = f"=IF($B${tot}=0,\"\",$B${r}/$B${tot})", "0.0%"
+        sv = mark(ws, r, 4, "calc")
+        sv.value, sv.number_format = f"=6*SQRT($B${r})", "0.000"
+        ps = mark(ws, r, 5, "calc")
+        ps.value = f"=IF($B${tot}=0,\"\",SQRT($B${r})/SQRT($B${tot}))"
+        ps.number_format = "0.0%"
+        for cc in (pc, sv, ps):
+            SHOWN[("Gage R&R study", cc.coordinate)] = ""
+    grr = vr["Total Gage R&R"]
+    vd = mark(ws, grr, 6, "calc")
+    vd.value = (f'=IF($E${grr}="","",IF($E${grr}<0.1,"ACCEPTABLE — under 10%",'
+                f'IF($E${grr}<=0.3,"MARGINAL — usable with stated caution",'
+                f'"UNACCEPTABLE — fix it before you analyse anything")))')
+    SHOWN[("Gage R&R study", vd.coordinate)] = ""
+    note_cell(ws, tot + 2, 1,
+              "% Study variation compares STANDARD DEVIATIONS, % Contribution compares "
+              "VARIANCES, which is why the two columns differ so much. Judge the gage on "
+              "% study variation: under 10% acceptable, 10–30% marginal, over 30% "
+              "unacceptable. Read % contribution to see where the damage is coming from.", W)
+
+    # ---- ndc and the tolerance reading
+    n = tot + 4
+    band(ws, n, "STEP 5 — how many groups this gage can actually tell apart", W)
+    for i, (lab, f, fmt, why) in enumerate([
+        ("Number of distinct categories (ndc)",
+         f"=IF($B${grr}=0,\"\",MAX(1,INT(1.41*SQRT($B${vr['Part-to-part']})/"
+         f"SQRT($B${grr}))))", "0",
+         "How many groups the gage can separate across your part range. Want 5 or more. "
+         "Below 5 the gage sorts into a handful of buckets, and 4 means it is telling you "
+         "'high, medium-high, medium, low' and nothing finer."),
+        ("% Tolerance (Gage R&R against the spec width)",
+         f"=IF($B$9=0,\"\",6*SQRT($B${grr})/$B$9)", "0.0%",
+         "Only meaningful if you entered a tolerance. Same bands as % study variation. "
+         "A gage can be fine against the spec and useless for improvement work, because "
+         "improvement needs it to resolve variation the spec does not care about."),
+    ]):
+        r = n + 1 + i
+        ws.cell(row=r, column=1, value=lab).font = F_B
+        c = mark(ws, r, 2, "calc")
+        c.value, c.number_format = f, fmt
+        SHOWN[("Gage R&R study", c.coordinate)] = ""
+        note_cell(ws, r, 3, why, W)
+
+    # ---- the picture
+    cat = Reference(ws, min_col=1, min_row=vr["Total Gage R&R"], max_row=vr["Part-to-part"])
+    val = Reference(ws, min_col=5, min_row=vr["Total Gage R&R"], max_row=vr["Part-to-part"])
+    lim = n + 4
+    ws.cell(row=lim, column=1, value="30% line").font = F_NOTE
+    for i in range(4):
+        c = ws.cell(row=lim, column=2 + i, value=0.30)
+        c.number_format = "0%"
+    ch = bar(ws, "Where your measurement error is — under 30% or the study stops here",
+             cat, val, "P4", pct=True, name="% study variation",
+             colours=["C0392B", "E08A3C", "B45309", "1D6F42"])
+    overlay(ch, ws, Reference(ws, min_col=2, min_row=lim, max_col=5, max_row=lim),
+            "30% — above this the gage is unacceptable")
+    ch.y_axis.title = "% of total study variation"
+
+    widths(ws, [46, 13, 13, 13, 13, 13, 13, 13, 13, 13, 12, 12, 14, 14])
+    ws.freeze_panes = "A13"
+
+    howto(wb, [
+        (True, "Continuous Gage R&R — what this answers"),
+        (False, "Before you analyse a continuous metric, find out how much of its variation is "
+                "the measurement rather than the process. If the gage eats 30% of the variation, "
+                "every capability number and every hypothesis test downstream is an opinion with "
+                "decimal places on it."),
+        (True, "Running the study"),
+        (False, "Pick 10 parts that SPAN THE RANGE YOU ACTUALLY SEE — not ten typical ones. Have "
+                "3 appraisers measure each part 3 times. Randomise the order, and make sure no "
+                "appraiser can see their own earlier answer or anyone else's. Type the 90 "
+                "readings into the yellow grid; the rest of the workbook is formulas."),
+        (True, "Reading the answer"),
+        (False, "% Study variation is the headline: under 10% acceptable, 10–30% marginal, over "
+                "30% unacceptable. Then look at the split. Repeatability high means the method is "
+                "loose — tighten the definition. Reproducibility high means the PEOPLE disagree — "
+                "that is a calibration and rubric problem, and buying a new tool will not touch it."),
+        (True, "ndc, and why 5"),
+        (False, "Number of distinct categories is how many groups the gage can separate across "
+                "your parts. Below 5 you effectively have an ordinal scale wearing a number's "
+                "clothing, and the arithmetic you do on it will not mean what you think."),
+        (True, "The support-specific trap"),
+        (False, "In support the 'gage' is usually a timestamp definition or a human judgement, not "
+                "an instrument. Two analysts timing the same call differ because they disagree "
+                "about when after-call work ends, which is a definition problem showing up as "
+                "measurement error. Fix the operational definition first (04-operational-"
+                "definition.md), then re-run this — it is usually most of the gap."),
+        (True, "Where the numbers go next"),
+        (False, "The verdict and the two percentages belong in 08-msa-gage-rr.md, which is the "
+                "one-page record you sign. Do not start capability analysis until this passes."),
+    ])
+    return wb, "29-msa-gage-rr.xlsx"
+
+
 BUILDERS = [five_whys, fishbone, stakeholder, kano, doe, pareto, flow, control_charts,
-            erlang]
+            erlang, gage_rr]
 
 
 def main() -> int:

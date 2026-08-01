@@ -35,6 +35,16 @@ correlation. Mechanism without statistics is opinion.
 | Confounders considered and ruled out | *Volume mix shift (chi-sq p = 0.41); no release in window* |
 | Practical threshold met? | *Yes — threshold was 1.5 pts, observed 4.9* |
 
+> **How to work this out.** Neither the p-value nor the sample size above is a judgement
+> call. Open `13-hypothesis-test-log.xlsx` in this pack: you say what you are comparing
+> and it names the test and prints the decision rule. Comparing two reopen rates — a
+> percentage against a percentage — is a **two-proportion test**. Comparing handle time
+> in seconds is a **two-sample t-test**, or **Mann-Whitney** if the seconds are skewed,
+> which handle time almost always is. For the sample size, use the calculator on the
+> "Sample size calculator" tab of `05-data-collection-plan.xlsx`: give it the baseline
+> rate, the smallest difference worth acting on, alpha and power, and it returns the n
+> you need per group. Do that before you pull the data, not after.
+
 ### Key 2 — Mechanism
 > Describe *how* this cause produces the effect. Written so an operations director who
 > has never seen the data would say "yes, that is how it works."
@@ -82,4 +92,8 @@ Recording these prevents re-litigation later in the project.
 
 | Candidate cause | How tested | Result | Why rejected |
 |---|---|---|---|
-| | | | |
+| *Time of day — late-shift agents rushing the close at end of shift* | *2-proportion test, tickets closed before 17:00 vs after, 12 weeks of billing adjustments (n = 9,880 vs 4,720)* | *14.3% vs 14.0%, z = 0.48, p = 0.63* | *Every daytime closure sits ahead of the 02:00 posting batch, so the hour of closure cannot separate the two groups. The batch is the mechanism, not the shift.* |
+| *Plan type — the retired Fibre-100 tariff mis-posting adjustments* | *Chi-square of reopen rate across all six plan families, 966 baseline-month billing-adjustment contacts* | *Fibre-100 14.6% vs 14.1% for the rest; chi-sq p = 0.62* | *The rate is flat across every plan family. P. Nwosu confirmed in config that adjustments post through one path regardless of tariff.* |
+| *Channel — chat closures being sloppier than voice* | *2-proportion test, chat vs voice, same 12-week window* | *13.8% chat vs 14.5% voice, z = 0.94, p = 0.35* | *0.7 points, below the 1.5-point practical threshold, and the closure screen is identical in both channels.* |
+| *Adjustment value — large credits queueing for approval and posting late* | *Mann-Whitney on adjustment amount, reopened vs not reopened cases (n = 137 vs 829)* | *Median $42 vs $39, p = 0.44* | *Amount does not separate reopens. Approval routing adds a step before the batch, not after it, so it cannot change whether the closure beats the posting.* |
+| *Repeat disputers — a small group of customers reopening everything* | *Recounted the rate with one contact per customer per 7-day window; ranked customers by reopen count* | *14.2% falls to 13.9%; the 20 most frequent disputers are 1.8% of all reopens* | *Removing them moves the rate 0.3 points. The 6.2-point gap survives without them.* |

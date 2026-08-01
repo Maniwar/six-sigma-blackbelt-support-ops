@@ -82,19 +82,30 @@
 
 | Stratum | n | Metric value | Share of total gap |
 |---|---|---|---|
-| | | | |
+| *Raised before 17:00, under $50 — agent approves it, catches the same night's 02:00 batch* | *402* | *7.5% (30 reopens)* | *None — 2 reopens below the 8% target* |
+| *Raised after 17:00, under $50 — misses the batch by one night* | *214* | *18.7% (40 reopens)* | *38% of the 60-reopen gap* |
+| *Over $50, raised before 17:00 — needs a Billing Ops check first* | *168* | *14.3% (24 reopens)* | *18%* |
+| *Over $50, raised after 17:00 — waits for the next Billing Ops run, then the next batch* | *121* | *24.8% (30 reopens)* | *34%* |
+| *Multi-line accounts — the adjustment splits across lines and posts partially* | *61* | *21.3% (13 reopens)* | *14%* |
+| *All strata (check: 966 contacts, 137 reopens, 14.2%; the gap to 8% is 60 reopens)* | *966* | *14.2%* | *100%* |
 
 ## 6. Context and caveats
 
 | Event in the baseline window | Dates | Effect | Included or excluded |
 |---|---|---|---|
-| | | | |
+| *Annual price letters land with the January bill — the seasonal disputes peak* | *2026-01-05 to 2026-01-30* | *Busiest weeks in the window, ~6,400 tickets/week against a ~5,100 average; reopen rate 14.6%, inside the control limits* | *Included. It happens every January, and the post-project comparison has to span the same season or it will read the calendar as an improvement* |
+| *List price change on the mid-tier broadband plan* | *2026-02-01* | *Disputed-charge volume up ~18% for three weeks; reopen rate flat at 13.9% — the change moved the denominator, not the process* | *Included. Pricing changes are a standing feature of the business; the baselined metric is a rate, so volume alone does not distort it* |
+| *Billing platform release 15.4 — the nightly posting job was rewritten* | *w/c 2026-02-16* | *The posting batch failed silently on two nights; reopen rate 18.9% that week, the one point above the UCL in section 2* | *Included. Releases ship every six weeks and this failure mode will recur. Excluding it would flatter the baseline and make the project look smaller than it is* |
+| *Tier 1 reorganisation — the billing queue split out of general support; 11 transferred agents shadowed for two weeks* | *2026-03-02 to 2026-03-13* | *74 contacts were closed under the old general-support script rather than the billing closure steps* | *Excluded — those 74 fall outside OD-BIL-004 v2, which scopes the metric to the billing queue, and the 966 in section 5 is net of them. This is a scope exclusion, not a special-cause exclusion: neither week signalled on the chart* |
 
 ## 7. Benefit model updated with actual baseline
 
 | Item | Charter estimate | Actual baseline | Revised benefit |
 |---|---|---|---|
-| | | | |
+| *Reopen-rate gap to be closed* | *15.0% → 8.0%, so 7.0 points (2025 ops dashboard)* | *14.2% → 8.0%, so 6.2 points (12-week control chart centre line)* | *Charter's $425k/yr gross drops to $376k — the gap is 11% smaller than assumed* |
+| *Billing-adjustment contacts per month* | *1,100* | *966 — the dashboard counted a contact twice whenever it was transferred between queues* | *$376k drops to $330k* |
+| *Fully loaded cost of a reopened contact* | *$41.00* | *$38.60 — Finance's 2026 rate, with the facilities allocation removed* | *$330k drops to $310k/yr — the gross benefit of record* |
+| *How the saving is harvested* | *"Headcount reduction", no owner named* | *No reduction is available: the billing queue is already 4 heads below its approved establishment* | *$180k/yr Finance-validated, booked as hiring avoidance and signed by WFM. The remaining $130k returns as capacity against service levels, not as cash* |
 
 ## Sign-off
 

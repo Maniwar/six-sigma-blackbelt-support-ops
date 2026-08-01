@@ -19,24 +19,31 @@
 
 | Method | Population | Sample plan | n | Who | When | Known bias |
 |---|---|---|---|---|---|---|
-| Survey verbatims | *CSAT free text, billing reasons* | *12 weeks* | *n=2,180* | *Only 14% respond — survivorship* |  | Non-response; bimodal responders |
-| Contact transcripts | *Chat and email, billing queue* | *4 weeks* | *n=8,400* | *Topic-modelled, then read 200 by hand* |  | Only contacts that happened |
-| Customer interviews | *Disputed-charge customers* | *6 sessions* | *n=6* | *Recruited from reopens, so biased to failure* |  | Selection; social desirability |
-| Complaint / escalation review | *Formal complaints, billing* | *12 weeks* | *n=61* | *Small n, high signal* |  | Extreme cases only |
-| Churn exit reasons | *Cancellation survey* | *12 weeks* | *n=340* | *Free text, self-reported* |  | Post-hoc rationalization |
-| Internal (VOB / VOE) | *Agent forum and QA notes* | *ongoing* | *n/a* | *Agents name the same posting delay* |  |  |
+| Survey verbatims | *CSAT free text, billing reasons* | *12 weeks* | *n=2,180* | *Only 14% respond — survivorship* | *1 Mar – 31 May; sent 48h after every billing contact, extract pulled 2 Jun* | Non-response; bimodal responders |
+| Contact transcripts | *Chat and email, billing queue* | *4 weeks* | *n=8,400* | *Topic-modelled, then read 200 by hand* | *4 weeks to 31 May; topic model rerun each Monday, the 200 hand-reads in the week of 2 Jun* | Only contacts that happened |
+| Customer interviews | *Disputed-charge customers* | *6 sessions* | *n=6* | *Recruited from reopens, so biased to failure* | *8–19 Apr; each session booked 7–10 days after that customer's reopen* | Selection; social desirability |
+| Complaint / escalation review | *Formal complaints, billing* | *12 weeks* | *n=61* | *Small n, high signal* | *1 Mar – 31 May, read at the Thursday complaints panel as they land* | Extreme cases only |
+| Churn exit reasons | *Cancellation survey* | *12 weeks* | *n=340* | *Free text, self-reported* | *1 Mar – 31 May, taken with the monthly churn file on the 3rd* | Post-hoc rationalization |
+| Internal (VOB / VOE) | *Agent forum and QA notes* | *ongoing* | *n/a* | *Agents name the same posting delay* | *Ongoing — forum threads read weekly, QA notes taken at the Friday calibration* | *Agents only meet the ones that come back; a credit that posts is never discussed* |
 
 ## 2. Affinity themes
 
 | Theme | Frequency | Representative verbatim |
 |---|---|---|
-| | | |
+| *Told it was fixed, it was not* — the adjustment had not posted when the case closed | *412 (43% of the 966 coded)* | *"The lady said it was all sorted on the Tuesday. I looked on the Thursday and the charge was still sitting there."* |
+| *Credited against the wrong plan* | *233 (24%)* | *"You have refunded me for the 30GB tariff. I moved to the 60GB one in January and I have the email to prove it."* |
+| *Charged twice for the same month* | *151 (16%)* | *"There are two identical line items on this bill. Now I have two case numbers as well and neither of them talks to the other."* |
+| *Proration not explained* | *96 (10%)* | *"I switched on the 14th, so how is this bill bigger than a normal month? Nobody could walk me through it."* |
+| *No idea when the money comes back* | *74 (8%)* | *"One person said three working days, the next said up to ten. I only rang back to find out which."* |
 
 ## 3. Kano classification
 
 | Need | Must-be | Performance | Delighter | Evidence |
 |---|---|---|---|---|
-| | | | | |
+| *The credit I was promised is actually on my next bill* | *x* | | | *Nobody ever thanks us for a credit that posts; 412 of the 966 coded contacts are about one that did not* |
+| *Bill me once for one month* | *x* | | | *151 duplicate-charge contacts, and the complaints panel escalates almost every one it sees* |
+| *Tell me the date the credit will show* | | *x* | | *All 6 interviewees asked for a date unprompted; the tighter the date given, the fewer the callbacks — 74 contacts are refund timing alone* |
+| *You tell me it has posted, so I never have to check* | | | *x* | *No verbatim asks for it. The handful of agents who ring back off their own bat get named in CSAT free text by name* |
 
 ## 4. CTQ tree
 
@@ -62,4 +69,7 @@ finished. Every row above must survive that test.
 
 | CTQ | Weight (1–10) | Rationale |
 |---|---|---|
-| | | |
+| *7-day reopen rate, billing adjustments (OD-BIL-004 v2)* | *10* | *The project Y. 14.2% against a target of 8.0% is why the charter was signed, and every other CTQ earns its weight by moving this one* |
+| *Share of adjustments confirmed posted before the case is closed* | *9* | *The biggest bar on the Pareto — 412 contacts. Closing the case before the nightly posting batch confirms is the mechanism the project exists to break* |
+| *Share of contacts with a commitment date logged* | *7* | *Weaker link to the reopen rate, but it is the one thing a Tier 1 agent controls inside the call, and it covers the 74 refund-timing contacts on its own* |
+| *Mean handle time* | *4* | *A guardrail rather than a goal: it is on the list so a fix cannot buy the reopen rate back with a longer call. 412 seconds today, and anything outside 363–468 seconds is a signal* |
