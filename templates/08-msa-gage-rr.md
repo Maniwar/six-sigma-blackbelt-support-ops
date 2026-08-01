@@ -51,7 +51,7 @@ If you are running this in Minitab it is *Stat → Quality Tools → Gage Study 
 | Appraisers blinded to prior measurement? | *Yes* |
 
 *The study recorded the range of the 10 parts but never their mean, so the 412 s mean
-handle time the pack carries elsewhere (16-pilot-protocol.md:83) cannot be checked against
+handle time the pack carries elsewhere (16-pilot-protocol.md:94) cannot be checked against
 anything measured here. Mean handle time of the sampled parts: `<not recorded>`. The Black
 Belt who ran the study must state it before the 412 s is described as validated by this
 gage.*
@@ -84,14 +84,24 @@ differently. Buying a better timer would change nothing.*
 | Stability | Repeat measurement of the same item over time | *Re-measured after 4 weeks, no drift* | *—* |
 
 *Size the gage in seconds before any handle-time result is read off it. The Gage R&R
-standard deviation is √0.6973 = 0.84 min, about 50 s, and the bias above is +0.8 min,
-about 48 s, all of it in one direction. The band this gage has to police is 33 s wide —
-the pilot allows handle time to rise by 8%, from 412 s to 445 s (16-pilot-protocol.md:83).
-A one-sided 48 s bias is wider than the whole band. How much handle time the fix actually
-adds: `<not measured in this study>` — the charter's "roughly 40 s"
-(01-project-charter.md:123) is an expectation, not a measurement. The Black Belt must
-re-run this study once the three analysts are re-calibrated and state the measured figure,
-before the pilot's handle-time guardrail is read off this gage.*
+standard deviation is √0.6973 = 0.84 min, about 50 s, and that spread on a single reading
+is what stands between this gage and a small handle-time change. The +0.8 min (about 48 s)
+in the row above is not that spread: it is a mean offset produced by two of the three
+analysts rounding after-call work up, not a uniform error on every reading — §2 puts
+reproducibility (26.1%) at more than double repeatability (11.2%). The linearity and
+stability rows say that offset holds across the range and over four weeks, so it largely
+cancels out of a before/after difference taken on this same gage; the 50 s spread does not
+cancel. What this study cannot do is police the pilot's handle-time guardrail — 412 s,
+rising no more than 8% to 445 s (16-pilot-protocol.md:94) — because the pack nowhere
+states which gage that 412 s is read off, and the measurement validated at the top of this
+file is the analyst's clock, not the CRM timestamp. Which gage the 412 s comes from:
+`<not stated in the pack>`; R. Okonjo, who owns the AHT scorecard
+(01-project-charter.md:173), must state it before any pilot handle-time result is read
+against this study. How much handle time the fix adds: `<not measured in this study>` —
+the charter's "roughly 40 s" (01-project-charter.md:173) is an expectation set at Define,
+not a measurement, and R. Okonjo must state the measured figure from the pilot. The Black
+Belt must re-run this study once the three analysts are re-calibrated, before this gage is
+used for any handle-time result.*
 
 ## 4. Verdict and action
 

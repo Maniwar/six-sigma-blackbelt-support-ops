@@ -44,9 +44,9 @@ Reduce / increase `<metric>` from `<baseline>` to `<target>` by `<date>`, while 
 
 | Item | Value | Source |
 |---|---|---|
-| Benefit denominator — in-scope adjustment volume (annual) | *11,592 in-scope billing adjustments a year — 966 a month x 12* | *966 in-scope adjustments in the baseline month (09-baseline-document.md:106), the same 966 the baseline strata total to at 09-baseline-document.md:90. Nobody has pulled a 12-month in-scope count: the reporting team who pulled the queue volume below must pull the same 12 months to 31 May on the in-scope adjustment scope, before the Improve tollgate in §8, and this row is a 12x extrapolation of one measured month until they do* |
+| Benefit denominator — in-scope adjustment volume (annual) | *11,592 in-scope billing adjustments a year — 966 a month x 12* | *966 in-scope adjustments in the baseline month (09-baseline-document.md:106), the same 966 the baseline strata total to at 09-baseline-document.md:90. Nobody has pulled a 12-month in-scope count: the reporting team who pulled the queue volume below must pull the same 12 months to 31 May on the in-scope adjustment scope, before the 90-day benefit checkpoint on 2027-02-12 (18-handover-and-benefit-validation.md:142) — §8 records every tollgate, Improve and Control included, as already closed, so there is no gate left to make this due at — and this row is a 12x extrapolation of one measured month until they do* |
 | Billing queue volume (annual) — CONTEXT ONLY, never a benefit multiplier | *266,000 billing tickets a year. The 61,400 in the baseline document is the same queue over a 12-week window at ~5,100/week (09-baseline-document.md:37,51), not one quarter* | *Warehouse table `dw_ticket_fact`, queue = Billing, 12 months to 31 May — pulled by the reporting team 3 Jun. The project changes how adjustments are closed, so this figure sizes the queue the work sits in and never multiplies the benefit — see §11* |
-| Baseline metric | *14.2% of in-scope billing adjustments reopened within 7 days — 137 reopens in 966 contacts* | *09-baseline-document.md:90, counted per OD-BIL-004-ADJ (7-day reopen rate, in-scope billing adjustments). Baseline month: `<start and end dates of the month the 966 were counted over>` — A. Okafor, who signed the baseline, must state it before the Improve tollgate in §8; the pack dates this figure to "one baseline month" and never says which. The whole-queue rate under OD-BIL-004 v2 is also 14.2% (06-data-lineage.md:50, 1–31 Mar) and is a different measurement of a different population* |
+| Baseline metric | *14.2% of in-scope billing adjustments reopened within 7 days — 137 reopens in 966 contacts* | *09-baseline-document.md:90, counted per OD-BIL-004-ADJ (7-day reopen rate, in-scope billing adjustments). Baseline month: `<start and end dates of the month the 966 were counted over>` — A. Okafor, who signed the baseline, must state it before this v2.0 revision is signed (§11), which is the same ask, on the same owner, that 09-baseline-document.md:90 carries; the pack dates this figure to "one baseline month" and never says which. The whole-queue rate under OD-BIL-004 v2 is also 14.2% (06-data-lineage.md:60, 1–31 Mar) and is a different measurement of a different population* |
 | Target metric | *8.0%, on the same in-scope adjustment population* | *FY26 support quality plan, section 4 — the rate the non-billing queues already run at* |
 | Units avoided / improved | *719 reopens avoided a year — 11,592 in-scope adjustments x 6.2 points* | *Arithmetic, not a system: 11,592 x (14.2% less 8.0%) = 718.7. The 16,492 this row used to carry applied the same 6.2 points to the 266,000 queue, which is the error recorded in §11* |
 | Unit cost basis ($) | *$38.60 fully-loaded cost of a reopened contact* | *Finance's 2026 rate with the facilities allocation removed (09-baseline-document.md:107). It supersedes the $41.00 estimate the same row attributes to this charter. The $6.80 previously carried here is the Finance cost-to-serve model's cost of serving one contact, not the price of a reopen; using it as one is a defect* |
@@ -63,8 +63,13 @@ Reduce / increase `<metric>` from `<baseline>` to `<target>` by `<date>`, while 
 > *The pack has never measured that last line. The "roughly 40 s" at §7 is a Define-stage
 > expectation, not a measurement, and the gage study in 08-msa-gage-rr.md, section 3,
 > records that it did not measure it either. R. Okonjo, who owns the AHT scorecard in §7,
-> must state the measured figure from the pilot before the Improve tollgate in §8; the
-> realized benefit falls by whatever it comes to.*
+> must state the measured figure from the pilot. It cannot be due before the Improve
+> tollgate: §8 records the pilot as being read AT that gate, on 2026-09-25, so the figure
+> does not exist until the gate is held. It is due by the 90-day benefit checkpoint on
+> 2027-02-12 (18-handover-and-benefit-validation.md:142), where
+> 18-handover-and-benefit-validation.md:96 already asks Analytics to price the same
+> measured change across the 11,592 adjustments; the realized benefit falls by whatever
+> it comes to.*
 >
 > ***$23,590 does not clear the $50,000 Finance floor (§5) — it is less than half of it,
 > before the handle-time deduction.*** *The project cannot be booked as chartered. It is
@@ -85,8 +90,11 @@ Reduce / increase `<metric>` from `<baseline>` to `<target>` by `<date>`, while 
 > which is not a line WFM can take out of a requisition. On the in-scope volume there is
 > no hiring avoidance to claim, so the saving is occupancy: real for agents, invisible to
 > the P&L, and exactly what the guidance at the top of this charter says will not survive
-> Finance validation. R. Mehta and J. Lindqvist must decide at the next tollgate whether
-> the project continues on non-financial grounds or is re-scoped. The 1.2 FTE this box
+> Finance validation. §8 records all five tollgates closed, Control on 2026-12-18, and
+> that gate is where the floor finding was reached — there is no next tollgate to defer
+> this to. R. Mehta and J. Lindqvist must decide at the 90-day benefit checkpoint on
+> 2027-02-12 (18-handover-and-benefit-validation.md:142) whether the project continues on
+> non-financial grounds or is re-scoped. The 1.2 FTE this box
 > used to claim was 16,492 reopens x 412 s, and those 16,492 were the whole queue's — §11.*
 
 Signed by Finance: ____________________  Date: __________
@@ -94,40 +102,54 @@ Signed by WFM:     ____________________  Date: __________
 
 ## 4. Scope
 
+*Every row below is scoped to the in-scope billing adjustment population — the population
+OD-BIL-004-ADJ is defined on (06-data-lineage.md:61) — and never to the Billing queue,
+which appears in §3 and §5 as context only. A scope row that says "billing" without saying
+which of the two it means is the defect this table exists to prevent.*
+
 | | |
 |---|---|
 | First process step | *Customer submits a billing dispute* |
 | Last process step | *Adjustment has posted and the customer has confirmed* |
-| In scope | *Billing adjustments, all channels, all sites* |
-| Out of scope | *Fraud holds, collections, and anything requiring a manual refund cheque* |
-| Channels included | *Voice, chat, email* |
+| In scope | *In-scope billing adjustments as OD-BIL-004-ADJ defines them: consumer accounts, voice / chat / email, sites A-D, up to the $250 Billing Ops authority limit, including the ones Tier 1 hands over because they exceed $50 (02-sipoc.md:42,43; 06-data-lineage.md:61). This is the population the metric Y in §5, the 137 / 966 baseline in §3 and the 11,592 benefit denominator are all cut on. The $250 ceiling is constitutive of it, not a detail — the same cap governs the vendor fallback at §9* |
+| Out of scope | *Fraud holds, collections, anything requiring a manual refund cheque, and credits Billing Ops raises proactively with no customer contact — no dispute, so no reopen to avoid (02-sipoc.md:48,49,51). The proactive-credit exclusion is part of what OD-BIL-004-ADJ counts (06-data-lineage.md:61), not housekeeping* |
+| Channels included | *Voice, chat, email — the channels of the in-scope adjustment population, not of the whole Billing queue* |
 | Sites / vendors included | *Sites A-D; no outsourced volume in scope* |
-| Customer segments included | *All consumer accounts; enterprise excluded (different billing stack)* |
+| Customer segments included | *All consumer accounts that raise an in-scope adjustment; enterprise excluded (different billing stack). The consumer restriction is part of what OD-BIL-004-ADJ counts (06-data-lineage.md:61), not a queue-level filter* |
 
 ## 5. Metric hierarchy
 
 | Type | Metric | Baseline | Target | Op. definition ref |
 |---|---|---|---|---|
 | Primary | *7-day reopen rate, in-scope billing adjustments* | *14.2% — 137 reopens / 966 contacts* | *8.0%* | *OD-BIL-004-ADJ — a separate definition written for this population* |
-| Context, not a project metric | *7-day reopen rate, all billing tickets* | *14.2% — whole Billing queue* | *none; it is not a project target* | *OD-BIL-004 v2 (06-data-lineage.md:50)* |
+| Context, not a project metric | *7-day reopen rate, all billing tickets* | *14.2% — whole Billing queue* | *none; it is not a project target* | *OD-BIL-004 v2 (06-data-lineage.md:60)* |
 | Secondary | *Median resolution time, billing* | *4.6 h* | *4.0 h* | *OD-BIL-007 v1* |
 | Counter-balancing | *CSAT, billing contacts* | *4.11* | *no decline* | *OD-CX-002 v3* |
 
-**Practical significance threshold:** *13.1 percentage points — a floor rate of 1.1%*
+**Practical significance threshold:** `<percentage points — not settled. The threshold is
+a function of the annual in-scope adjustment volume, and nobody has pulled one: the
+reporting team must supply the 12-month in-scope count asked for in §3, and the Black Belt
+must then recompute this field by the method below, before the 90-day benefit checkpoint on
+2027-02-12 (18-handover-and-benefit-validation.md:142).>`
 > Derivation (work backwards from the benefit model — anything smaller is a null
 > result regardless of its p-value):
 >
 > *Finance will not book a project below $50,000 realized. $50,000 ÷ 0.85 is $58,824
-> gross; at $38.60 a reopened contact that is 1,524 reopens avoided, which on 11,592
-> in-scope adjustments a year is 13.1 points. So a drop smaller than 13.1 points (14.2%
-> to 1.1%) is a null result however small its p-value — and the 6.2 points this charter
-> sets out to win is less than half of it. The threshold is not a stretch target the
-> project might still reach: it is wider than the entire gap between the baseline and
-> the target, which is §11's finding read from the other end. The 3.3 points this row
+> gross; at $38.60 a reopened contact that is 1,524 reopens avoided, which on the
+> provisional 11,592 in-scope adjustments a year works out at 13.1 points. That 13.1 is
+> a working figure and not the field above: §3 records that the 11,592 it is divided by
+> is a 12x extrapolation of one measured month that nobody has pulled, so the threshold
+> moves when the real annual count lands. On the provisional figure a drop smaller than
+> 13.1 points (14.2% to 1.1%) is a null result however small its p-value — and the 6.2
+> points this charter sets out to win is less than half of it. The threshold is not a
+> stretch target the project might still reach: on the provisional figure it is wider
+> than the entire gap between the baseline and the target, which is §11's finding read
+> from the other end. The 3.3 points this row
 > used to carry took the same $58,824 and divided it by $6.80 a contact (8,650 reopens)
 > and then by the queue's 266,000 — the wrong price of a reopen and the wrong
-> population, compounding into a threshold the project appeared to clear twice over.
-> The p-value itself comes from a two-proportion
+> population, compounding into a threshold the project appeared to clear by 1.9x: 6.2
+> points against 3.3, and, on the v1.0 chain in §11, $95,324 realized against the
+> $50,000 floor. The p-value itself comes from a two-proportion
 > test of baseline reopens against pilot reopens — run it in
 > `13-hypothesis-test-log.xlsx`, which picks the test and prints the decision rule.*
 

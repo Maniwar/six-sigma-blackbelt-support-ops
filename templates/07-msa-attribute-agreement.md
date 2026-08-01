@@ -43,12 +43,13 @@
 | Within-appraiser agreement (repeatability) | *78%* | *>= 90%* | *Fail — QA-03 at 62%* |
 | Between-appraiser agreement (reproducibility) | *64%* | *>= 90%* | *Fail* |
 | Agreement with the standard (accuracy) | *71%* | *>= 90%* | *Fail* |
-| Fleiss' / Cohen's kappa | *0.41* | *>= 0.80* | *Fail — moderate at best, and unacceptable on the bands below* |
+| Fleiss' / Cohen's kappa | *0.41* | *>0.80* | *Fail — unacceptable (<0.60): halt any use of this data in decisions* |
 
 **Kappa interpretation:** >0.80 good · 0.60–0.80 marginal (do not use for individual
 performance management) · <0.60 unacceptable (halt any use of this data in decisions).
-One scale, and it is the one section 4 applies item by item: 0.80 is the pass bar in the
-table above, and <0.60 is what blocked the reopen figure at item 4.
+One scale, and it is the one section 4 applies item by item: the pass bar in the table
+above is >0.80, so a kappa of exactly 0.80 is marginal and not a pass, and <0.60 is what
+blocked the reopen figure at item 4.
 
 > Report raw agreement **and** kappa together. At high prevalence of one category, raw
 > agreement can be 95% while kappa is near zero.
@@ -107,22 +108,35 @@ in section 4 — the verdict flips whenever any single item does.
 | Categories merged / removed | *Merged 'tone' into 'empathy' — never scored apart* | *QA manager* | *2026-05-29* | `<not recorded>` | `<not recorded>` |
 | Calibration cadence set | *Fortnightly, 45 minutes, all analysts* | *QA manager* | *2026-06-01* | `<not recorded>` | `<not recorded>` |
 
-> The last two columns read `<not recorded>` for a reason. No kappa was re-measured
-> against any one of these actions — the only post-remediation figure anywhere in the pack
-> is the single entry in section 7, and nothing says which of the five it validates. The QA
+> The last two columns read `<not recorded>` for a reason. None of the five rows above
+> carries a re-measured kappa. The pack holds two post-remediation figures on this rubric
+> and never says whether they are one re-test or two: the 0.84 dated 2026-07-10 in section
+> 7, which names no item, and kappa 0.78 after the reopen-reason codes were rewritten
+> (`six-sigma-blackbelt-support-ops.html`, Measure section), which answers the action
+> section 4 sets on item 3 rather than any row here. Neither is tied to a row above. The QA
 > manager, who owns four of the five rows, must re-run the study of section 1 after each
-> action and record the kappa, the statistic and the sample size here, before any
-> in-scope-adjustment reopen figure (OD-BIL-004-ADJ) is used in a decision — that is the
-> gate section 4 sets on item 4.
+> action and record here, alongside the kappa, the statistic, the rubric item it applies
+> to, the appraiser count and the sample size, before any in-scope-adjustment reopen figure
+> (OD-BIL-004-ADJ) is used in a decision — that is the gate section 4 sets on item 4.
 
 ## 7. Ongoing control
 
 | Control | Frequency | Owner | Last run | Result |
 |---|---|---|---|---|
 | Calibration session | *Fortnightly, 45 minutes* | *QA manager* | *2026-06-12* | *Complete* |
-| Blind re-score audit | *Quarterly* | *Black Belt* | *2026-06-26* | *Complete* |
-| Kappa re-measurement | *Quarterly, with the blind re-score audit* | *Black Belt* | *2026-07-10* | *kappa 0.84 — read the note below before calling it a pass* |
+| Blind re-score audit | `<not recorded>` | `<not recorded>` | *2026-06-26* | *Complete* |
+| Kappa re-measurement | `<not recorded>` | `<not recorded>` | *2026-07-10* | *kappa 0.84 — read the note below before calling it a pass* |
 
+> **Frequency and owner are blank on the last two rows for a reason.** The pack records the
+> date each of those controls last ran and nothing else: it states no cadence for either and
+> assigns neither to a person. The "quarterly" at item 2 in section 4 is an instruction
+> attached to that one rubric item's re-measurement, not a declared cadence for these
+> controls — and the two dates above are fourteen days apart, so the two did not in fact run
+> together. A. Okafor, control-plan owner (`18-handover-and-benefit-validation.md:65`), must
+> state the cadence and the named owner of both controls before the 90-day checkpoint on
+> 2027-02-12. The first row is filled because section 6 records that cadence and that owner
+> at the "Calibration cadence set" action.
+>
 > **The 0.84 is not yet "the" post-remediation kappa.** It is recorded with no statistic
 > (overall contact-level verdict, or one rubric item?), no item, no appraiser count and no
 > sample size, so there is nothing to compare it with the 0.41 in section 2. The pack also

@@ -30,7 +30,7 @@
 
 | Theme | Frequency | Representative verbatim |
 |---|---|---|
-| *Told it was fixed, it was not* — the adjustment had not posted when the case closed | *412 contacts (43% of the 966 coded VOC contacts, 1 Mar – 31 May collection)* | *"The lady said it was all sorted on the Tuesday. I looked on the Thursday and the charge was still sitting there."* |
+| *Told it was fixed, it was not* — the adjustment had not posted when the case closed | *412 contacts (43% of the 966 coded VOC contacts, coded from the 1 Mar – 31 May collection — the outer span of section 1's six source windows, which are shorter and differ)* | *"The lady said it was all sorted on the Tuesday. I looked on the Thursday and the charge was still sitting there."* |
 | *Credited against the wrong plan* | *233 (24%)* | *"You have refunded me for the 30GB tariff. I moved to the 60GB one in January and I have the email to prove it."* |
 | *Charged twice for the same month* | *151 (16%)* | *"There are two identical line items on this bill. Now I have two case numbers as well and neither of them talks to the other."* |
 | *Proration not explained* | *96 (10%)* | *"I switched on the 14th, so how is this bill bigger than a normal month? Nobody could walk me through it."* |
@@ -40,7 +40,7 @@
 
 | Need | Must-be | Performance | Delighter | Evidence |
 |---|---|---|---|---|
-| *The credit I was promised is actually on my next bill* | *x* | | | *Nobody ever thanks us for a credit that posts; 412 of the 966 coded VOC contacts (1 Mar – 31 May collection) are about one that did not* |
+| *The credit I was promised is actually on my next bill* | *x* | | | *Nobody ever thanks us for a credit that posts; 412 of the 966 coded VOC contacts (1 Mar – 31 May collection, section 1) are about one that did not* |
 | *Bill me once for one month* | *x* | | | *151 coded duplicate-charge contacts, and the complaints panel escalates almost every one it sees* |
 | *Tell me the date the credit will show* | | *x* | | *All 6 interviewees asked for a date unprompted; the tighter the date given, the fewer the callbacks — 74 coded contacts are refund timing alone* |
 | *You tell me it has posted, so I never have to check* | | | *x* | *No verbatim asks for it. The handful of agents who ring back off their own bat get named in CSAT free text by name* |
@@ -58,9 +58,9 @@ Need:      "<customer's words>"
 
 | # | Need | Driver | CTQ | Spec / target | Measurement method | Population | Sampling |
 |---|---|---|---|---|---|---|---|
-| 1 | *Do not make me chase it* | *The adjustment posts before I am told it is done* | *7-day reopen rate, in-scope billing adjustments* | *<= 8.0%* | *OD-BIL-004-ADJ — a new definition, lineage not yet traced (see the note below)* | *In-scope billing adjustments (02-sipoc scope: consumer, voice/chat/email, sites A–D, up to $250; fraud holds, collections, manual cheques and proactive credits excluded)* | *Census — 966 adjustments in the baseline month* |
-| 2 | *Tell me when it will be resolved* | *A committed date given at first contact* | *Share of contacts with a commitment logged* | *>= 90%* | *QA audit item 7* | *Sampled contacts* | *200/week stratified* |
-| 3 | *Do not make me repeat myself* | *Resolved without a second contact* | *7-day reopen rate, all billing tickets* | *<= 8.0%, but context only — closing every adjustment reopen moves this rate 0.62 points, so it is not this project's to deliver (see the note below)* | *OD-BIL-004 v2* | *All billing tickets reaching Resolved — the whole Billing queue* | *Census* |
+| 1 | *Do not make me chase it* | *The adjustment posts before I am told it is done* | *7-day reopen rate, in-scope billing adjustments* | *<= 8.0%* | *OD-BIL-004-ADJ — a new definition, lineage not yet traced (see the note below)* | *In-scope billing adjustments (02-sipoc scope: consumer, voice/chat/email, sites A–D, up to $250; fraud holds, collections, manual refund cheques, enterprise accounts and proactive credits excluded — 02-sipoc.md:48-51, the same five exclusions restated at 06-data-lineage.md:61)* | *Census — 966 adjustments in the baseline month* |
+| 2 | *Tell me when it will be resolved* | *A committed date given at first contact* | *Share of contacts with a commitment date logged* | *>= 90%* | *`<no operational definition exists for this CTQ anywhere in the pack — L. Haddad, QA manager (01-project-charter.md §7 metric-impact disclosure, :175), must write one stating what counts as a logged commitment date and which rubric item carries it, before the 90-day checkpoint on 2027-02-12 (18-handover-and-benefit-validation.md:142)>`. "QA audit item 7" cannot stand as the method: the only item 7 the pack records is "empathy demonstrated" (07-msa-attribute-agreement.md §4, :89)* | *`<not stated — L. Haddad must name the audit frame at the same time: row 1's in-scope adjustment population, or the whole Billing queue. The attribute agreement study sampled in-scope adjustments (07-msa-attribute-agreement.md §1, :25); the routine 200/week audit is bound to neither>`* | *200/week stratified* |
+| 3 | *Do not make me repeat myself* | *Resolved without a second contact* | *7-day reopen rate, all billing tickets* | *No target — context only. The 8.0% belongs to row 1's adjustment population and to nothing else (01-project-charter.md §5 metric hierarchy, primary row at :124); the same table's context row carries "none; it is not a project target" for this rate (:125). Closing every in-scope adjustment reopen moves it 0.62 points, 14.2% to 13.58%, so it is not this project's to deliver (see the note below)* | *OD-BIL-004 v2* | *All billing tickets reaching Resolved — the whole Billing queue* | *Census* |
 
 **Completion test:** if two people could measure this CTQ differently, it is not
 finished. Every row above must survive that test.
@@ -82,9 +82,14 @@ of another — the most common way a real benefit case dies.
 
 **Adjustment-level rate over the full baseline window:** `<not yet measured>`
 > *One month stands behind the adjustment rate, not the 12 weeks the queue rate is
-> cut on (09-baseline-document, section 3). Analytics must re-run OD-BIL-004 v2
-> against the 02-sipoc in-scope denominator for 1 Mar – 31 May and issue the result
-> as OD-BIL-004-ADJ before this CTQ tree is signed off.*
+> cut on — 2026-01-05 to 2026-03-29, 12 whole weeks (09-baseline-document.md:26).
+> Analytics must re-run OD-BIL-004 v2 against the 02-sipoc in-scope denominator over
+> that same window and issue the result as OD-BIL-004-ADJ, before the 90-day
+> checkpoint on 2027-02-12 (18-handover-and-benefit-validation.md:142). It has to be
+> that window and no other: a rate cut on a different span cannot be set beside the
+> queue baseline in 09-baseline-document sections 2–4, which is the only reason to
+> measure it. The 1 Mar – 31 May this note used to name is section 1's VOC collection
+> window, and two-thirds of it falls outside the signed baseline.*
 
 ## 5. CTQ weighting (feeds the X-Y matrix)
 
