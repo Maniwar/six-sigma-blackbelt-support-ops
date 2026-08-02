@@ -413,7 +413,11 @@ def explain_headers(wb) -> int:
                         wanted.append(gloss)
             if not wanted:
                 continue
-            key = "Key: " + " · ".join(wanted)
+            # One term per LINE. Joined with " · " these ran together into a
+            # single orange paragraph — the FMEA header carries seven of them
+            # and rendered as roughly 1,400 characters of unbroken prose above
+            # the table, which is less readable than the jargon it explains.
+            key = "Key:\n" + "\n".join("• " + w for w in wanted)
             above = hrow - 1
             if above < 1:
                 continue
@@ -459,8 +463,11 @@ def explain_headers(wb) -> int:
                 anchor = ws.cell(row=above, column=1, value=key)
                 anchor.font = Font(italic=True, size=9, color="FF6B7280")
             anchor.alignment = Alignment(wrap_text=True, vertical="center")
-            ws.row_dimensions[above].height = max(
-                14, 12 * (1 + len(str(anchor.value)) // 110))
+            # Height has to allow for the explicit line breaks as well as the
+            # wrapping, or a seven-term key is drawn one row tall with the rest
+            # hidden under the header below it.
+            lines = sum(1 + len(seg) // 110 for seg in str(anchor.value).split("\n"))
+            ws.row_dimensions[above].height = max(14, 12 * lines)
             n += 1
     return n
 

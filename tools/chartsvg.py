@@ -28,6 +28,8 @@ from __future__ import annotations
 
 import math
 import re
+
+from chart_notes import NOTES as CHART_NOTES
 import shutil
 import subprocess
 import tempfile
@@ -831,7 +833,9 @@ def sheet_charts_html(sheet: str, by_sheet: dict, cells: dict) -> str:
     for spec in by_sheet.get(sheet, []):
         svg = render(spec, cells)
         if svg:
-            out.append(f'<figure class="xchartbox">{svg}</figure>')
+            note = CHART_NOTES.get((spec.get("title") or "").strip(), "")
+            cap = f'<figcaption class="xchartnote">{note}</figcaption>' if note else ""
+            out.append(f'<figure class="xchartbox">{svg}{cap}</figure>')
     if not out:
         return ""
     return ('<div class="xcharts"><div class="xchartshead">This sheet&rsquo;s chart, '
@@ -859,6 +863,17 @@ def _digest(path: Path) -> str:
     return h.hexdigest()[:32]
 
 
+def _render_version() -> str:
+    """Digest of the renderer and the notes it writes."""
+    import hashlib
+    import pathlib
+    h = hashlib.sha256()
+    here = pathlib.Path(__file__).resolve().parent
+    for name in ("chartsvg.py", "chart_notes.py"):
+        h.update((here / name).read_bytes())
+    return h.hexdigest()[:10]
+
+
 def charts_html(path: Path) -> dict[str, str]:
     """{sheet name: chart markup} for one workbook, keyed off its bytes.
 
@@ -869,7 +884,12 @@ def charts_html(path: Path) -> dict[str, str]:
     recalculated. Change the workbook and the key misses, which is the point.
     """
     import json
-    key = _digest(path)
+    # Keyed on the workbook AND on the code that renders it. Keying on the
+    # workbook alone meant a renderer change could not invalidate anything: the
+    # chart notes were wired in, the sync reported 42 charts drawn, and every
+    # one came back out of the cache without a caption because no workbook had
+    # changed. A cache key has to cover everything that affects the output.
+    key = _digest(path) + "-" + _render_version()
     cache = {}
     if CACHE.exists():
         cache = json.loads(CACHE.read_text(encoding="utf-8"))

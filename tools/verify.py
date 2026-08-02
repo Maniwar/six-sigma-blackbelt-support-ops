@@ -142,6 +142,29 @@ RE_JARGON = re.compile(
     r"study variation|lead time|touch time|unit of analysis", re.I)
 
 
+def test_chart_notes() -> None:
+    """Every chart says how to read it and what would worry you.
+
+    A chart drawn from live cells that nobody can interpret is decoration, which
+    is the same defect as a check that cannot fail. The titles carried a hint at
+    best; a reader who does not already know what a residual plot is could not
+    act on "a shapeless cloud is the only shape you can use".
+    """
+    sys.path.insert(0, str(ROOT / "tools"))
+    import chart_notes
+    import chartsvg
+
+    missing = []
+    for path in sorted(TEMPLATES.glob("*.xlsx")):
+        for _sheet, specs in (chartsvg.charts_by_sheet(path) or {}).items():
+            for spec in specs:
+                t = (spec.get("title") or "").strip()
+                if t and t not in chart_notes.NOTES:
+                    missing.append(f"{path.name}: {t!r}")
+    check(not missing, "every chart carries a note on how to read it",
+          f"{len(missing)} without one: {missing[:3]}")
+
+
 def test_glossary_coverage() -> None:
     """Every jargon column header should carry a plain-English key.
 
@@ -1724,6 +1747,8 @@ def main() -> int:
     test_glossary()
     print("CITATIONS  every file.md:NN lands on a line that carries the figure")
     test_citations()
+    print("CHARTS+    every chart says how to read it")
+    test_chart_notes()
     print("GLOSSARY+  every jargon column header carries a plain-English key")
     test_glossary_coverage()
     print("CASE       the worked project's figures reproduce from each other")

@@ -222,7 +222,11 @@ def sheet_html(ws, shown: dict) -> str:
                 text = shown.get((ws.title, cell.coordinate), "")
                 title = ' title="%s"' % H.escape(cell.value, quote=True)
             else:
-                text = H.escape(_fmt(cell), quote=True)
+                # A cell may hold real newlines — the key line under a header
+                # row is one bullet per term. html.escape leaves them as raw
+                # newlines, which HTML collapses to a single space, so the list
+                # arrived as one paragraph.
+                text = H.escape(_fmt(cell), quote=True).replace("\n", "<br>")
                 title = ""
 
             attrs = ""
