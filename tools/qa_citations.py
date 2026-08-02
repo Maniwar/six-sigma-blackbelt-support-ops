@@ -83,6 +83,15 @@ def norm(tok: str) -> str:
 
 
 RE_PLACEHOLDER = re.compile(r"<[^<>\n]{3,}>")
+# Clause boundaries. A full stop ends a sentence — unless it sits between two
+# digits, where it is a decimal point. Splitting on it unconditionally cut every
+# decimal in the pack in half: the clause carrying "14.2%" kept only "2%", the
+# one carrying "$38.60" kept "60", and "6.2-point gap" became "2-point gap".
+# figures() then discarded each fragment as too short to chase, so the citation
+# claimed no figure and fell through to an existence check. It suppressed the
+# test on precisely the numbers this pack turns on.
+RE_BOUND_L = re.compile(r"(?<!\d)\.(?!\d)|[;—(]")
+RE_BOUND_R = re.compile(r"(?<!\d)\.(?!\d)|[;—)]")
 
 
 def figures(text: str) -> set[str]:
@@ -125,13 +134,14 @@ def sentence_around(line: str, at: int) -> str:
     precisely the reassuring-but-hollow green this harness exists to prevent,
     committed by the tool written to prevent it.
     """
-    lo = max((line.rfind(c, 0, at) for c in ".;—("), default=-1)
-    hi = min((p for p in (line.find(c, at) for c in ".;—)") if p != -1), default=len(line))
+    lo = max((m.start() for m in RE_BOUND_L.finditer(line) if m.start() < at), default=-1)
+    hi = min((m.start() for m in RE_BOUND_R.finditer(line) if m.start() >= at),
+             default=len(line))
     inner = line[lo + 1:hi]
     if figures(inner) or lo < 0 or line[lo] != "(":
         return inner
     # Nothing to judge inside the brackets: judge the clause they annotate.
-    prev = max((line.rfind(c, 0, lo) for c in ".;—("), default=-1)
+    prev = max((m.start() for m in RE_BOUND_L.finditer(line) if m.start() < lo), default=-1)
     return line[prev + 1:lo]
 
 
