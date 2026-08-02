@@ -128,6 +128,56 @@ def audit_control_signals(sol, name: str) -> None:
                   f"the limits are computed from a process this sheet shows is not stable")
 
 
+def test_case_study() -> None:
+    """The curriculum's worked project says its figures are internally
+    consistent. That has to be true of the one a reader would quote.
+
+    It was true of every step except the last. Define closes: 480,000 contacts
+    x 6.2 points is 29,800 avoidable, x $6.80 is $203,000. Results closes as
+    far as the volume: 14.2% to 8.6% is 5.6 points, x 480,000 is 26,900. Then
+    the benefit was stated as $190,400, which is $7.08 a contact — against the
+    $6.80 the same page states in Define, and above the gross the page's own
+    numbers produce. The headline stat repeated it. A benefit a reader cannot
+    reproduce from the numbers printed beside it is the exact defect this
+    example exists to teach against, sitting in the example.
+    """
+    src = HTML.read_text(encoding="utf-8")
+
+    def num(pattern: str):
+        m = re.search(pattern, src)
+        return float(m.group(1).replace(",", "")) if m else None
+
+    vol = num(r"across ([\d,]+) contacts")
+    avoidable = num(r"represents ([\d,]+) avoidable contacts")
+    cost = num(r"\$([\d.]+) = \$[\d,]+ gross")
+    cut = num(r"Volume reduction ([\d,]+) contacts annualized")
+    gross = num(r"= \$([\d,]+) gross")
+    realised = num(r"benefit\s*</?\w*>?\s*\$([\d,]+)")
+    factor = num(r"gross, &times; ([\d.]+) realisation")
+    check(None not in (vol, avoidable, cost, cut, gross, realised, factor),
+          "the case study's benefit chain is still readable from the page",
+          f"vol={vol} avoidable={avoidable} cost={cost} cut={cut} "
+          f"gross={gross} realised={realised} factor={factor}")
+    if None in (vol, avoidable, cost, cut, gross, realised, factor):
+        return
+    check(abs(vol * 0.062 - avoidable) < 100,
+          "case study: the avoidable-contact count follows from volume x the gap",
+          f"{vol:,.0f} x 6.2 points = {vol * 0.062:,.0f}, page says {avoidable:,.0f}")
+    check(abs(vol * 0.056 - cut) < 100,
+          "case study: the volume reduction follows from the improvement achieved",
+          f"{vol:,.0f} x 5.6 points = {vol * 0.056:,.0f}, page says {cut:,.0f}")
+    check(abs(cut * cost - gross) < 100,
+          "case study: gross benefit is the volume reduction at the stated unit cost",
+          f"{cut:,.0f} x ${cost} = {cut * cost:,.0f}, page says {gross:,.0f}")
+    check(abs(gross * factor - realised) < 100,
+          "case study: the realised benefit is the gross at the stated factor",
+          f"{gross:,.0f} x {factor} = {gross * factor:,.0f}, page says {realised:,.0f}")
+    head = re.search(r'<div class="num">\$(\d+)k</div><div class="lbl">Validated annu', src)
+    check(head and abs(int(head.group(1)) * 1000 - realised) < 1000,
+          "case study: the headline stat matches the benefit the page derives",
+          f"headline ${head.group(1) if head else '?'}k against ${realised:,.0f}")
+
+
 def test_guidance() -> None:
     """tools/md_guidance.py holds a SECOND copy of the pack's worked example.
 
@@ -861,6 +911,33 @@ def test_sync() -> None:
     check(said and all((int(a), int(b)) == (len(tpls), exts.count("xlsx")) for a, b in said),
           f"the page's own template count matches the registry ({len(tpls)}/"
           f"{exts.count('xlsx')})", f"the prose says {sorted(set(said))}")
+    # The check above greps ONE exact phrase, so the page went on saying
+    # "Twenty-eight working files ... Seventeen are real Excel workbooks" in the
+    # templates section — spelled out, therefore invisible to a \d+ pattern —
+    # four lines above a button reading "Download all 32 templates". A stat card
+    # said 17 as well. Every place the page counts itself is checked now,
+    # whichever way the number is written.
+    WORD = {"nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "seventeen": 17,
+            "nineteen": 19, "twenty": 20, "twenty-one": 21, "twenty-eight": 28,
+            "thirty": 30, "thirty-two": 32, "forty-two": 42}
+
+    def spoken(tok: str):
+        return int(tok) if tok.isdigit() else WORD.get(tok.lower())
+
+    for pattern, want, what in (
+            (r"([A-Za-z-]+|\d+) working files", len(tpls), "working files"),
+            (r"([A-Za-z-]+|\d+) are real Excel\s+workbooks", exts.count("xlsx"),
+             "real Excel workbooks"),
+            (r'<div class="num">(\d+)</div><div class="lbl">Excel workbooks</div>',
+             exts.count("xlsx"), "the Excel-workbooks stat card"),
+            (r'<div class="num">(\d+)</div><div class="lbl">Documents</div>',
+             exts.count("md"), "the Documents stat card")):
+        found = re.findall(pattern, src)
+        got = [spoken(t) for t in found]
+        check(found and all(g == want for g in got),
+              f"the page's count of {what} matches the registry ({want})",
+              f"it says {found} — {[g for g in got if g != want]} is wrong")
+
     # The glossary is one JSON literal plus eight Object.assign blocks, and a key
     # written twice does not raise anything — the later one silently wins. Fifteen
     # terms had been defined twice, so fifteen definitions were written, shipped
@@ -1570,6 +1647,8 @@ def main() -> int:
     test_glossary()
     print("CITATIONS  every file.md:NN lands on a line that carries the figure")
     test_citations()
+    print("CASE       the worked project's figures reproduce from each other")
+    test_case_study()
     print("GUIDANCE   the template filler's numbers match the pack's")
     test_guidance()
     print("EXPORT     business case HTML + live-formula workbook")
