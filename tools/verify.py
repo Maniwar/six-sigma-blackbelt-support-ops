@@ -159,9 +159,13 @@ def test_chart_notes() -> None:
         for _sheet, specs in (chartsvg.charts_by_sheet(path) or {}).items():
             for spec in specs:
                 t = (spec.get("title") or "").strip()
-                if t and t not in chart_notes.NOTES:
-                    missing.append(f"{path.name}: {t!r}")
-    check(not missing, "every chart carries a note on how to read it",
+                if not t:
+                    continue
+                if t not in chart_notes.NOTES:
+                    missing.append(f"{path.name}: {t!r} (no note)")
+                elif t not in chart_notes.ACTIONS:
+                    missing.append(f"{path.name}: {t!r} (note but no action)")
+    check(not missing, "every chart says how to read it AND what to do about it",
           f"{len(missing)} without one: {missing[:3]}")
 
 

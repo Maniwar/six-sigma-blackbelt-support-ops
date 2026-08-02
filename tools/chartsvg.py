@@ -29,6 +29,7 @@ from __future__ import annotations
 import math
 import re
 
+from chart_notes import ACTIONS as CHART_ACTIONS
 from chart_notes import NOTES as CHART_NOTES
 import shutil
 import subprocess
@@ -833,8 +834,12 @@ def sheet_charts_html(sheet: str, by_sheet: dict, cells: dict) -> str:
     for spec in by_sheet.get(sheet, []):
         svg = render(spec, cells)
         if svg:
-            note = CHART_NOTES.get((spec.get("title") or "").strip(), "")
-            cap = f'<figcaption class="xchartnote">{note}</figcaption>' if note else ""
+            t = (spec.get("title") or "").strip()
+            note = CHART_NOTES.get(t, "")
+            act = CHART_ACTIONS.get(t, "")
+            cap = (f'<figcaption class="xchartnote">{note}'
+                   f'<span class="xchartdo"><b>So:</b> {act}</span></figcaption>'
+                   if note else "")
             out.append(f'<figure class="xchartbox">{svg}{cap}</figure>')
     if not out:
         return ""
