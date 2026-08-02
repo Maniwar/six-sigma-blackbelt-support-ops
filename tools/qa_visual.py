@@ -395,8 +395,22 @@ var slug = Object.keys(TPLS).filter(function(k){
 var html = slug ? tplEmailHTML(slug) : '';
 var d = document.createElement('div'); d.innerHTML = html;
 var o = document.createElement('div'); o.id = '__tpl';
+// The dialog has four outputs and only one was ever looked at. Run the two
+// that transform the HTML further: the .docx builder and the plain-text
+// clipboard flavour. A chart that survives as an <img> in the HTML can still
+// vanish or leak in either of these.
+var docx = '', plain = '';
+try {
+  var u8 = new Uint8Array(window.__T.D.build('t', html)), b = '';
+  for (var i = 0; i < u8.length; i++) b += String.fromCharCode(u8[i]);
+  docx = btoa(b);
+} catch(e) { docx = 'ERR:' + e.message; }
+try { plain = window.__T.P2 ? window.__T.P2(html) : ''; } catch(e) {}
 o.textContent = JSON.stringify({
   slug: slug,
+  plainCss: /\\.ct\\{|font:700 14px|stroke-width:/.test(plain) ? 1 : 0,
+  plainLen: plain.length,
+  docx: docx,
   svg:  (html.match(/<svg/g) || []).length,
   style:(html.match(/<style/g) || []).length,
   img:  (html.match(/<img src="data:image\\/svg\\+xml/g) || []).length,
@@ -434,7 +448,10 @@ def template_export() -> dict | None:
         check(False, "[TPLEXPORT] the harness can reach the export function",
               "the wiring anchor moved, so the template export is going untested")
         return None
-    src = src.replace(anchor, "window.__T={f:tplEmailHTML,P:TPLS};\n" + anchor, 1)
+    handle = ('window.__T={f:tplEmailHTML,P:TPLS,'
+              'D:(typeof DOCX!=="undefined"?DOCX:null),'
+              'P2:(typeof toPlain!=="undefined"?toPlain:null)};')
+    src = src.replace(anchor, handle + "\n" + anchor, 1)
     head, sep, tail = src.rpartition("</body>")
     src = (head + "<script>window.addEventListener('load',function(){"
            + TPL_JS + "});</script>" + sep + tail)
@@ -467,6 +484,35 @@ def audit_template_export() -> None:
     check(got.get("style", 0) == 0 and got.get("css", 0) == 0,
           "[TPLEXPORT] no stylesheet text reaches the document body",
           "the SVG's <style> block arrives as a paragraph of raw CSS")
+    check(got.get("plainCss", 1) == 0,
+          "[TPLEXPORT] the plain-text clipboard flavour carries no CSS",
+          "toPlain() walks the same HTML — a leak there lands in every paste "
+          "into a plain-text field")
+    # The .docx is built from that HTML by a second transform, so checking the
+    # HTML is not checking the document. These read the real bytes.
+    import base64
+    import io
+    import zipfile
+    raw = got.get("docx", "")
+    if raw.startswith("ERR") or not raw:
+        check(False, "[TPLEXPORT] the template exports as a Word document", raw[:80])
+        return
+    doc = zipfile.ZipFile(io.BytesIO(base64.b64decode(raw))).read(
+        "word/document.xml").decode()
+    check(not re.search(r"\.ct\{|font:700 14px|stroke-width:", doc),
+          "[TPLEXPORT] no stylesheet text in the .docx itself",
+          "this is the file the reader opens — the HTML being clean does not "
+          "make the document clean, and it was the document that shipped CSS")
+    # Known gap, asserted so it cannot be forgotten or silently 'fixed' by a
+    # change that drops the caption too: DOCX.build renders no <w:drawing>, so
+    # a template chart does not reach Word. The business-case exporter draws
+    # its charts as tables of shaded cells; templates need the same. Until then
+    # the caption naming the chart and pointing at the .xlsx is what stands in
+    # for it, and it has to be there.
+    check("the live chart is in the .xlsx" in doc,
+          "[TPLEXPORT] a chart absent from the .docx says where to find it",
+          "DOCX.build renders no image, so without the caption the chart "
+          "vanishes from the document with nothing said")
 
 
 def audit_word_charts() -> None:
