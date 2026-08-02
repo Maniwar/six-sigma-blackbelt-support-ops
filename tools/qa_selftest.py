@@ -866,6 +866,114 @@ def run_citations() -> tuple[int, int, list[str]]:
 # having if it can be shown to fire.
 
 
+# ------------------------------------------------------ Word-export mutants
+# The visual mutants below cover the PREVIEW svg only. The Word-export checks —
+# the ones that caught the worst defect this project has had — had no mutation
+# coverage at all, which is how they came to be listed for several sessions as
+# "two surviving mutants" that do not exist in this file.
+#
+# What they caught: the business case draws four charts and the Word copy
+# carried their titles, labels and numbers with a blank column down the middle
+# where every bar should have been. And, found while fixing that, negative bars
+# a fifth of their true length on screen and in every email — a bar crossing
+# zero is drawn inside half a split cell and its width was written as a share of
+# the whole axis. On the benefit bridge that drew the realisation haircut, a
+# fifth of the gross, at a thirtieth of the bar beside it.
+#
+# Driving a real browser costs about three seconds, so the document and its
+# geometry are captured ONCE and the mutants work on copies.
+
+
+def wm_short_negative_bar(doc, geo):
+    """The negative-bar bug exactly: a bar that crosses zero drawn at a
+    fraction of its true length, while every label and number stays right."""
+    import qa_visual as V
+    for rows in geo:
+        for r in rows:
+            # Genuinely negative, not merely money. Written loosely the first
+            # time, this matched the first positive bar instead and still
+            # killed — a mutant that passes for the wrong reason proves the
+            # check fires on SOMETHING, which is not what its name claims.
+            if V._money(r["value"]) < 0 and r["w"] > 20:
+                r["w"] = r["w"] / 5.0
+                return doc, geo, (f"{r['label']!r} ({r['value']}) redrawn at a fifth "
+                                  f"of its length")
+    return None, None, None
+
+
+def wm_zero_line_split(doc, geo):
+    """Positive and negative bars sit in different cells, so a common zero line
+    is not something the markup gives you for free."""
+    for rows in geo:
+        if len(rows) > 2:
+            rows[1]["x"] = rows[1]["x"] + 40
+            return doc, geo, f"{rows[1]['label']!r} shifted off the zero line"
+    return None, None, None
+
+
+def wm_missing_chart(doc, geo):
+    """A chart that never reaches the document — the original defect."""
+    return doc, geo[:-1], "one chart dropped before it reached the page"
+
+
+def wm_drop_word_table(doc, geo):
+    """A chart that reaches the screen and not the .docx."""
+    import xml.etree.ElementTree as ET
+
+    import qa_visual as V
+    root = ET.fromstring(doc)
+    body = root.find(f"{V.W}body")
+    for t in body.findall(f"{V.W}tbl"):
+        if t.find(f"{V.W}tblPr/{V.W}tblBorders") is None:
+            body.remove(t)
+            return ET.tostring(root, encoding="unicode"), geo, "one chart table cut from the .docx"
+    return None, None, None
+
+
+WORD_MUTANTS = [("word: negative bar drawn short", wm_short_negative_bar),
+                ("word: bars do not share a zero line", wm_zero_line_split),
+                ("word: a chart never drawn", wm_missing_chart),
+                ("word: a chart missing from the .docx", wm_drop_word_table)]
+
+
+def run_word() -> tuple[int, int, list[str]]:
+    import copy
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import qa_visual as V
+    got = V.word_document()
+    if got is None:
+        return 0, 0, []
+    doc, geo = got
+    real = V.word_document
+    killed = applied = 0
+    survivors = []
+    try:
+        V.fails.clear()
+        V.passes[0] = 0
+        V.word_document = lambda: (doc, copy.deepcopy(geo))
+        V.audit_word_charts()
+        baseline = set(V.fails)
+        for name, mutate in WORD_MUTANTS:
+            d2, g2, what = mutate(doc, copy.deepcopy(geo))
+            if what is None:
+                continue
+            applied += 1
+            V.fails.clear()
+            V.passes[0] = 0
+            V.word_document = lambda d=d2, g=g2: (d, g)
+            V.audit_word_charts()
+            if set(V.fails) - baseline:
+                killed += 1
+            else:
+                survivors.append(f"    SURVIVED [WORD] {name} — {what}")
+    finally:
+        V.word_document = real
+        V.fails.clear()
+        V.passes[0] = 0
+    return killed, applied, survivors
+
+
 def run_visual() -> tuple[int, int, list[str]]:
     import re as _re
     sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -1059,6 +1167,13 @@ def main() -> int:
         survivors += s
         print(f"  {'(cross-references)':36s} {k}/{a} mutants killed"
               f"{'' if k == a else '   <-- a check did not fire'}")
+        k, a, s = run_word()
+        total_k += k
+        total_a += a
+        survivors += s
+        if a:
+            print(f"  {'(Word export)':36s} {k}/{a} mutants killed"
+                  f"{'' if k == a else '   <-- a check did not fire'}")
         k, a, s = run_visual()
         total_k += k
         total_a += a
