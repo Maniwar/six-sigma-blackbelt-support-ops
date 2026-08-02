@@ -6635,17 +6635,33 @@ function tplEmailHTML(slug){
         out += '</tr>';
       });
       out += '</table>';
-      // The charts belong to the sheet they sit in, and the export used to drop
-      // them: a workbook whose whole point is a control chart exported as a
-      // wall of numbers. The SVG carries its own <style>, so it survives being
-      // pasted anywhere. Some mail clients strip inline SVG, in which case this
-      // degrades to what the export already did — nothing — rather than
-      // breaking, and the standalone page keeps them.
+      // Charts go out as a base64 <img>, never as inline SVG.
+      //
+      // Inline SVG was the first attempt and the comment here used to claim
+      // that a client which strips it "degrades to nothing rather than
+      // breaking". That was an assumption and it is false. Word does not
+      // render inline SVG, but removing the element LEAVES ITS TEXT CHILDREN:
+      // the <style> block arrives as a paragraph of raw CSS, and every <text>
+      // node — axis labels, title, legend — arrives as its own line. The
+      // Pareto exported as ".ct{font:700 14px -apple-system...}" followed by
+      // 0 / 250 / 500 / 750 / 1,000 down the page. It degraded to garbage.
+      //
+      // A data URI cannot leak text: a client either draws it or shows nothing.
       [].slice.call(sh.querySelectorAll('svg.xchart')).forEach(function(g){
         var c = g.cloneNode(true);
         c.removeAttribute('class');
-        c.setAttribute('style', 'display:block;width:100%;max-width:900px;height:auto;margin:14px auto');
-        out += '<div style="margin:16px 0">'+c.outerHTML+'</div>';
+        c.setAttribute('style', 'display:block;width:100%;height:auto');
+        var title = (c.querySelector('text.ct') || {}).textContent || 'Chart';
+        var uri;
+        try {
+          uri = 'data:image/svg+xml;base64,' +
+                btoa(unescape(encodeURIComponent(c.outerHTML)));
+        } catch(e) { uri = ''; }
+        if(!uri) return;
+        out += '<div style="margin:16px 0"><img src="'+uri+'" alt="'+eh(title)+
+               '" style="display:block;width:100%;max-width:900px;height:auto">'+
+               '<div style="'+EM.note+'margin-top:4px">'+eh(title)+
+               ' — the live chart is in the .xlsx</div></div>';
       });
     });
     out += '<div style="'+EM.note+'">Green cells are a worked example &mdash; replace them with your own. '+

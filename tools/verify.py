@@ -637,10 +637,18 @@ def test_export_charts() -> None:
     i = src.find("function tplEmailHTML")
     body = src[i:src.find("\n}", i)] if i >= 0 else ""
     check(bool(body), "the email export builder is present")
-    check("svg.xchart" in body,
-          "the email export carries the charts",
-          "tplEmailHTML walks the preview's tables only, so every chart is "
-          "dropped from the export and the standalone page")
+    # What this used to assert: that the string "svg.xchart" appeared in the
+    # function's source. A check on the code, not on its output — and it passed
+    # while the Pareto's Word export opened as a paragraph of raw CSS followed
+    # by its axis labels one per line, because inline SVG that a client cannot
+    # draw is stripped down to its TEXT CHILDREN rather than removed.
+    # qa_visual.audit_template_export runs the real function in a real browser
+    # and reads what comes out. This one now only asserts the shape the output
+    # check depends on.
+    check("svg.xchart" in body and "image/svg+xml" in body,
+          "the email export turns each chart into a data-URI image",
+          "an <img> cannot leak text into a client that will not draw it; "
+          "inline SVG degrades to its own <style> block and labels")
     for colour in ("Green cells", "Yellow cells", "Blue cells"):
         check(colour in body, f"the export legend explains {colour.lower()}",
               "the note tells the reader what a colour means; leaving one out "

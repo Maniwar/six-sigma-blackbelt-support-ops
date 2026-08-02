@@ -388,6 +388,87 @@ def audit_screen_bars(geo: list) -> None:
               f"zero lands at {sorted(zeros)}")
 
 
+TPL_JS = """
+var TPLS=window.__T.P, tplEmailHTML=window.__T.f;
+var slug = Object.keys(TPLS).filter(function(k){
+  return TPLS[k].ext === 'xlsx' && /xchart/.test(TPLS[k].preview || ''); })[0] || '';
+var html = slug ? tplEmailHTML(slug) : '';
+var d = document.createElement('div'); d.innerHTML = html;
+var o = document.createElement('div'); o.id = '__tpl';
+o.textContent = JSON.stringify({
+  slug: slug,
+  svg:  (html.match(/<svg/g) || []).length,
+  style:(html.match(/<style/g) || []).length,
+  img:  (html.match(/<img src="data:image\\/svg\\+xml/g) || []).length,
+  css:  /\\.ct\\{|font:700|stroke-width:/.test(d.textContent) ? 1 : 0,
+  text: d.textContent.length
+});
+document.body.appendChild(o);
+"""
+
+
+def template_export() -> dict | None:
+    """What tplEmailHTML actually PRODUCES, from the page's own code.
+
+    The check this replaces asserted that the string "svg.xchart" appeared in
+    the function's source. That is a check on the code, not on its output, and
+    it passed happily while the Pareto's Word export opened as a paragraph of
+    raw CSS followed by its axis labels one per line.
+
+    Inline SVG was the cause. A client that cannot draw it strips the element
+    and KEEPS ITS TEXT CHILDREN — the <style> block and every <text> node — so
+    it degrades to garbage rather than to nothing, which is what the code
+    comment had assumed without testing. The browser that already drives the
+    business-case export drives this one now.
+    """
+    import tempfile
+
+    if not Path(CHROME).exists():
+        return None
+    src = HTML.read_text(encoding="utf-8")
+    # tplEmailHTML lives inside the page's IIFE, so it has to be handed out the
+    # same way the business-case exporter is. Anchor on the wiring comment that
+    # follows it, inside the same scope.
+    anchor = "/* ------------------------------------------------------------- wiring */"
+    if src.count(anchor) != 1:
+        check(False, "[TPLEXPORT] the harness can reach the export function",
+              "the wiring anchor moved, so the template export is going untested")
+        return None
+    src = src.replace(anchor, "window.__T={f:tplEmailHTML,P:TPLS};\n" + anchor, 1)
+    head, sep, tail = src.rpartition("</body>")
+    src = (head + "<script>window.addEventListener('load',function(){"
+           + TPL_JS + "});</script>" + sep + tail)
+    with tempfile.TemporaryDirectory() as td:
+        page = Path(td) / "p.html"
+        page.write_text(src, encoding="utf-8")
+        r = subprocess.run(
+            [CHROME, "--headless", "--disable-gpu", "--virtual-time-budget=9000",
+             "--dump-dom", f"file://{page}"], capture_output=True, text=True, timeout=180)
+    m = re.search(r'<div id="__tpl">(.*?)</div>', r.stdout, re.S)
+    if not m:
+        check(False, "[TPLEXPORT] the template email export runs", "no output")
+        return None
+    import html as _h
+    return json.loads(_h.unescape(m.group(1)))
+
+
+def audit_template_export() -> None:
+    got = template_export()
+    if got is None:
+        return
+    check(bool(got.get("slug")), "[TPLEXPORT] a chart-bearing template was found to export")
+    check(got.get("img", 0) > 0,
+          "[TPLEXPORT] charts leave as a data-URI image",
+          f"img={got.get('img')} — an <img> cannot leak text; inline SVG can")
+    check(got.get("svg", 0) == 0,
+          "[TPLEXPORT] no raw inline SVG in the export",
+          f"{got.get('svg')} inline <svg> — Word strips the element and keeps "
+          f"its <text> children, so the chart arrives as a column of labels")
+    check(got.get("style", 0) == 0 and got.get("css", 0) == 0,
+          "[TPLEXPORT] no stylesheet text reaches the document body",
+          "the SVG's <style> block arrives as a paragraph of raw CSS")
+
+
 def audit_word_charts() -> None:
     got = word_document()
     if got is None:
@@ -510,6 +591,7 @@ def main() -> int:
 
     print(f"Looked at {charts} chart(s) across the previews.")
     audit_word_charts()
+    audit_template_export()
     if "--no-render" not in sys.argv:
         n = render(tpls, css)
         if n:
