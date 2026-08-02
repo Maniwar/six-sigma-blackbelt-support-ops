@@ -390,8 +390,11 @@ def audit_screen_bars(geo: list) -> None:
 
 TPL_JS = """
 var TPLS=window.__T.P, tplEmailHTML=window.__T.f;
-var slug = Object.keys(TPLS).filter(function(k){
-  return TPLS[k].ext === 'xlsx' && /xchart/.test(TPLS[k].preview || ''); })[0] || '';
+var want = (window.__PICK || '');
+var all = Object.keys(TPLS).filter(function(k){
+  return TPLS[k].ext === 'xlsx' && /xchart/.test(TPLS[k].preview || ''); });
+var slug = want ? (all.filter(function(k){ return k.indexOf(want) === 0; })[0] || all[0])
+                : (all[0] || '');
 var html = slug ? tplEmailHTML(slug) : '';
 var d = document.createElement('div'); d.innerHTML = html;
 var o = document.createElement('div'); o.id = '__tpl';
@@ -421,7 +424,7 @@ document.body.appendChild(o);
 """
 
 
-def template_export() -> dict | None:
+def template_export(pick: str = "") -> dict | None:
     """What tplEmailHTML actually PRODUCES, from the page's own code.
 
     The check this replaces asserted that the string "svg.xchart" appeared in
@@ -452,9 +455,11 @@ def template_export() -> dict | None:
               'D:(typeof DOCX!=="undefined"?DOCX:null),'
               'P2:(typeof toPlain!=="undefined"?toPlain:null)};')
     src = src.replace(anchor, handle + "\n" + anchor, 1)
+
     head, sep, tail = src.rpartition("</body>")
+    js = TPL_JS.replace("window.__PICK || ''", "'%s'" % pick)
     src = (head + "<script>window.addEventListener('load',function(){"
-           + TPL_JS + "});</script>" + sep + tail)
+           + js + "});</script>" + sep + tail)
     with tempfile.TemporaryDirectory() as td:
         page = Path(td) / "p.html"
         page.write_text(src, encoding="utf-8")

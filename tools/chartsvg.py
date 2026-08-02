@@ -831,6 +831,15 @@ def render(spec: dict, cells: dict, width: int = 900) -> str | None:
     payload = json.dumps({
         "title": title or "",
         "cats": cats[:40],
+        # Only a single-scale category chart can be redrawn faithfully as bars.
+        # A Pareto puts counts and a cumulative percentage on two axes, so one
+        # linear span makes the percentages invisible slivers and the bars a
+        # lie; a scatter has no categories at all. Say so here rather than let
+        # the exporter guess from the numbers.
+        "simple": (not scatter
+                   and len({s.get("axis") or "" for g in plot_groups
+                            for s in g["series"]}) == 1
+                   and len(plot_groups) == 1),
         "series": [{"name": s.get("name") or "", "ys": [
             None if y is None else round(float(y), 4) for y in s["ys"][:40]]}
             for g in plot_groups for s in g["series"]][:4],
