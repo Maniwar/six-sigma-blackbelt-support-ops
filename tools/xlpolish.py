@@ -288,6 +288,57 @@ GLOSSES = {
            "add to 100% while the standard deviations they come from do not. A family clamped "
            "to zero has not been shown to be identical — only that this sample cannot separate "
            "it from the family inside it",
+    "Touch time (min)": "Touch time = minutes anyone is actually working on the contact at that "
+           "step, not the minutes it sits at that step. The whole map totals 26 minutes of touch "
+           "inside 2,426 minutes of lead time (E31, E33) — 1.07% (E35). That ratio is the point "
+           "of the map: the waste is almost never in the working",
+    "% of lead time": "% of lead time = that wait as a percentage of the whole door-to-door lead "
+           "time, 2,426 minutes here (E33), not of the total waiting. Measuring each wait against "
+           "the other waits makes every one look large and tells you nothing about which to "
+           "remove",
+    "Weighted total": "Weighted total = that cause's scores multiplied by the CTQ weights along "
+           "the top and added up. With weights of 10, 7, 8, 5 and 9 (C11:G11) the closing-before-"
+           "posting row totals 270 (H15). It is a ranking device, not a measurement — the gap "
+           "between 270 and 261 is inside anyone's scoring noise, so treat the top few as a set "
+           "to investigate rather than an order to work through",
+    "Rank": "Rank = position by weighted total, 1 being highest. Ties are not broken, so two "
+           "rows can share a rank. Read it with the totals beside it: rank 1 at 270 and rank 2 at "
+           "261 (H15, H16) is a photo finish, and a rank alone hides that",
+    "Weighted score": "Weighted score = each criterion's 1-5 score times the weight above it, "
+           "added up, so it lands back on the 1-5 scale. The weights here run 0.25, 0.20, 0.15 "
+           "and four at 0.10 (C10:I10) and must sum to 1, or the scores are not comparable. The "
+           "deferred-close option scores 4.30 against 3.60 for the next one (J14, J15)",
+    "Low risk of side-effects": "Low risk of side-effects = 1-5, and the label points the same "
+           "way as every other column: 5 is GOOD, meaning few side-effects. A criterion phrased "
+           "as a negative would invert the arithmetic against its neighbours, which is why it is "
+           "written as 'low risk' rather than 'risk'",
+    "Degrees of freedom": "Degrees of freedom = the number of independent comparisons that "
+           "family supports: 1 between two sites, 2 between the three teams inside them (C63, "
+           "C64). It is what a sum of squares is divided by to get a mean square, and it is why "
+           "a family measured across two levels can never be pinned down as tightly as one "
+           "measured across ten",
+    "Erlang B": "Erlang B = the chance a contact arrives to find every agent busy AND no queue "
+           "to wait in, so it is lost. At the recommended 67 agents against an offered load of "
+           "60 erlangs it is 3.9%. Support queues almost never behave this way — it is here "
+           "because Erlang C is built from it",
+    "Erlang C": "Erlang C = the chance a contact arrives to find every agent busy and has to "
+           "WAIT. At 67 agents that is 28.2%, which is what produces a service level of 82.3%: "
+           "roughly three contacts in ten queue at all, and most of those are answered inside "
+           "the target. It assumes nobody ever hangs up, which is false and makes it "
+           "conservative — Erlang A is the version that credits abandonment",
+    "Score": "Score = the 1-10 anchor band, written out so two people scoring the same failure "
+           "mode land in the same place. Severity runs from 1-2 'the customer does not notice' "
+           "to 9-10 'regulatory breach, safety issue, data exposure or mass impact'. Score "
+           "against the anchor, not against how the last one felt",
+    "Unit of analysis": "Unit of analysis = the thing one row of your data IS — a contact, an "
+           "issue, a customer, an agent-day. Getting it wrong is the most expensive mistake on "
+           "this sheet: a rate counted per contact and a rate counted per issue are different "
+           "numbers with the same name, which is how one measurement ends up meaning two things",
+    "Effect across the observed range": "Effect across the observed range = the coefficient "
+           "multiplied by the full span of that driver in the data you actually have. A "
+           "coefficient answers 'per one unit'; this answers 'over the range that exists', which "
+           "is the size a process owner can act on. A large per-unit effect on a driver that "
+           "barely varies moves nothing in practice, and only this column shows that",
     "Sensitivity": "Sensitivity = of the cases that really happened, the share the model flagged",
     "Specificity": "Specificity = of the cases that did not happen, the share the model correctly left alone",
 }

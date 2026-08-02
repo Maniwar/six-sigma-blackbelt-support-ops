@@ -132,11 +132,7 @@ def audit_control_signals(sol, name: str) -> None:
 # meets cold, in a downloaded file where nothing is clickable. The list only
 # ever shrinks: a NEW uncovered term fails the build, and covering one keeps it
 # passing, so the work is visible without the gate rotting into a report.
-UNGLOSSED = {
-    "% of lead time", "Degrees of freedom", "Effect across the observed range",
-    "Erlang B", "Erlang C", "Low risk of side-effects", "Rank", "Score",
-    "Touch time (min)", "Unit of analysis", "Weighted score", "Weighted total",
-}
+UNGLOSSED: set[str] = set()
 RE_JARGON = re.compile(
     r"kappa|sigma|r²|adjusted|std|t-stat|p-value|vif|auc|logit|odds|coeff|intercept|"
     r"slope|residual|fitted|ucl|lcl|centre line|dpmo|dpo|rty|pce|erlang|occupancy|"
