@@ -27,6 +27,7 @@ imitating Excel, and the SVG has to sit on it without looking pasted in.
 from __future__ import annotations
 
 import math
+import json
 import re
 
 from chart_notes import ACTIONS as CHART_ACTIONS
@@ -822,9 +823,22 @@ def render(spec: dict, cells: dict, width: int = 900) -> str | None:
     # The style rides inside the SVG rather than in the page stylesheet, so the
     # chart still looks like itself when the preview is saved as a standalone
     # page or dropped into anything else that does not carry our CSS.
+    # The DATA rides along with the picture. Word cannot draw an SVG and will
+    # not draw a data-URI image either, so the email export has to rebuild the
+    # chart out of table cells the way the business case already does — and to
+    # do that it needs numbers, not paths. Carried as an attribute so the
+    # export never has to parse the drawing back into values.
+    payload = json.dumps({
+        "title": title or "",
+        "cats": cats[:40],
+        "series": [{"name": s.get("name") or "", "ys": [
+            None if y is None else round(float(y), 4) for y in s["ys"][:40]]}
+            for g in plot_groups for s in g["series"]][:4],
+    }, separators=(",", ":"))
     return (f'<svg class="xchart" xmlns="http://www.w3.org/2000/svg" '
             f'viewBox="0 0 {width} {height}" role="img" '
             f'aria-label="{_esc(title or "chart")}" '
+            f'data-series="{_esc(payload)}" '
             f'preserveAspectRatio="xMidYMid meet"><style>{SVG_CSS}</style>{body}</svg>')
 
 

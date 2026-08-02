@@ -510,9 +510,17 @@ def audit_template_export() -> None:
     # the caption naming the chart and pointing at the .xlsx is what stands in
     # for it, and it has to be there.
     check("the live chart is in the .xlsx" in doc,
-          "[TPLEXPORT] a chart absent from the .docx says where to find it",
-          "DOCX.build renders no image, so without the caption the chart "
-          "vanishes from the document with nothing said")
+          "[TPLEXPORT] every chart names itself and says where the live one is",
+          "the caption is what a reader has if their client drops the picture")
+    # Word draws neither inline SVG nor a data-URI image, so a template chart
+    # only exists in the document if it was rebuilt out of shaded table cells —
+    # the same thing the business-case exporter does. Count the shading: an
+    # empty table would satisfy a check that only counted tables.
+    bars = len(re.findall(r'w:fill="(?!auto)[0-9A-Fa-f]{6}"', doc))
+    check(bars > 0,
+          "[TPLEXPORT] template charts are drawn as bars in the .docx",
+          "no shaded cell in the document — the chart reaches Word as a "
+          "caption and nothing else")
 
 
 def audit_word_charts() -> None:
