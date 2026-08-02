@@ -24,6 +24,13 @@ only — the file has to exist and the line has to have something on it.
 
     python3 tools/qa_citations.py            # report
     python3 tools/qa_citations.py --quiet    # exit status only
+    python3 tools/qa_citations.py --fix      # repair the unambiguous ones
+
+A line number is not a stable address, so the honest long-term answer is to
+cite section and row names instead. That is a rewrite of every reference in
+reader-facing prose, and until it happens the next best thing is that a break
+is cheap to fix: --fix repairs any citation where exactly one line in the
+target carries the figure the citing sentence claims, and reports the rest.
 """
 from __future__ import annotations
 
@@ -63,6 +70,10 @@ RE_FIG = re.compile(r"\$?\d[\d,]*(?:\.\d+)?%?")
 
 fails: list[str] = []
 warns: list[str] = []
+# (path, line index, citation as written, citation as it should read). Only
+# filled when exactly ONE line in the target carries the figure, so a repair is
+# unambiguous; anything else is reported for a human and left alone.
+repairs: list[tuple] = []
 checked = [0]
 
 
@@ -71,12 +82,22 @@ def norm(tok: str) -> str:
     return tok.lstrip("$").rstrip("%").replace(",", "")
 
 
+RE_PLACEHOLDER = re.compile(r"<[^<>\n]{3,}>")
+
+
 def figures(text: str) -> set[str]:
     """Figures worth chasing. Bare 1-2 digit numbers are section and item
     numbers as often as they are data, and chasing them produces noise rather
-    than findings."""
+    than findings.
+
+    Angle-bracket placeholders are not claims. The pack writes an unsettled
+    value as `<the scope predicate that produced the 966>` — that 966 is a
+    back-reference describing what is missing, not an assertion looking for
+    provenance, and demanding that the citation beside it carry the number
+    turns the pack's own honesty markers into failures.
+    """
     out = set()
-    for m in RE_FIG.finditer(text):
+    for m in RE_FIG.finditer(RE_PLACEHOLDER.sub(" ", text)):
         n = norm(m.group(0))
         digits = n.replace(".", "")
         # Three digits, or money, or a percentage carrying a decimal. A bare
@@ -88,10 +109,30 @@ def figures(text: str) -> set[str]:
 
 def sentence_around(line: str, at: int) -> str:
     """The clause the citation sits in — enough to see what it claims, without
-    dragging in the figures of a neighbouring sentence."""
+    dragging in the figures of a neighbouring sentence.
+
+    A parenthetical holding nothing but the citation is the PROVENANCE of the
+    clause before it, not a clause of its own. In
+
+        *966 in-scope adjustments in the baseline month (09-baseline-document.md:106)*
+
+    the number being sourced sits OUTSIDE the brackets. Treating "(" as a left
+    boundary made the clause empty, and an empty clause claims no figure, so the
+    citation was resolved for existence only and the figure test never ran.
+
+    That was happening to 131 of the pack's 157 references. The check was
+    examining 17% of them and reporting "every citation resolves" — which is
+    precisely the reassuring-but-hollow green this harness exists to prevent,
+    committed by the tool written to prevent it.
+    """
     lo = max((line.rfind(c, 0, at) for c in ".;—("), default=-1)
     hi = min((p for p in (line.find(c, at) for c in ".;—)") if p != -1), default=len(line))
-    return line[lo + 1:hi]
+    inner = line[lo + 1:hi]
+    if figures(inner) or lo < 0 or line[lo] != "(":
+        return inner
+    # Nothing to judge inside the brackets: judge the clause they annotate.
+    prev = max((line.rfind(c, 0, lo) for c in ".;—("), default=-1)
+    return line[prev + 1:lo]
 
 
 def check_file(path: Path, cache: dict[str, list[str]]) -> None:
@@ -158,9 +199,27 @@ def check_file(path: Path, cache: dict[str, list[str]]) -> None:
                 warns.append(f"{where} cites {shown} for {hit[0]} — that line does "
                              f"not carry it, but a line within two of it does")
             else:
+                # Say where the figure actually IS. A checker that reports only
+                # "this line does not carry 966" leaves a reader grepping a
+                # 200-line document by hand — that triage took twenty minutes a
+                # citation the first time it fired, which is the kind of cost
+                # that gets a gate switched off. The document is right here, so
+                # find the lines that DO carry what the sentence claims.
+                cand = [i + 1 for i, ln in enumerate(body)
+                        if ln.strip() and want & {norm(x.group(0))
+                                                  for x in RE_FIG.finditer(ln)}]
+                cand = [c for c in cand if not any(lo <= c <= hi for lo, hi in spans)]
+                where_is = ""
+                if len(cand) == 1:
+                    where_is = f" — line {cand[0]} carries it"
+                    repairs.append((path, i, shown, f"{target}:{cand[0]}"))
+                elif cand:
+                    where_is = (f" — carried by line(s) {cand[:6]}"
+                                f"{' and more' if len(cand) > 6 else ''}, "
+                                f"none of them the one cited")
                 fails.append(f"{where} cites {shown} for "
-                             f"{', '.join(sorted(want)[:3])} — the line reads "
-                             f"{text[0].strip()[:72]!r}")
+                             f"{', '.join(sorted(want)[:3])}{where_is}; the cited line reads "
+                             f"{text[0].strip()[:64]!r}")
 
 
 def main() -> int:
@@ -176,6 +235,24 @@ def main() -> int:
     if fails:
         print(f"\n{len(fails)} BROKEN CITATION(S):")
         print("\n".join(f"  FAIL {f}" for f in fails))
+        if "--fix" in sys.argv and repairs:
+            by_file: dict = {}
+            for path, ln, was, now in repairs:
+                by_file.setdefault(path, []).append((ln, was, now))
+            for path, edits in by_file.items():
+                body = path.read_text(encoding="utf-8").split("\n")
+                for ln, was, now in edits:
+                    if body[ln - 1].count(was) == 1:
+                        body[ln - 1] = body[ln - 1].replace(was, now, 1)
+                        print(f"  FIXED {path.name}:{ln}  {was} -> {now}")
+                path.write_text("\n".join(body), encoding="utf-8")
+            left = len(fails) - len(repairs)
+            print(f"\n  {len(repairs)} repaired, {left} need a human "
+                  f"(the figure sits on more than one line, or on none).")
+            print("  Re-run to confirm.")
+        elif repairs:
+            print(f"\n  {len(repairs)} of these can be repaired automatically: "
+                  f"python3 tools/qa_citations.py --fix")
         return 1
     if not quiet:
         print(f"\nEvery citation resolves.{f' ({len(warns)} off by a line or two.)' if warns else ''}")

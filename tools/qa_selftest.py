@@ -786,7 +786,36 @@ def cite_blank(text: str):
     return None, None
 
 
-CITE_MUTANTS = [("citation: drifted off its row", cite_drift),
+def cite_paren_drift(text: str):
+    """Drift a citation that sits INSIDE brackets, annotating a figure that
+    sits outside them — `966 adjustments in the baseline month (09-...md:106)`.
+
+    This is the shape the check was blind to. "(" read as a clause boundary, so
+    a bracket holding nothing but the citation produced an empty clause, an
+    empty clause claims no figure, and the reference was resolved for existence
+    only. 131 of the pack's 157 citations are written that way, so the figure
+    test was running on 17% of them and reporting that every citation resolves.
+    """
+    for i, m, want in _cite_runs(text, want_figures=True):
+        line = text.split("\n")[i - 1]
+        if m.start() == 0 or line[m.start() - 1] != "(":
+            continue
+        tgt = TEMPLATES / m.group(1)
+        if not tgt.exists():
+            continue
+        body = tgt.read_text(encoding="utf-8").split("\n")
+        for j, ln in enumerate(body, start=1):
+            if not ln.strip():
+                continue
+            near = "\n".join(body[max(0, j - 3):j + 2])
+            if want & {C.norm(x.group(0)) for x in C.RE_FIG.finditer(near)}:
+                continue
+            return _retarget(text, i, m, j), f"parenthetical {m.group(0)} moved to :{j}"
+    return None, None
+
+
+CITE_MUTANTS = [("citation: parenthetical drifted off its row", cite_paren_drift),
+                ("citation: drifted off its row", cite_drift),
                 ("citation: past the end of the file", cite_past_eof),
                 ("citation: onto a blank line", cite_blank)]
 

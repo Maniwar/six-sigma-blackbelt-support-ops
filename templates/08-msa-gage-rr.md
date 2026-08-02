@@ -92,7 +92,7 @@ reproducibility (26.1%) at more than double repeatability (11.2%). The linearity
 stability rows say that offset holds across the range and over four weeks, so it largely
 cancels out of a before/after difference taken on this same gage; the 50 s spread does not
 cancel. What this study cannot do is police the pilot's handle-time guardrail — 412 s,
-rising no more than 8% to 445 s (16-pilot-protocol.md:94) — because the pack nowhere
+rising no more than 8% to 445 s (16-pilot-protocol.md:60) — because the pack nowhere
 states which gage that 412 s is read off, and the measurement validated at the top of this
 file is the analyst's clock, not the CRM timestamp. Which gage the 412 s comes from:
 `<not stated in the pack>`; R. Okonjo, who owns the AHT scorecard
