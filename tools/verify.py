@@ -204,6 +204,64 @@ def test_chart_notes() -> None:
           f"{len(stacked)} stacked: {stacked[:4]}")
 
 
+def test_idempotent() -> None:
+    """Running the finishing pass twice must produce the same bytes.
+
+    test_deterministic checks that the timestamps are frozen, which is a
+    PRECONDITION of a meaningful diff and not the thing itself — its own
+    docstring says it avoids building twice because that would double the run.
+    So a pass that APPENDS on every run still writes frozen-timestamp bytes and
+    sails through: the key line under each header stopped matching its own
+    output, stacked to four copies on eleven sheets, and every gate stayed
+    green because nothing ever ran the pass twice and compared.
+
+    This runs polish_workbook twice over a copy of each workbook and diffs the
+    result. It is cheap — no rebuild, no recalculation — and it covers the half
+    of the pack that accumulates: the workbooks patched in place rather than
+    generated from nothing, which is where both of this release's stacking and
+    anchor bugs landed.
+    """
+    import shutil
+    import tempfile
+
+    from openpyxl import load_workbook as _lw
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    from xlpolish import polish_workbook, save_workbook
+
+    drifted = []
+    with tempfile.TemporaryDirectory() as td:
+        for path in sorted(TEMPLATES.glob("*.xlsx")):
+            a, b = Path(td) / "a.xlsx", Path(td) / "b.xlsx"
+            shutil.copyfile(path, a)
+            wb = _lw(a)
+            polish_workbook(wb)
+            save_workbook(wb, a)
+            shutil.copyfile(a, b)
+            wb = _lw(b)
+            polish_workbook(wb)
+            save_workbook(wb, b)
+            # CONTENT, not bytes. openpyxl's own round trip is not byte-stable
+            # — load-and-save re-emits xl/styles.xml differently on three of
+            # these workbooks whatever pass is run, including one that only
+            # writes document properties. Comparing bytes measures openpyxl;
+            # comparing cells measures us, and it is us that stacked four
+            # copies of a key line onto eleven sheets.
+            wa, wbk = _lw(a), _lw(b)
+            for s1, s2 in zip(wa.worksheets, wbk.worksheets):
+                for r1, r2 in zip(s1.iter_rows(), s2.iter_rows()):
+                    for c1, c2 in zip(r1, r2):
+                        if c1.value != c2.value:
+                            drifted.append(f"{path.name} {s1.title}!{c1.coordinate}")
+                            break
+                if {str(m) for m in s1.merged_cells.ranges} != \
+                        {str(m) for m in s2.merged_cells.ranges}:
+                    drifted.append(f"{path.name} {s1.title} merges")
+    check(not drifted,
+          "the finishing pass is idempotent — a second run writes no new content",
+          f"{len(drifted)} cell(s)/sheet(s) move on a second pass: {drifted[:4]}")
+
+
 def test_glossary_coverage() -> None:
     """Every jargon column header should carry a plain-English key.
 
@@ -1774,6 +1832,8 @@ def main() -> int:
     test_export_charts()
     print("BUILD      workbooks are byte-reproducible")
     test_deterministic()
+    print("IDEMPOTENT the finishing pass changes nothing on a second run")
+    test_idempotent()
     print("STRUCTURE  merged-cell reference audit")
     test_structure()
     print("SYNC       four-way template consistency")

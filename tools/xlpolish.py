@@ -457,7 +457,16 @@ def explain_headers(wb) -> int:
                 cut = base.find("Key:")
                 if cut != -1:
                     base = base[:cut]
-                anchor.value = base.rstrip().rstrip("·").rstrip() + "  ·  " + key
+                fresh = base.rstrip().rstrip("·").rstrip() + "  ·  " + key
+                if anchor.value == fresh:
+                    # Already right. Fall through and openpyxl appends another
+                    # Alignment to the style table for a value that did not
+                    # move — xl/styles.xml grew on every single run, which is
+                    # the defect the byte-reproducible build was meant to end
+                    # and which nothing caught because the only check looked at
+                    # timestamps rather than running the pass twice.
+                    continue
+                anchor.value = fresh
             else:
                 if any((above, c) in {(r, cc) for rng in ws.merged_cells.ranges
                                       for r in range(rng.min_row, rng.max_row + 1)
