@@ -448,7 +448,13 @@ def explain_headers(wb) -> int:
                 # dict, the build reported success, and the sheet went on
                 # showing the one sentence it was written with.
                 base = anchor.value
-                cut = base.find("Key: ")
+                # Match "Key:" and NOT "Key: " with a trailing space. The key
+                # was reformatted to one bullet per line, so it now begins
+                # "Key:\n" — the space in the old pattern stopped matching, the
+                # previous key was never stripped, and every build appended
+                # another copy. Four stacked keys shipped on eleven sheets
+                # before anyone scrolled far enough to see it.
+                cut = base.find("Key:")
                 if cut != -1:
                     base = base[:cut]
                 anchor.value = base.rstrip().rstrip("·").rstrip() + "  ·  " + key

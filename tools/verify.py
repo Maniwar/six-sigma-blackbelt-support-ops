@@ -186,6 +186,23 @@ def test_chart_notes() -> None:
     check(not absent, "the chart notes are in the workbooks, not only the preview",
           f"missing in: {absent[:4]}")
 
+    # Nothing the build writes into a cell may stack. The key line under each
+    # header is rewritten on every run, and when its strip pattern stopped
+    # matching its own output the key was appended instead of replaced —
+    # four copies of the same paragraph on eleven sheets, and every gate green,
+    # because nothing compared a cell with itself.
+    stacked = []
+    for path in sorted(TEMPLATES.glob("*.xlsx")):
+        for ws in _lw(path).worksheets:
+            for row in ws.iter_rows():
+                for c in row:
+                    v = c.value
+                    if isinstance(v, str) and (v.count("Key:") > 1
+                                               or v.count("HOW TO READ IT.") > 1):
+                        stacked.append(f"{path.name} {ws.title}!{c.coordinate}")
+    check(not stacked, "no cell carries the same generated block twice",
+          f"{len(stacked)} stacked: {stacked[:4]}")
+
 
 def test_glossary_coverage() -> None:
     """Every jargon column header should carry a plain-English key.
