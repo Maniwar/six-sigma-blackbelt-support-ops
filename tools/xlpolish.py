@@ -244,10 +244,77 @@ GLOSSES = {
            "live — the 'pending release' row sits at 6 / 9 / 8, unchanged, and the 'in backlog' "
            "row at 4 / 6 / 7. Re-scoring at design time reported a 77.3% risk reduction where "
            "the shipped evidence supports 57.7%",
+    "Moving range": "Moving range = the gap between this point and the one before it, always "
+           "positive. It is where an I-MR chart gets its limits: the average of these gaps, "
+           "19.53 here, divided by 1.128 gives a sigma of 17.31 (B7, B8), so a point-to-point "
+           "measure sets the limits rather than the spread of the whole series. That is the "
+           "point — a slow drift cannot widen the limits and hide itself",
+    "Centre line": "Centre line = the average the chart is drawn around, frozen from the baseline "
+           "window and then held still. On the I-MR sheet it is 415.05 seconds from the first "
+           "twenty points (B6). Held still is what makes it useful: recomputing it as new data "
+           "arrives lets the line follow a drift, and a chart that follows the process it is "
+           "watching cannot signal that the process moved",
+    "Sigma p": "Sigma p = the standard deviation expected for THAT day's sample size, so a "
+           "quiet day gets wider limits than a busy one. Day 1 has 7,820 contacts and a sigma p "
+           "of 0.00507 (E14) from the overall 72.05% (B5). On a p-prime chart this is then "
+           "multiplied by sigma z, 4.61 here (B7), which is the Laney correction for a rate "
+           "that moves more between days than binomial sampling alone can explain",
+    "Sigma u": "Sigma u = the standard deviation expected for that week's exposure, so a week "
+           "with more audited contacts gets tighter limits. Week 1 audited 1,240 and gets "
+           "0.00592 (E14) from the overall rate of 0.0434 defects per contact (B5); the Laney "
+           "sigma z of 2.63 (B7) then widens it for overdispersion. A plain u-chart would have "
+           "cried wolf on the quiet weeks and had nothing left to say about the loud ones",
+    "Share": "Share = that category's count as a percentage of the total, before any sorting. "
+           "The largest billing category runs 412 of 966 contacts, 42.7% (B5, C5). Read it "
+           "beside the cumulative column: share tells you how big one bar is, cumulative tells "
+           "you how few bars you need",
+    "Cumulative": "Cumulative = the running total of share down the SORTED list, which is the "
+           "line a Pareto chart draws. The top category alone reaches 42.7% and the top two "
+           "reach 66.8% (J5, J6), so two of the categories carry two-thirds of the volume. "
+           "Where the line crosses 80% is the set worth working on",
+    "Share of hop time": "Share of hop time = that system pair's seconds as a percentage of all "
+           "the time spent moving between systems — a share of the SWIVEL, not of the contact. "
+           "Case tool to Billing platform takes 198 of the 737 logged seconds, 26.9% (E62, "
+           "G62), so a third of the swivelling happens on one pair. It is the column that says "
+           "which integration to build first",
+    "Share of handle time": "Share of handle time = the swivel measured against the whole "
+           "contact, which is the number to take to anyone who owns the handle-time target. "
+           "Where 'share of hop time' ranks the pairs against each other, this one says what "
+           "the hopping costs overall — the same seconds against the 412-second baseline "
+           "rather than against the other hops",
+    "Share of total": "Share of total = that family's variance as a percentage of the total "
+           "variance, which is how a multi-vari study apportions the spread between sites, "
+           "teams, agents and the noise within one agent. The shares are of VARIANCE, so they "
+           "add to 100% while the standard deviations they come from do not. A family clamped "
+           "to zero has not been shown to be identical — only that this sample cannot separate "
+           "it from the family inside it",
     "Sensitivity": "Sensitivity = of the cases that really happened, the share the model flagged",
     "Specificity": "Specificity = of the cases that did not happen, the share the model correctly left alone",
 }
 _GL_LOW = {k.lower(): v for k, v in GLOSSES.items()}
+
+
+def matches(label: str, term: str) -> bool:
+    """Does this header label carry that glossary term?
+
+    ONE copy of this rule. verify.py kept its own, they drifted the moment the
+    "of" guard landed here, and the coverage check then reported three headers
+    as explained by a gloss that no longer reached them.
+
+    "X of Y" is a different quantity from "X", so a key may not prefix-match
+    across an "of" — the Pareto's "Share" was otherwise explaining "Share of
+    handle time" in terms of a category's count over 966 contacts. Suffix and
+    interior matches are wanted: "OCC" has to reach "New OCC", "trial" has to
+    reach "A trial 1".
+    """
+    lab, t = label.lower(), term.lower()
+    return (lab == t or lab.endswith(" " + t) or (" " + t + " ") in lab
+            or (lab.startswith(t + " ") and not lab.startswith(t + " of ")))
+
+
+def glossed(label: str) -> bool:
+    """Would a key line explain this header?"""
+    return any(matches(label, t) for t in GLOSSES)
 
 
 def _header_rows(ws):
@@ -282,8 +349,14 @@ def explain_headers(wb) -> int:
                 for term, gloss in GLOSSES.items():
                     t = term.lower()
                     lab = label.lower()
-                    hit = (lab == t or lab.startswith(t + " ") or
-                           lab.endswith(" " + t) or (" " + t + " ") in lab)
+                    # "X of Y" is a different quantity from "X", so a key must
+                    # not prefix-match across an "of". The Pareto's "Share"
+                    # otherwise explained "Share of handle time" on the
+                    # system-hop sheet and "Share of total" on the multi-vari
+                    # one, in terms of a category's count over 966 contacts.
+                    # Suffix and interior matches are safe and wanted: "OCC"
+                    # has to reach "New OCC", "trial" has to reach "A trial 1".
+                    hit = matches(label, term)
                     if hit and gloss not in seen:
                         seen.add(gloss)
                         wanted.append(gloss)

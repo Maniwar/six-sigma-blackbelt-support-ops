@@ -582,6 +582,9 @@ def _mirrored(ws, col, rows) -> bool:
     return False
 
 
+from xlpolish import matches as _matches      # noqa: E402
+
+
 def audit_jargon(path: Path, wb) -> None:
     """A term of art in a column header has to be explained on the sheet.
 
@@ -610,9 +613,12 @@ def audit_jargon(path: Path, wb) -> None:
                     continue
                 lab = head.strip().lower()
                 for term in GLOSSES:
-                    t = term.lower()
-                    if not (lab == t or lab.startswith(t + " ")
-                            or lab.endswith(" " + t) or f" {t} " in lab):
+                    # THE matcher, not a third copy of it. This kept its own,
+                    # and when xlpolish stopped letting a key prefix-match
+                    # across an "of" this one carried on pairing "Share of hop
+                    # time" with the Pareto's "Share" — then failed the sheet
+                    # for not carrying a gloss that no longer belonged on it.
+                    if not _matches(head, term):
                         continue
                     # Ask for the canonical gloss verbatim. Guessing at the
                     # shape of an explanation ("term =", "term /") reported the

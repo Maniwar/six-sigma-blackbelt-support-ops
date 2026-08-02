@@ -133,12 +133,9 @@ def audit_control_signals(sol, name: str) -> None:
 # ever shrinks: a NEW uncovered term fails the build, and covering one keeps it
 # passing, so the work is visible without the gate rotting into a report.
 UNGLOSSED = {
-    "% of lead time", "Centre line", "Cumulative", "Degrees of freedom",
-    "Effect across the observed range", "Erlang B", "Erlang C",
-    "Low risk of side-effects", "Moving range", "Rank", "Score", "Share",
-    "Share of handle time", "Share of hop time", "Share of total", "Sigma p",
-    "Sigma u", "Touch time (min)", "Unit of analysis", "Weighted score",
-    "Weighted total",
+    "% of lead time", "Degrees of freedom", "Effect across the observed range",
+    "Erlang B", "Erlang C", "Low risk of side-effects", "Rank", "Score",
+    "Touch time (min)", "Unit of analysis", "Weighted score", "Weighted total",
 }
 RE_JARGON = re.compile(
     r"kappa|sigma|r²|adjusted|std|t-stat|p-value|vif|auc|logit|odds|coeff|intercept|"
@@ -180,12 +177,7 @@ def test_glossary_coverage() -> None:
     check(not dupes, "no workbook gloss is defined twice",
           f"silently overwritten: {dupes}")
 
-    terms = [k.lower() for k in xlpolish.GLOSSES]
-
-    def covered(label: str) -> bool:
-        lab = label.lower()
-        return any(lab == t or lab.startswith(t + " ") or lab.endswith(" " + t)
-                   or (" " + t + " ") in lab for t in terms)
+    covered = xlpolish.glossed          # ONE matcher, not a second copy of it
 
     bare = set()
     for path in sorted(TEMPLATES.glob("*.xlsx")):
