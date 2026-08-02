@@ -128,6 +128,83 @@ def audit_control_signals(sol, name: str) -> None:
                   f"the limits are computed from a process this sheet shows is not stable")
 
 
+# Jargon headers that still carry no key line. Each one is a column a reader
+# meets cold, in a downloaded file where nothing is clickable. The list only
+# ever shrinks: a NEW uncovered term fails the build, and covering one keeps it
+# passing, so the work is visible without the gate rotting into a report.
+UNGLOSSED = {
+    "% of lead time", "Centre line", "Cumulative", "DET", "Degrees of freedom",
+    "Detection control", "Effect across the observed range", "Effect on the customer",
+    "Erlang B", "Erlang C", "Low risk of side-effects", "Moving range", "New DET",
+    "New OCC", "New SEV", "OCC", "Rank", "SEV", "Score", "Share", "Share of handle time",
+    "Share of hop time", "Share of total", "Sigma p", "Sigma u", "Touch time (min)",
+    "Unit of analysis", "Weighted score", "Weighted total",
+}
+RE_JARGON = re.compile(
+    r"kappa|sigma|r²|adjusted|std|t-stat|p-value|vif|auc|logit|odds|coeff|intercept|"
+    r"slope|residual|fitted|ucl|lcl|centre line|dpmo|dpo|rty|pce|erlang|occupancy|"
+    r"shrinkage|percentile|median|variance|component|ndc|appraiser|trial|effect|"
+    r"degrees of freedom|confidence|rank|rpn|sev|occ|det|weight|score|u-bar|p-bar|"
+    r"moving range|breakeven|npv|payback|roi|discount|cumulative|share|contribution|"
+    r"study variation|lead time|touch time|unit of analysis", re.I)
+
+
+def test_glossary_coverage() -> None:
+    """Every jargon column header should carry a plain-English key.
+
+    On the page every acronym is clickable. In a downloaded workbook nothing is,
+    so a reader meets "Widest trial spread" or "% Study variation" with no way to
+    find out what it holds. xlpolish writes a key line under any header row whose
+    labels it can explain — it just could not explain many of them: 49 jargon
+    headers across twelve workbooks had no key at all, and 232 headers of all
+    kinds had none.
+
+    The gap is tracked as a set rather than a count, so a header added tomorrow
+    without a gloss fails even while the backlog is being worked through, and
+    the backlog itself cannot quietly grow.
+    """
+    from openpyxl import load_workbook as _lw
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import xlpolish
+
+    terms = [k.lower() for k in xlpolish.GLOSSES]
+
+    def covered(label: str) -> bool:
+        lab = label.lower()
+        return any(lab == t or lab.startswith(t + " ") or lab.endswith(" " + t)
+                   or (" " + t + " ") in lab for t in terms)
+
+    bare = set()
+    for path in sorted(TEMPLATES.glob("*.xlsx")):
+        wb = _lw(path)
+        for ws in wb.worksheets:
+            if ws.title.lower().startswith(("how to use", "read me", "legend")):
+                continue
+            for row in ws.iter_rows():
+                for c in row:
+                    try:
+                        dark = (c.fill and c.fill.patternType
+                                and str(c.fill.fgColor.rgb) == "FF333C49")
+                    except Exception:                            # noqa: BLE001
+                        dark = False
+                    if not (dark and isinstance(c.value, str) and c.value.strip()):
+                        continue
+                    h = c.value.strip()
+                    if h.startswith("=") or len(h) > 60:
+                        continue
+                    if RE_JARGON.search(h) and not covered(h):
+                        bare.add(h)
+    new = sorted(bare - UNGLOSSED)
+    check(not new, "no new jargon header ships without a plain-English key",
+          f"{new} — add a gloss to xlpolish.GLOSSES, or to UNGLOSSED with a reason")
+    done = sorted(UNGLOSSED - bare)
+    check(not done, "the unglossed backlog list has no stale entries",
+          f"these now have a key and can leave UNGLOSSED: {done}")
+    print(f"           {len(bare)} jargon header(s) still without a key "
+          f"(49 at the start of this pass)")
+
+
 def test_case_study() -> None:
     """The curriculum's worked project says its figures are internally
     consistent. That has to be true of the one a reader would quote.
@@ -1647,6 +1724,8 @@ def main() -> int:
     test_glossary()
     print("CITATIONS  every file.md:NN lands on a line that carries the figure")
     test_citations()
+    print("GLOSSARY+  every jargon column header carries a plain-English key")
+    test_glossary_coverage()
     print("CASE       the worked project's figures reproduce from each other")
     test_case_study()
     print("GUIDANCE   the template filler's numbers match the pack's")

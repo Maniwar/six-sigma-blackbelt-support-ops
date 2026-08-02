@@ -167,6 +167,50 @@ GLOSSES = {
     "AUC": "AUC = how well the model ranks a case that happened above one that did not; 0.5 is a coin toss, 0.7 upwards is useful",
     "Logit": "Logit = the log-odds the model works in, before it is turned back into a probability",
     "Predicted probability": "Predicted probability = the model's chance that this particular row ends in the outcome",
+    # --- 29-msa-gage-rr. Seventeen headers on this sheet carried no key at all,
+    # and it is the sheet where a confident wrong reading does most damage: the
+    # verdict it produces decides whether the project's baseline can be trusted.
+    # Every figure below is read from the shipped worked example.
+    "trial": "trial = one reading. Each appraiser measures every part three times, so a row holds "
+             "nine numbers for one unchanged item and any difference between them is the "
+             "measurement, not the process. On Part 1 appraiser A recorded 7.01, 7.26 and 7.98 "
+             "minutes on the same call (B13:D13) — a 0.97-minute swing from one person measuring "
+             "one thing three times",
+    "Widest trial spread": "Widest trial spread = for that part, the largest range any single "
+             "appraiser produced across their own three readings — repeatability, readable "
+             "without arithmetic. Part 1 shows 0.97 minutes (M13), from appraiser A's 7.01 to "
+             "7.98; B spread 0.63 and C 0.47, so A sets the row. The part's whole range across "
+             "everyone is 1.54 (L13), so most of it is one person disagreeing with himself",
+    "Appraiser": "Appraiser A / B / C = that person's average of their three readings for that "
+             "part, one number per person per part. Part 1 reads 7.42, 8.20 and 7.10 minutes "
+             "(B33:D33) for an unchanged call. Read a row across for disagreement about one "
+             "part, and a column down for someone consistently high or low",
+    "Sum of squares": "Sum of squares = total squared distance from the mean, before it is "
+             "divided by anything. Two of them can never be compared directly, because each "
+             "carries a different number of degrees of freedom: parts contribute 644.15 over 9 "
+             "df and the repeat readings 6.53 over 60 (B47, B50). Divide each by its own df and "
+             "you get the mean squares, 71.57 against 0.109, which may be compared",
+    "df": "df = degrees of freedom, the number of independent comparisons behind that row — 9 for "
+             "ten parts, 2 for three appraisers, 18 for their interaction, 60 for the repeats "
+             "(C47:C50). It is the divisor that turns a sum of squares into a mean square",
+    "Variance component": "Variance component = that source's share of the variation as a "
+             "VARIANCE, in minutes squared, not minutes. Repeatability is 0.109 and "
+             "reproducibility 0.589 (B56, B57) — a ratio of 5.4 on the squared scale, which is "
+             "2.3 once you take square roots and get back to minutes, 0.33 against 0.77. Quote "
+             "the minutes to anyone who has to act on it",
+    "% Contribution": "% Contribution = each row's share of the total VARIANCE, so it sits on the "
+             "squared scale, and only the unindented rows add to 100%. Measurement takes 8.1% "
+             "and the parts 91.9% (C55, C58); the two indented rows, 1.3% and 6.8%, are the "
+             "halves of that 8.1% and are already counted inside it",
+    "Study variation (6\u03c3)": "Study variation (6\u03c3) = six standard deviations of that "
+             "component, back in minutes — the span that covers virtually everything it "
+             "produces. Measurement spans 5.01 minutes against the parts' 16.91 (D55, D58). Six "
+             "sigma here is the convention for quoting a width, not a capability target",
+    "% Study variation": "% Study variation = each row's share of the total STANDARD DEVIATION, "
+             "not of the variance — which is why it does not match the % Contribution beside it: "
+             "28.4% against 8.1% (E55, C55), the first being the square root of the second. This "
+             "is the column the verdict is read on: under 10% acceptable, 10-30% marginal, over "
+             "30% unusable. 28.4% is why this study reads MARGINAL",
     "Sensitivity": "Sensitivity = of the cases that really happened, the share the model flagged",
     "Specificity": "Specificity = of the cases that did not happen, the share the model correctly left alone",
 }
