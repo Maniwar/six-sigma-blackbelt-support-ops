@@ -836,13 +836,23 @@ def render(spec: dict, cells: dict, width: int = 900) -> str | None:
         # linear span makes the percentages invisible slivers and the bars a
         # lie; a scatter has no categories at all. Say so here rather than let
         # the exporter guess from the numbers.
+        # Enough to redraw the chart honestly rather than only the easy case.
+        # A combo carries two scales, so each series says which axis it is on
+        # and the exporter draws one block per axis. A scatter has no
+        # categories at all, so it carries its x values instead.
+        "scatter": scatter,
         "simple": (not scatter
                    and len({s.get("axis") or "" for g in plot_groups
                             for s in g["series"]}) == 1
                    and len(plot_groups) == 1),
-        "series": [{"name": s.get("name") or "", "ys": [
-            None if y is None else round(float(y), 4) for y in s["ys"][:40]]}
-            for g in plot_groups for s in g["series"]][:4],
+        "series": [{"name": s.get("name") or "",
+                    "axis": s.get("axis") or "",
+                    "grp": gi, "kind": g.get("kind") or "",
+                    "xs": ([None if x is None else round(float(x), 4)
+                            for x in (s.get("xs") or [])[:40]] if scatter else None),
+                    "ys": [None if y is None else round(float(y), 4)
+                           for y in s["ys"][:40]]}
+                   for gi, g in enumerate(plot_groups) for s in g["series"]][:4],
     }, separators=(",", ":"))
     return (f'<svg class="xchart" xmlns="http://www.w3.org/2000/svg" '
             f'viewBox="0 0 {width} {height}" role="img" '

@@ -526,6 +526,24 @@ def audit_template_export() -> None:
           "[TPLEXPORT] template charts are drawn as bars in the .docx",
           "no shaded cell in the document — the chart reaches Word as a "
           "caption and nothing else")
+    # The two shapes bars cannot express. A combo carries two scales, so each
+    # group is drawn against its own range rather than all of them against one
+    # span, which turned a Pareto's cumulative share into slivers. A scatter has
+    # no categories at all and becomes the pairs it actually is.
+    for pick, want, why in (
+            ("25-pareto", 12, "a combo chart draws each group against its own range"),
+            ("30-regression", 0, "a scatter chart reaches the document as x/y pairs")):
+        g2 = template_export(pick)
+        if not g2 or str(g2.get("docx", "")).startswith("ERR"):
+            check(False, f"[TPLEXPORT] {pick} exports", "no document")
+            continue
+        d2 = zipfile.ZipFile(io.BytesIO(base64.b64decode(g2["docx"]))).read(
+            "word/document.xml").decode()
+        shaded = len(re.findall(r'w:fill="(?!auto)[0-9A-Fa-f]{6}"', d2))
+        txt = re.sub(r"<[^>]+>", " ", d2)
+        ok = shaded >= want if want else ("Residual for each contact" in txt)
+        check(ok, f"[TPLEXPORT] {why}",
+              f"{pick}: shaded={shaded}, wanted {want or 'x/y pairs in the text'}")
 
 
 def audit_word_charts() -> None:
