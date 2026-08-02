@@ -582,6 +582,7 @@ def _mirrored(ws, col, rows) -> bool:
     return False
 
 
+from xlpolish import gloss_short as _short   # noqa: E402
 from xlpolish import matches as _matches      # noqa: E402
 
 
@@ -626,7 +627,13 @@ def audit_jargon(path: Path, wb) -> None:
                     # rows above the header, in a wording the guess did not
                     # anticipate. The fix writes GLOSSES[term]; the check looks
                     # for GLOSSES[term]; neither can drift from the other.
-                    if GLOSSES[term].lower() in prose:
+                    # The DEFINITION, which is what the key above a header
+                    # now carries. The worked example that follows it moved to
+                    # the how-to tab, because seven full glosses above one
+                    # table is 2,470 characters in the reader's path. Asking
+                    # for the full text here would fail every sheet for a
+                    # change made to make them readable.
+                    if _short(GLOSSES[term]).lower() in prose:
                         continue
                     fail(book, "JARGON",
                          f"{ws.title}!{get_column_letter(col)}{hrow} — column headed "

@@ -268,34 +268,17 @@ def test_idempotent() -> None:
 # present state passes is how a gate becomes decoration, and this release has
 # spent most of its commits undoing exactly that.
 #
-# These twenty are the backlog. The set only shrinks — a NEW dense block fails
+# These five are the backlog. The set only shrinks — a NEW dense block fails
 # the build immediately, and one that gets shortened has to leave the list, so
-# it cannot rot in either direction. The worst is 12-fmea!A9 at 2,470
-# characters above a single table: seven full glosses, each correct and each
-# wanted, stacked somewhere a reader meets before the data. That is a
-# PLACEMENT problem rather than a writing one and it needs the key moved, not
-# the definitions cut.
+# it cannot rot in either direction. The five left are chart-scaffolding notes
+# off to the right of the data, not keys in a reader's path — a different and
+# much smaller problem than the header keys were.
 DENSE_OK = {
-    "11-cause-effect-xy-matrix.xlsx X-Y matrix!A13",
-    "12-fmea.xlsx FMEA!A9",
     "12-fmea.xlsx FMEA!AA32",
-    "17-control-plan.xlsx Control plan!A8",
-    "27-control-charts.xlsx CUSUM!A14",
-    "27-control-charts.xlsx EWMA!A14",
-    "27-control-charts.xlsx I-MR!A12",
     "27-control-charts.xlsx I-MR!K22",
     "27-control-charts.xlsx I-MR!K38",
-    "27-control-charts.xlsx Laney p-prime!A12",
-    "27-control-charts.xlsx Laney u-prime!A12",
-    "27-control-charts.xlsx t and g (rare events)!A12",
-    "28-erlang-staffing.xlsx Staffing!A20",
-    "29-msa-gage-rr.xlsx Gage R&R study!A11",
-    "29-msa-gage-rr.xlsx Gage R&R study!A45",
-    "29-msa-gage-rr.xlsx Gage R&R study!A53",
     "29-msa-gage-rr.xlsx Gage R&R study!P21",
-    "30-regression.xlsx Multiple regression!A38",
     "30-regression.xlsx Multiple regression!Y26",
-    "31-multi-vari.xlsx Multi-vari study!A61",
 }
 MAX_LINE, MAX_BLOCK = 350, 1500
 

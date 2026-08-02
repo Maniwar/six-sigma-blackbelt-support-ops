@@ -16,6 +16,8 @@ somebody uses and one they close again.
 """
 from __future__ import annotations
 
+import re
+
 from openpyxl.utils import get_column_letter, range_boundaries
 from openpyxl.worksheet.properties import PageSetupProperties
 
@@ -368,6 +370,91 @@ def glossed(label: str) -> bool:
     return any(matches(label, t) for t in GLOSSES)
 
 
+RE_FIRST_SENTENCE = re.compile(r"(?<=[a-z0-9%)\]])\.\s+(?=[A-Z])")
+
+
+def gloss_short(gloss: str) -> str:
+    """The definition without its worked example.
+
+    Every gloss is written "TERM = what it is. Then the example, with this
+    sheet's own numbers." — so the first sentence is already a complete
+    definition and the split needs no rewriting. That matters: the examples are
+    the thing that was asked for and none of them is cut, they just stop being
+    the first thing a reader meets.
+    """
+    m = RE_FIRST_SENTENCE.search(gloss)
+    return gloss[:m.start() + 1] if m else gloss
+
+
+def write_full_glossary(wb) -> int:
+    """The full definitions, with their worked examples, on the how-to tab.
+
+    The key above a header row has to be short enough to read before the table
+    it explains. On the FMEA that meant seven full glosses — 2,470 characters —
+    sitting exactly where the reader arrives, ahead of any data. Above the
+    header now carries the definition; the example goes here, which is where
+    somebody who wants the depth already goes.
+    """
+    from openpyxl.styles import Alignment, Font
+
+    sheet = next((w for w in wb.worksheets
+                  if w.title.lower().startswith(("how to use", "read me"))), None)
+    if sheet is None:
+        return 0
+    used = []
+    for ws in wb.worksheets:
+        if ws is sheet:
+            continue
+        for hrow, cols in _header_rows(ws).items():
+            for label in cols.values():
+                for term in GLOSSES:
+                    if matches(label, term) and term not in used:
+                        used.append(term)
+    used = [t for t in used if gloss_short(GLOSSES[t]) != GLOSSES[t]]
+    if not used:
+        return 0
+    HEAD = "WHAT THE COLUMNS MEAN — the short version sits above each table; this is the same thing with the worked example"
+    start = next((r for r in range(1, sheet.max_row + 2)
+                  if str(sheet.cell(row=r, column=1).value or "").startswith(
+                      "WHAT THE COLUMNS MEAN")), None)
+    if start is None:
+        start = sheet.max_row + 2
+    rows = [HEAD] + [GLOSSES[t] for t in used]
+    n = 0
+    for i, text in enumerate(rows):
+        c = sheet.cell(row=start + i, column=1)
+        if c.__class__.__name__ == "MergedCell" or c.value == text:
+            continue
+        c.value = text
+        c.font = Font(bold=True, size=10) if i == 0 else Font(italic=True, size=9,
+                                                              color="FF4B5563")
+        c.alignment = Alignment(wrap_text=True, vertical="top")
+        # Merge across, or the text wraps into whatever column A happens to be.
+        # On 32-system-hop that column is 2 characters wide, so a 347-character
+        # definition became 87 stacked lines — caught by the check that exists
+        # for exactly this, on the first run after the block was added.
+        taken = {(r, cc) for rng in sheet.merged_cells.ranges
+                 for r in range(rng.min_row, rng.max_row + 1)
+                 for cc in range(rng.min_col, rng.max_col + 1)}
+        span = 8
+        if not any((start + i, cc) in taken for cc in range(1, span + 1)):
+            sheet.merge_cells(start_row=start + i, start_column=1,
+                              end_row=start + i, end_column=span)
+        width = sum(sheet.column_dimensions[get_column_letter(cc)].width or 9
+                    for cc in range(1, span + 1))
+        sheet.row_dimensions[start + i].height = max(
+            14, 11 * (1 + len(text) // max(40, int(width))))
+        n += 1
+    # A run that used to be longer must not leave orphans behind it.
+    r = start + len(rows)
+    while str(sheet.cell(row=r, column=1).value or "").strip().startswith(
+            tuple(t.split(" =")[0] for t in GLOSSES)):
+        sheet.cell(row=r, column=1).value = None
+        r += 1
+        n += 1
+    return n
+
+
 def _header_rows(ws):
     """(row, {col: label}) for every dark banded header row on the sheet."""
     rows = {}
@@ -410,7 +497,7 @@ def explain_headers(wb) -> int:
                     hit = matches(label, term)
                     if hit and gloss not in seen:
                         seen.add(gloss)
-                        wanted.append(gloss)
+                        wanted.append(gloss_short(gloss))
             if not wanted:
                 continue
             # One term per LINE. Joined with " · " these ran together into a
@@ -903,7 +990,8 @@ def polish_workbook(wb, landscape: bool = True) -> int:
     """
     stamp(wb)
     changed = (explain_headers(wb) + mark_examples(wb) + recolour_formulas(wb)
-               + widen_long_notes(wb) + write_chart_notes(wb))
+               + widen_long_notes(wb) + write_chart_notes(wb)
+               + write_full_glossary(wb))
     for ws in wb.worksheets:
         before = (ws.page_setup.fitToWidth, ws.page_setup.orientation, ws.freeze_panes)
 
