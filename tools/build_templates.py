@@ -2587,29 +2587,37 @@ def gage_rr():
     oper = f"MAX(0,({MS['Appraisers']}-{MS['Part × appraiser']})/{PARTS * REPS})"
     prt = f"MAX(0,({MS['Parts']}-{MS['Part × appraiser']})/{OPS * REPS})"
     vc_rows = [
-        ("Total Gage R&R", f"={rep}+{oper}+{inter}",
-         "Everything the measurement contributes. This is the number you report."),
-        ("Repeatability", f"={rep}",
+        # This column does NOT add up down the page, and it used to give no sign
+        # of that. Repeatability and Reproducibility are the two HALVES of Total
+        # Gage R&R, not further entries beside it, so a reader adding the five
+        # % Contribution figures gets 208%. The indent and the labels say which
+        # rows are children of which.
+        ("Total Gage R&R (measurement error)", f"={rep}+{oper}+{inter}",
+         "Everything the measurement contributes. This is the number you report. "
+         "It is the two indented rows below added together, not a fourth thing beside them."),
+        ("    of which repeatability", f"={rep}",
          "Same appraiser, same part, a different answer. The instrument or the procedure — fix it with a clearer definition or a tighter method."),
-        ("Reproducibility", f"={oper}+{inter}",
+        ("    of which reproducibility", f"={oper}+{inter}",
          "Different appraisers, same part. The people — fix it with calibration sessions and a rubric, not with a new tool."),
-        ("Part-to-part", f"={prt}",
+        ("Part-to-part (real differences)", f"={prt}",
          "Real process variation. You WANT this to dominate — it is the signal."),
         ("Total variation", None,
-         "Gage R&R plus part-to-part. Percentages below are shares of this."),
+         "Total Gage R&R plus part-to-part — the two unindented rows above. The "
+         "% Contribution column is each row's share of THIS, so only those two "
+         "add to 100%; the indented pair already sits inside the first of them."),
     ]
     vr = {}
     for i, (lab, f, why) in enumerate(vc_rows):
         r = v + 2 + i
         vr[lab] = r
         ws.cell(row=r, column=1, value=lab).font = (
-            Font(size=11) if lab in ("Repeatability", "Reproducibility") else F_B)
+            Font(size=11) if lab.startswith("    of which") else F_B)
         c = mark(ws, r, 2, "calc")
         c.value, c.number_format = f, "0.00000"
         SHOWN[("Gage R&R study", c.coordinate)] = ""
         note_cell(ws, r, 7, why, W)
     tot = vr["Total variation"]
-    ws.cell(row=tot, column=2).value = f"=$B${vr['Total Gage R&R']}+$B${vr['Part-to-part']}"
+    ws.cell(row=tot, column=2).value = ("=$B$%d+$B$%d" % (vr['Total Gage R&R (measurement error)'], vr['Part-to-part (real differences)']))
     for lab, r in vr.items():
         pc = mark(ws, r, 3, "calc")
         pc.value, pc.number_format = f"=IF($B${tot}=0,\"\",$B${r}/$B${tot})", "0.0%"
@@ -2620,7 +2628,7 @@ def gage_rr():
         ps.number_format = "0.0%"
         for cc in (pc, sv, ps):
             SHOWN[("Gage R&R study", cc.coordinate)] = ""
-    grr = vr["Total Gage R&R"]
+    grr = vr["Total Gage R&R (measurement error)"]
     vd = mark(ws, grr, 6, "calc")
     vd.value = (f'=IF($E${grr}="","",IF($E${grr}<0.1,"ACCEPTABLE — under 10%",'
                 f'IF($E${grr}<=0.3,"MARGINAL — usable with stated caution",'
@@ -2637,7 +2645,7 @@ def gage_rr():
     band(ws, n, "STEP 5 — how many groups this gage can actually tell apart", W)
     for i, (lab, f, fmt, why) in enumerate([
         ("Number of distinct categories (ndc)",
-         f"=IF($B${grr}=0,\"\",MAX(1,INT(1.41*SQRT($B${vr['Part-to-part']})/"
+         f"=IF($B${grr}=0,\"\",MAX(1,INT(1.41*SQRT($B${vr['Part-to-part (real differences)']})/"
          f"SQRT($B${grr}))))", "0",
          "How many groups the gage can separate across your part range. Want 5 or more. "
          "Below 5 the gage sorts into a handful of buckets, and 4 means it is telling you "
@@ -2656,8 +2664,8 @@ def gage_rr():
         note_cell(ws, r, 3, why, W)
 
     # ---- the picture
-    cat = Reference(ws, min_col=1, min_row=vr["Total Gage R&R"], max_row=vr["Part-to-part"])
-    val = Reference(ws, min_col=5, min_row=vr["Total Gage R&R"], max_row=vr["Part-to-part"])
+    cat = Reference(ws, min_col=1, min_row=vr["Total Gage R&R (measurement error)"], max_row=vr["Part-to-part (real differences)"])
+    val = Reference(ws, min_col=5, min_row=vr["Total Gage R&R (measurement error)"], max_row=vr["Part-to-part (real differences)"])
     lim = n + 4
     # "30% line" beside four cells reading 30% told the reader nothing about why
     # a number they never entered was repeated four times across their results.
