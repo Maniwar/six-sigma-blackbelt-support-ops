@@ -469,6 +469,80 @@ def run_markdown() -> tuple[int, int, list[str]]:
     return killed, applied, survivors
 
 
+# ------------------------------------------------- control-chart mutants
+# The two ways a control chart's worked example goes wrong, both of which this
+# repo shipped: data so quiet the rule never fires, and a baseline that is
+# itself out of control so every limit is computed from an unstable process.
+
+
+def cc_flatten(wb):
+    """Put the monitoring window back inside the limits — the state four of
+    the seven charts shipped in, where the Signal column is blank on all 24
+    rows and the rule has never once been evaluated."""
+    ws = wb["I-MR"]
+    for row, v in zip(range(34, 38), (442, 404, 416, 428)):
+        ws[f"B{row}"] = v
+    return "I-MR monitoring window back inside the limits"
+
+
+def cc_unstable_baseline(wb):
+    """Push a BASELINE point outside the limits, so the sheet computes its own
+    limits from a process it shows is not in control."""
+    ws = wb["Xbar-R"]
+    for col in "BCDEF":
+        ws[f"{col}20"] = 505
+    return "Xbar-R baseline point 7 forced out of control"
+
+
+CC_MUTANTS = [("control chart: worked data never signals", cc_flatten),
+              ("control chart: baseline is out of control", cc_unstable_baseline)]
+
+
+def run_control() -> tuple[int, int, list[str]]:
+    import importlib
+
+    V = importlib.import_module("verify")
+    book = TEMPLATES / "27-control-charts.xlsx"
+    killed = applied = 0
+    survivors = []
+    with tempfile.TemporaryDirectory() as td:
+        def audit(path: Path) -> set[str]:
+            V.FAILURES.clear()
+            V.PASSES[0] = 0
+            V.audit_control_signals(V._engine(path).calculate(), book.name)
+            return set(V.FAILURES)
+
+        # Same FILENAME, different directory. `formulas` keys every cell by the
+        # workbook's file name, so a copy called base_27-... resolves nothing at
+        # all — every lookup returns None, the audit fails identically before and
+        # after, and both mutants survive against a check that was working. That
+        # cost a round trip and is exactly the false negative a mutation suite
+        # is supposed to catch, so it is written down rather than just fixed.
+        def stage(sub: str) -> Path:
+            d = Path(td) / sub
+            d.mkdir()
+            dst = d / book.name
+            shutil.copyfile(book, dst)
+            return dst
+
+        baseline = audit(stage("base"))
+        for i, (name, mutate) in enumerate(CC_MUTANTS):
+            tmp = stage(f"m{i}")
+            wb = load_workbook(tmp)
+            what = mutate(wb)
+            if not what:
+                continue
+            wb.save(tmp)
+            applied += 1
+            if audit(tmp) - baseline:
+                killed += 1
+            else:
+                survivors.append(f"    SURVIVED [CONTROL] {name} — {what}")
+    V.FAILURES.clear()
+    V.PASSES[0] = 0
+    return killed, applied, survivors
+
+
 # ------------------------------------------------------ guidance mutants
 # md_guidance.py holds a second copy of the pack's worked example, and a second
 # copy of a number is a number that will drift. It had: it still carried the
@@ -932,6 +1006,12 @@ def main() -> int:
         docs = len(sorted(TEMPLATES.glob("*.md")))
         print(f"  {'(markdown templates)':36s} {k}/{a} mutants killed"
               f"{'' if k == a else '   <-- a check did not fire'}   across {docs} docs")
+        k, a, s = run_control()
+        total_k += k
+        total_a += a
+        survivors += s
+        print(f"  {'(control charts)':36s} {k}/{a} mutants killed"
+              f"{'' if k == a else '   <-- a check did not fire'}")
         k, a, s = run_guidance()
         total_k += k
         total_a += a

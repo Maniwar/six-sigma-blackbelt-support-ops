@@ -85,6 +85,49 @@ RE_IASSC_CODE = re.compile(r"\b([1-5]\.[1-5])\b")
 
 
 
+SIGNAL_COL = {"I-MR": ("I", 13), "Laney p-prime": ("I", 13),
+              "Laney u-prime": ("I", 13), "Xbar-R": ("L", 13),
+              "EWMA": ("I", 15), "CUSUM": ("I", 15),
+              "t and g (rare events)": ("H", 13)}
+
+
+def audit_control_signals(sol, name: str) -> None:
+    """Every control chart must trip its own rule in its own worked data, and
+    must not trip it inside the baseline window.
+
+    Four of the seven shipped a stable run that never crossed a limit, so the
+    Signal column was blank down all 24 rows. A control chart is a signal
+    detector; one whose example never signals shows the reader the shape of the
+    chart and nothing about reading it, and — the part a harness can act on —
+    leaves the rule formula never once evaluated against a true case. It could
+    have been broken from the day it was written and every other check here
+    would still have passed.
+
+    The second half matters more. Xbar-R signalled three times INSIDE its
+    baseline window, so every limit on that sheet was computed from a process
+    the sheet itself showed was out of control. That is the error the method
+    most needs a reader not to make, shipped as the worked example.
+
+    Split out of the test so the mutation suite can drive this exact code
+    rather than a copy of it that could agree with a bug.
+    """
+    for sheet, (col, hdr) in SIGNAL_COL.items():
+        fired = [r - hdr for r in range(hdr + 1, hdr + 25)
+                 if isinstance(_read(sol, name, sheet, f"{col}{r}"), str)
+                 and _read(sol, name, sheet, f"{col}{r}").strip()]
+        check(bool(fired),
+              f"{sheet}: the worked data trips the chart's own rule",
+              "the Signal column is blank on all 24 points — the rule has never "
+              "been evaluated against a true case")
+        window = _read(sol, name, sheet, "B3")
+        if isinstance(window, (int, float)):     # sheets with a frozen baseline
+            inside = [p for p in fired if p <= int(window)]
+            check(not inside,
+                  f"{sheet}: the baseline window is in control",
+                  f"points {inside} signal inside the {int(window)}-point baseline, so "
+                  f"the limits are computed from a process this sheet shows is not stable")
+
+
 def test_guidance() -> None:
     """tools/md_guidance.py holds a SECOND copy of the pack's worked example.
 
@@ -688,7 +731,7 @@ def test_numeric_other() -> None:
     src = TEMPLATES / "27-control-charts.xlsx"
     sol = _engine(src).calculate()
     vals = [408, 415, 402, 431, 419, 396, 424, 410, 438, 405, 417, 429,
-            401, 422, 413, 407, 435, 398, 420, 411, 442, 404, 416, 428]
+            401, 422, 413, 407, 435, 398, 420, 411, 449, 471, 478, 466]
     base = int(_read(sol, src.name, "I-MR", "B3"))
     check(base < len(vals),
           "the baseline window is shorter than the series, not the whole thing",
@@ -705,6 +748,23 @@ def test_numeric_other() -> None:
         check(isinstance(v, (int, float)),
               f"{sheet}!{cell} still computes with a frozen baseline", repr(v))
 
+    # --- Every control chart must trip its own rule in its own worked data,
+    #     and must not trip it inside the baseline window.
+    #
+    #     Four of the seven shipped a stable run that never crossed a limit, so
+    #     the Signal column was blank down all 24 rows. A control chart is a
+    #     signal detector; one whose example never signals shows the reader the
+    #     shape of the chart and nothing about reading it, and — the part a
+    #     harness can act on — leaves the rule formula never once evaluated
+    #     against a true case. It could have been broken from the day it was
+    #     written and every check here would still have passed.
+    #
+    #     The second half matters more. Xbar-R signalled three times INSIDE its
+    #     baseline window, so every limit on that sheet was computed from a
+    #     process the sheet itself showed was out of control. That is the error
+    #     the method most needs a reader not to make, shipped as the example.
+    audit_control_signals(sol, src.name)
+
     # The baseline divisor must be what SUMIF actually summed, not the window
     # the user asked for. Dividing 15 pasted points by a baseline of 20 put the
     # centre line 25% low and every limit with it, silently — a defect the
@@ -712,7 +772,7 @@ def test_numeric_other() -> None:
     # 20-25 points is the working minimum.
     src = TEMPLATES / "27-control-charts.xlsx"
     vals = [408, 415, 402, 431, 419, 396, 424, 410, 438, 405, 417, 429,
-            401, 422, 413, 407, 435, 398, 420, 411, 442, 404, 416, 428]
+            401, 422, 413, 407, 435, 398, 420, 411, 449, 471, 478, 466]
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td) / src.name
         shutil.copyfile(src, tmp)
