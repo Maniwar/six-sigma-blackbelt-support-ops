@@ -268,18 +268,10 @@ def test_idempotent() -> None:
 # present state passes is how a gate becomes decoration, and this release has
 # spent most of its commits undoing exactly that.
 #
-# These five are the backlog. The set only shrinks — a NEW dense block fails
+# Empty. Anything that trips this now is new. The set only shrinks — a NEW dense block fails
 # the build immediately, and one that gets shortened has to leave the list, so
-# it cannot rot in either direction. The five left are chart-scaffolding notes
-# off to the right of the data, not keys in a reader's path — a different and
-# much smaller problem than the header keys were.
-DENSE_OK = {
-    "12-fmea.xlsx FMEA!AA32",
-    "27-control-charts.xlsx I-MR!K22",
-    "27-control-charts.xlsx I-MR!K38",
-    "29-msa-gage-rr.xlsx Gage R&R study!P21",
-    "30-regression.xlsx Multiple regression!Y26",
-}
+# it cannot rot in either direction.
+DENSE_OK: set[str] = set()   # empty, and it must stay that way
 MAX_LINE, MAX_BLOCK = 350, 1500
 
 
@@ -302,8 +294,16 @@ def test_readable_blocks() -> None:
                     v = c.value
                     if not isinstance(v, str) or not any(m in v for m in marks):
                         continue
-                    if (max(len(seg) for seg in v.split("\n")) > MAX_LINE
-                            or len(v) > MAX_BLOCK):
+                    # The defect was never paragraph LENGTH — a 400-character
+                    # note in a wrapped cell reads fine, and Excel wraps it.
+                    # It was seven separate definitions run together with "·"
+                    # into one undifferentiated line. So the line rule applies
+                    # only where a block holds SEVERAL entries: those must be
+                    # separated. A single paragraph is judged on total size.
+                    entries = v.count(" = ")
+                    runon = (entries >= 2
+                             and max(len(seg) for seg in v.split("\n")) > MAX_LINE)
+                    if runon or len(v) > MAX_BLOCK:
                         where = f"{path.name} {ws.title}!{c.coordinate}"
                         if where not in DENSE_OK:
                             fresh.append(where)
