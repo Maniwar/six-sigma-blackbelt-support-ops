@@ -2815,7 +2815,7 @@ def regression():
          "Name the measurement, not the ambition. 'Handle time from CRM open to "
          "CRM close, in seconds' is a column you can pull; 'efficiency' is not."),
         ("Driver (x) — the one thing you are testing",
-         "Transfers per contact",
+         "Transfers before resolution",
          "One column, and one you could actually change. Start with the driver "
          "the process owner already believes in; you are testing their belief, "
          "not replacing it."),
@@ -2831,12 +2831,14 @@ def regression():
         note_cell(ws, r, 3, hint, W)
         note(ws, r, 2, hint)
 
-    band(ws, 9, "THE DATA — one row per contact, x beside y", W)
+    band(ws, 9, "THE DATA — one row per contact. First the two columns you measured: x, the driver you are testing, then y, the outcome. Then three the sheet works out for you. Contact ref is the case number and the time of day it was raised", W)
     hdr = 10
-    header(ws, hdr, ["Contact ref", "Transfers before resolution (x)",
-                     "Handle time in seconds (y)", "Fitted y — what the line predicts",
-                     "Residual (y − fitted)",
-                     "Off the line by more than 1.5 standard errors?"])
+    header(ws, hdr, ["Contact ref · time raised",
+                     "x — transfers before resolution",
+                     "y — handle time, seconds (measured)",
+                     "Fitted y — seconds the line predicts for that x",
+                     "Residual — seconds the line missed by (y − fitted)",
+                     "Unusual? residual larger than 1.5 standard errors"])
     ws.row_dimensions[hdr].height = 46
     first, last = _reg_data_block(
         ws, hdr, [1, 2, 3], [(r[0], r[4], r[5]) for r in REG_ROWS],
@@ -3036,7 +3038,7 @@ def regression():
         note_cell(ws2, r, 3, hint, W2)
         note(ws2, r, 2, hint)
 
-    band(ws2, 9, "THE DATA — the same 24 contacts, with all four drivers beside y", W2)
+    band(ws2, 9, "THE DATA — the same 24 contacts, with all four drivers beside y. Contact ref is the case number and the time of day it was raised, which is where the 17:00 column comes from", W2)
     h2 = 10
     header(ws2, h2, ["Contact ref"] + [x[0] for x in REG_X]
            + ["Handle time in seconds (y)", "Fitted y — what the model predicts",
@@ -3368,7 +3370,7 @@ def regression():
               "p-value printed as <0.0001 by the tool is pasted here as text on "
               "purpose: it is not a number you should be doing arithmetic on.", W3)
 
-    band(ws3, hl + 8, "STEP 2 — the same 24 contacts, scored with those coefficients", W3)
+    band(ws3, hl + 8, "STEP 2 — the same 24 contacts, scored with those coefficients. Contact ref is the case number and the time of day it was raised, which is where the 17:00 column comes from. The last two columns are the model's working: the logit it computes, then the same thing as a probability", W3)
     h3 = hl + 9
     header(ws3, h3, ["Contact ref"] + [x[0] for x in REG_X]
            + ["Reopened within 7 days (1 = yes)", "Logit", "Predicted probability",
