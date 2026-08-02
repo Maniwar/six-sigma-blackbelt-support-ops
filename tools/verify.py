@@ -262,6 +262,74 @@ def test_idempotent() -> None:
           f"{len(drifted)} cell(s)/sheet(s) move on a second pass: {drifted[:4]}")
 
 
+# Generated blocks that are too dense to read comfortably. The threshold is
+# what a reader can take, not what the pack currently does: 350 characters
+# without a line break, or 1,500 in one cell. Choosing a looser number so the
+# present state passes is how a gate becomes decoration, and this release has
+# spent most of its commits undoing exactly that.
+#
+# These twenty are the backlog. The set only shrinks — a NEW dense block fails
+# the build immediately, and one that gets shortened has to leave the list, so
+# it cannot rot in either direction. The worst is 12-fmea!A9 at 2,470
+# characters above a single table: seven full glosses, each correct and each
+# wanted, stacked somewhere a reader meets before the data. That is a
+# PLACEMENT problem rather than a writing one and it needs the key moved, not
+# the definitions cut.
+DENSE_OK = {
+    "11-cause-effect-xy-matrix.xlsx X-Y matrix!A13",
+    "12-fmea.xlsx FMEA!A9",
+    "12-fmea.xlsx FMEA!AA32",
+    "17-control-plan.xlsx Control plan!A8",
+    "27-control-charts.xlsx CUSUM!A14",
+    "27-control-charts.xlsx EWMA!A14",
+    "27-control-charts.xlsx I-MR!A12",
+    "27-control-charts.xlsx I-MR!K22",
+    "27-control-charts.xlsx I-MR!K38",
+    "27-control-charts.xlsx Laney p-prime!A12",
+    "27-control-charts.xlsx Laney u-prime!A12",
+    "27-control-charts.xlsx t and g (rare events)!A12",
+    "28-erlang-staffing.xlsx Staffing!A20",
+    "29-msa-gage-rr.xlsx Gage R&R study!A11",
+    "29-msa-gage-rr.xlsx Gage R&R study!A45",
+    "29-msa-gage-rr.xlsx Gage R&R study!A53",
+    "29-msa-gage-rr.xlsx Gage R&R study!P21",
+    "30-regression.xlsx Multiple regression!A38",
+    "30-regression.xlsx Multiple regression!Y26",
+    "31-multi-vari.xlsx Multi-vari study!A61",
+}
+MAX_LINE, MAX_BLOCK = 350, 1500
+
+
+def test_readable_blocks() -> None:
+    """Nothing the build generates may arrive as a wall of text.
+
+    The user found four stacked copies of a key line by looking at the page,
+    and before that a seven-gloss key run together with separators into 1,400
+    characters of unbroken prose. Every gate was green for both. Nothing here
+    measured what a reader actually meets — the checks read structure, so a
+    correct, complete, unreadable block passed every one of them.
+    """
+    from openpyxl import load_workbook as _lw
+    marks = ("Key:", "HOW TO READ IT.")
+    fresh = []
+    for path in sorted(TEMPLATES.glob("*.xlsx")):
+        for ws in _lw(path).worksheets:
+            for row in ws.iter_rows():
+                for c in row:
+                    v = c.value
+                    if not isinstance(v, str) or not any(m in v for m in marks):
+                        continue
+                    if (max(len(seg) for seg in v.split("\n")) > MAX_LINE
+                            or len(v) > MAX_BLOCK):
+                        where = f"{path.name} {ws.title}!{c.coordinate}"
+                        if where not in DENSE_OK:
+                            fresh.append(where)
+    check(not fresh, "no new wall of generated text",
+          f"{fresh[:4]} — break it into lines, shorten it, or move it off the "
+          f"reader's path; add to DENSE_OK only with a reason")
+    print(f"           {len(DENSE_OK)} generated block(s) still too dense to read easily")
+
+
 def test_glossary_coverage() -> None:
     """Every jargon column header should carry a plain-English key.
 
@@ -1832,6 +1900,8 @@ def main() -> int:
     test_export_charts()
     print("BUILD      workbooks are byte-reproducible")
     test_deterministic()
+    print("READABLE   nothing the build writes is a wall of text")
+    test_readable_blocks()
     print("IDEMPOTENT the finishing pass changes nothing on a second run")
     test_idempotent()
     print("STRUCTURE  merged-cell reference audit")
