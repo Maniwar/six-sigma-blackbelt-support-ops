@@ -203,7 +203,19 @@ VALUES: list[tuple[str, str, str, object]] = [
     # the string form.
     ("15-solution-selection-matrix.xlsx", "Solution selection", "L14", "2 Design it out"),
     # Say out loud that the ratio is computed on remediated rows only.
-    ("12-fmea.xlsx", "FMEA", "A44", "Risk reduction (on remediated rows)"),
+    ("12-fmea.xlsx", "FMEA", "A44", "Risk reduction (on remediated rows, shipped only)"),
+    # The sheet stated no rule for when the New columns may be filled, and its
+    # own worked example used two: one row re-scored a control that was built
+    # but not live, another left an unshipped row at its original scores. The
+    # first put 19.6 points into the headline, 57.7% reading as 77.3%.
+    ("12-fmea.xlsx", "FMEA", "E44",
+     "Average New RPN against average original RPN, over the rows that have a "
+     "New score. RE-SCORE ONLY WHAT HAS SHIPPED. A control that is built, "
+     "signed off or awaiting release has not changed the failure rate a customer "
+     "meets, so leave the row at its original scores until it is live — an FMEA "
+     "that books the improvement at design time reports a risk reduction the "
+     "process has not had. Re-score on evidence, the way the benefit is "
+     "validated at closure."),
     ("13-hypothesis-test-log.xlsx", "Test log", "A8", "Significance level (alpha)"),
     ("13-hypothesis-test-log.xlsx", "Test log", "B8", 0.05),
     ("13-hypothesis-test-log.xlsx", "Test log", "C8",

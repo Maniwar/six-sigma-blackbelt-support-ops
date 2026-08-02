@@ -133,12 +133,12 @@ def audit_control_signals(sol, name: str) -> None:
 # ever shrinks: a NEW uncovered term fails the build, and covering one keeps it
 # passing, so the work is visible without the gate rotting into a report.
 UNGLOSSED = {
-    "% of lead time", "Centre line", "Cumulative", "DET", "Degrees of freedom",
-    "Detection control", "Effect across the observed range", "Effect on the customer",
-    "Erlang B", "Erlang C", "Low risk of side-effects", "Moving range", "New DET",
-    "New OCC", "New SEV", "OCC", "Rank", "SEV", "Score", "Share", "Share of handle time",
-    "Share of hop time", "Share of total", "Sigma p", "Sigma u", "Touch time (min)",
-    "Unit of analysis", "Weighted score", "Weighted total",
+    "% of lead time", "Centre line", "Cumulative", "Degrees of freedom",
+    "Effect across the observed range", "Erlang B", "Erlang C",
+    "Low risk of side-effects", "Moving range", "Rank", "Score", "Share",
+    "Share of handle time", "Share of hop time", "Share of total", "Sigma p",
+    "Sigma u", "Touch time (min)", "Unit of analysis", "Weighted score",
+    "Weighted total",
 }
 RE_JARGON = re.compile(
     r"kappa|sigma|r²|adjusted|std|t-stat|p-value|vif|auc|logit|odds|coeff|intercept|"
@@ -167,6 +167,18 @@ def test_glossary_coverage() -> None:
 
     sys.path.insert(0, str(ROOT / "tools"))
     import xlpolish
+
+    # A dict literal takes the LAST value for a repeated key, silently. The page
+    # glossary shipped fifteen terms defined twice for exactly that reason, and
+    # it was not consistently the better definition that survived; adding a
+    # richer RPN entry here re-created the same defect within one commit.
+    import re as _re
+    blk = (ROOT / "tools" / "xlpolish.py").read_text(encoding="utf-8")
+    blk = blk[blk.index("GLOSSES = {"):blk.index("_GL_LOW")]
+    keys = _re.findall(r'^\s{4}"((?:[^"\\]|\\.)+)":', blk, _re.M)
+    dupes = sorted({k for k in keys if keys.count(k) > 1})
+    check(not dupes, "no workbook gloss is defined twice",
+          f"silently overwritten: {dupes}")
 
     terms = [k.lower() for k in xlpolish.GLOSSES]
 

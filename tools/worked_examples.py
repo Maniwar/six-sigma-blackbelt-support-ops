@@ -96,7 +96,15 @@ def fmea(wb) -> int:
          "40 codes in a flat list, no search", 9, "Annual training",
          "QA audit catches it weeks later on 2% of contacts", 8, None,
          "Cut the list to 12 codes and predict from the first message", "Support Ops",
-         "2026-10-15", "Code list redesigned, pending release", 6, 3, 4, None],
+         # Re-scored only for what has SHIPPED. This row's control is built and
+         # not live, so it keeps its original 6 / 9 / 8 and earns no credit yet
+         # — the same discipline the "In backlog" row below already followed.
+         # Scoring it at 6 / 3 / 4 while pending put 19.6 points into the
+         # headline risk reduction, taking it from 57.7% to 77.3% on the
+         # strength of a control no customer had met. That is the exact defect
+         # this pack's benefit case exists to teach.
+         "2026-10-15", "Code list redesigned, pending release — not re-scored until live",
+         6, 9, 8, None],
         ["Billing Ops verifies evidence", "Evidence missing, ticket bounced back",
          "Adds a full day to the resolution", 5,
          "Tier 1 has no checklist for what Billing needs", 7, "Wiki page nobody opens",

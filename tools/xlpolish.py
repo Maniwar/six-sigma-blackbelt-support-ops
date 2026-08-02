@@ -154,7 +154,6 @@ GLOSSES = {
     "AB": "AB, AC, BC = interaction columns: the product of two factor columns, +1 or -1",
     "AC": "AB, AC, BC = interaction columns: the product of two factor columns, +1 or -1",
     "BC": "AB, AC, BC = interaction columns: the product of two factor columns, +1 or -1",
-    "RPN": "RPN = risk priority number, severity x occurrence x detection",
     "Coefficient": "Coefficient = how far the outcome moves for a one-unit change in that driver, with the other drivers held still",
     "Std error": "Std error = how much that number would wobble if you drew another sample the same size",
     "t-stat": "t-stat = the coefficient divided by its own standard error; roughly 2 or more is the usual signal",
@@ -211,6 +210,40 @@ GLOSSES = {
              "28.4% against 8.1% (E55, C55), the first being the square root of the second. This "
              "is the column the verdict is read on: under 10% acceptable, 10-30% marginal, over "
              "30% unusable. 28.4% is why this study reads MARGINAL",
+    # --- 12-fmea. Six of these are three-letter columns holding a 1-10 score
+    # with nothing on the sheet saying which end is bad. Figures below are read
+    # from the shipped worked example.
+    "SEV": "SEV = severity, 1-10, how badly the CUSTOMER is hurt when this failure happens — "
+           "not how often, and not how likely you are to catch it. It is the one score an "
+           "action cannot lower: you can stop the batch failing, but if it fails the customer "
+           "is still late. The batch-failure row scores 8 and stays 8 after the fix (D14, O14). "
+           "Anything at 9 or 10 is acted on whatever its RPN says",
+    "OCC": "OCC = occurrence, 1-10, how often the cause actually happens. This is the score a "
+           "prevention control moves. Alerting on the nightly batch took its row from 4 to 2 "
+           "(F14, P14) because the cause stopped recurring, not because it became easier to see",
+    "DET": "DET = detection, 1-10, and the scale runs BACKWARDS: 1 means you catch it before the "
+           "customer does, 10 means the customer tells you. The deferred-close row scored 9 — "
+           "'only detected if the customer complains again' — and fell to 3 once the webhook "
+           "confirmed the posting (I11, Q11). In support this column is usually the worst of "
+           "the three, and the cheapest to improve",
+    "RPN": "RPN = risk priority number, severity x occurrence x detection, so 1 to 1000. It is a "
+           "sorting tool, not a measurement: 504 against 336 says look at the first one first "
+           "(J11, J16) and nothing more. Two rows can share an RPN with completely different "
+           "shapes, which is why severity 9 or 10 is acted on regardless of where it ranks",
+    "Detection control": "Detection control = what would catch this failure if it happened today, "
+           "and how late. 'Only detected if the customer complains again' scores DET 9; "
+           "'detected immediately on bounce-back' scores 3 (H11, H13). Write what actually "
+           "happens now, not what the process document says should",
+    "Effect on the customer": "Effect on the customer = what the person on the other end "
+           "experiences, in their words, which is what SEV is scored against. 'Customer "
+           "discovers it themselves and contacts us again' scores 7; 'margin leakage, caught in "
+           "reconciliation' scores 4, because the customer never feels it (C11, C15)",
+    "New SEV": "New SEV / New OCC / New DET = the same three scores AFTER the action, and only "
+           "once it has SHIPPED. A control that is built, signed off or awaiting release has "
+           "not changed what a customer meets, so the row keeps its original scores until it is "
+           "live — the 'pending release' row sits at 6 / 9 / 8, unchanged, and the 'in backlog' "
+           "row at 4 / 6 / 7. Re-scoring at design time reported a 77.3% risk reduction where "
+           "the shipped evidence supports 57.7%",
     "Sensitivity": "Sensitivity = of the cases that really happened, the share the model flagged",
     "Specificity": "Specificity = of the cases that did not happen, the share the model correctly left alone",
 }
@@ -277,9 +310,20 @@ def explain_headers(wb) -> int:
                 # exactly where a reader looks for what the columns mean. Append
                 # to it rather than inserting a row, because inserting shifts
                 # every formula and chart range on the sheet.
-                if not isinstance(anchor.value, str) or "Key: " in anchor.value:
+                if not isinstance(anchor.value, str):
                     continue
-                anchor.value = anchor.value.rstrip(" ·") + "  ·  " + key
+                # REPLACE any key already there, do not skip. Refusing to touch a
+                # row that had one froze every key line at whatever GLOSSES said
+                # the first time the workbook was patched — and the nine
+                # workbooks that are patched in place rather than rebuilt never
+                # saw another word of it. Seven new FMEA glosses landed in the
+                # dict, the build reported success, and the sheet went on
+                # showing the one sentence it was written with.
+                base = anchor.value
+                cut = base.find("Key: ")
+                if cut != -1:
+                    base = base[:cut]
+                anchor.value = base.rstrip().rstrip("·").rstrip() + "  ·  " + key
             else:
                 if any((above, c) in {(r, cc) for rng in ws.merged_cells.ranges
                                       for r in range(rng.min_row, rng.max_row + 1)
