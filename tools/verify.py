@@ -153,6 +153,7 @@ def test_chart_notes() -> None:
     sys.path.insert(0, str(ROOT / "tools"))
     import chart_notes
     import chartsvg
+    from xlpolish import _chart_title as xlpolish_title
 
     missing = []
     for path in sorted(TEMPLATES.glob("*.xlsx")):
@@ -167,6 +168,23 @@ def test_chart_notes() -> None:
                     missing.append(f"{path.name}: {t!r} (note but no action)")
     check(not missing, "every chart says how to read it AND what to do about it",
           f"{len(missing)} without one: {missing[:3]}")
+
+    # The note has to be in the FILE, not only the preview. This pack is
+    # downloaded; a caption that lives in the page is no use in Excel. It also
+    # catches the anchor bug that made this land in the nine patched workbooks
+    # and none of the thirteen generated ones while the build stayed green.
+    from openpyxl import load_workbook as _lw
+    absent = []
+    for path in sorted(TEMPLATES.glob("*.xlsx")):
+        wb = _lw(path)
+        want = sum(1 for ws in wb.worksheets for ch in getattr(ws, "_charts", [])
+                   if xlpolish_title(ch) in chart_notes.NOTES)
+        found = sum(1 for ws in wb.worksheets for row in ws.iter_rows() for c in row
+                    if isinstance(c.value, str) and c.value.startswith("HOW TO READ IT."))
+        if found < want:
+            absent.append(f"{path.name} {found}/{want}")
+    check(not absent, "the chart notes are in the workbooks, not only the preview",
+          f"missing in: {absent[:4]}")
 
 
 def test_glossary_coverage() -> None:

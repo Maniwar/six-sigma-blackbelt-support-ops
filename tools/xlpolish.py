@@ -770,6 +770,111 @@ def _anchor_ref(ch) -> str | None:
     return f"{get_column_letter(frm.col + 1)}{frm.row + 1}"
 
 
+
+def write_chart_notes(wb) -> int:
+    """Put each chart's note and action into the workbook, under the chart.
+
+    They existed in the preview only, as a <figcaption>. This pack's whole
+    premise is that the files get downloaded, and the same argument that put
+    the glossary keys into the sheets applies here: on the page a caption is
+    right there under the picture, in Excel there was nothing at all.
+
+    Placed below the chart in the chart's own column, so scrolling right to
+    look at it brings the note with it. A chart is about sixteen rows tall at
+    the default 8cm, and the landing cell is checked for content before
+    anything is written, so a second chart stacked underneath is never
+    overwritten — the note walks down until it finds free space.
+    """
+    from openpyxl.styles import Alignment, Font
+    from openpyxl.utils import get_column_letter
+
+    from chart_notes import ACTIONS, NOTES
+
+    n = 0
+    for ws in wb.worksheets:
+        taken = {(r, c) for rng in ws.merged_cells.ranges
+                 for r in range(rng.min_row, rng.max_row + 1)
+                 for c in range(rng.min_col, rng.max_col + 1)}
+        for ch in getattr(ws, "_charts", []):
+            title = _chart_title(ch)
+            note = NOTES.get(title)
+            if not note:
+                continue
+            # A chart's anchor is a plain STRING ("AH3") until the workbook has
+            # been saved and reloaded, and a TwoCellAnchor object afterwards.
+            # Reading only the object form skipped every freshly built chart —
+            # so this wrote notes into the nine workbooks that are patched in
+            # place and none of the thirteen that are generated, while the
+            # build reported success either way.
+            anc = getattr(ch, "anchor", None)
+            frm = getattr(anc, "_from", None)
+            if frm is not None:
+                col, top = frm.col + 1, frm.row + 1   # anchors are 0-based
+            elif isinstance(anc, str):
+                from openpyxl.utils.cell import coordinate_to_tuple
+                top, col = coordinate_to_tuple(anc)
+            else:
+                continue
+            # 8cm of chart is roughly sixteen default rows; clear it, then a gap.
+            row = top + int((ch.height or 7.5) / 0.5) + 2
+            text = f"HOW TO READ IT.  {note}\n\nSO:  {ACTIONS.get(title, '')}".rstrip()
+            # Idempotent, and it has to be: the landing cell is only free the
+            # FIRST time, so walking down to the next empty one wrote a second
+            # copy on every rebuild — 42 notes became 76 in one round trip.
+            # Look for this chart's note anywhere on the sheet before placing it.
+            if any(c.value == text for r in ws.iter_rows() for c in r
+                   if isinstance(c.value, str)):
+                continue
+            while True:
+                cell = ws.cell(row=row, column=col)
+                if (row, col) in taken or cell.__class__.__name__ == "MergedCell":
+                    row += 1
+                    continue
+                if cell.value in (None, "") or cell.value == text:
+                    break
+                row += 1
+            if cell.value == text:
+                continue
+            cell.value = text
+            cell.font = Font(italic=True, size=9, color="FF4B5563")
+            cell.alignment = Alignment(wrap_text=True, vertical="top")
+            span = 9
+            if not any((row, c) in taken for c in range(col, col + span)):
+                ws.merge_cells(start_row=row, start_column=col,
+                               end_row=row, end_column=col + span - 1)
+                taken.update((row, c) for c in range(col, col + span))
+            width = sum(ws.column_dimensions[get_column_letter(c)].width or 9
+                        for c in range(col, col + span))
+            ws.row_dimensions[row].height = max(
+                28, 11 * sum(1 + len(seg) // max(30, int(width))
+                             for seg in text.split("\n")))
+            n += 1
+    return n
+
+
+def _chart_title(ch) -> str:
+    """The chart's title text.
+
+    A title reads differently before and after a save. openpyxl wraps an
+    assigned string in a Title object, so the build-time chart has no plain
+    string to return and the rich-text walk is the only route — which is why
+    reading it one way wrote the notes into every SAVED workbook and none of
+    the freshly built ones.
+    """
+    t = getattr(ch, "title", None)
+    if t is None:
+        return ""
+    if isinstance(t, str):
+        return t.strip()
+    rich = getattr(getattr(t, "tx", None), "rich", None)
+    if rich is not None:
+        got = "".join(r.t or "" for para in rich.p for r in (para.r or [])).strip()
+        if got:
+            return got
+    strref = getattr(getattr(t, "tx", None), "strRef", None)
+    return (getattr(strref, "f", "") or "").strip()
+
+
 def polish_workbook(wb, landscape: bool = True) -> int:
     """Print setup, frozen headers and chart legibility, for every sheet.
 
@@ -783,7 +888,7 @@ def polish_workbook(wb, landscape: bool = True) -> int:
     """
     stamp(wb)
     changed = (explain_headers(wb) + mark_examples(wb) + recolour_formulas(wb)
-               + widen_long_notes(wb))
+               + widen_long_notes(wb) + write_chart_notes(wb))
     for ws in wb.worksheets:
         before = (ws.page_setup.fitToWidth, ws.page_setup.orientation, ws.freeze_panes)
 
