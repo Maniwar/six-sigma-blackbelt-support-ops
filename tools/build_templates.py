@@ -4202,8 +4202,228 @@ def system_hop():
     return wb, "32-system-hop.xlsx"
 
 
+# ------------------------------------------------------- 33 swimlane process map
+LANES = ["Customer", "Bot / IVR", "Tier 1", "Tier 2", "Engineering",
+         "Approver", "System"]
+
+# The worked example is one billing adjustment, mapped as it actually runs
+# rather than as the SOP describes it — which is the whole point of the tool.
+# (step number, lane index, time slot, label, kind)
+#   kind: "" a step · "d" a decision · "w" a wait · "r" rework
+SWIM_STEPS = [
+    (1,  0, 0,  "Raises billing query", ""),
+    (2,  1, 1,  "Deflection attempt", "d"),
+    (3,  0, 2,  "Waits in queue 6 min", "w"),
+    (4,  2, 3,  "Reads account, re-keys ID", ""),
+    (5,  2, 4,  "Adjustment over £50?", "d"),
+    (6,  6, 5,  "Billing platform lookup", ""),
+    (7,  2, 6,  "Asks a senior on Slack", "r"),
+    (8,  3, 7,  "Recalculates the charge", ""),
+    (9,  5, 8,  "Approval requested", "d"),
+    (10, 3, 9,  "Waits for approver 4 h", "w"),
+    (11, 6, 10, "Credit posted", ""),
+    (12, 0, 11, "Confirmation email", ""),
+]
+
+
+def swimlane():
+    wb = Workbook(); wb.remove(wb.active)
+    W = 1 + 12                                    # lane label + twelve time slots
+
+    # ---------------------------------------------------------------- the map
+    ws = wb.create_sheet("Swimlane map")
+    title(ws, "Swimlane process map — one lane per actor, and every handoff visible",
+          "Map what happens, not what the SOP says. If the map matches the SOP exactly, "
+          "you mapped the SOP — go back to the gemba.", W)
+    widths(ws, [26] + [17] * 12)
+    band(ws, 4, "THE MAP — number the steps in order; a handoff is any two consecutive "
+                "numbers sitting in different lanes", W)
+
+    ws.cell(row=5, column=1, value="Lane \\ time →").font = F_B
+    for s in range(12):
+        # An axis, not a column header. Dark-banding these made the harness read
+        # twelve declared columns and then object that the worked example leaves
+        # most of them empty — which is what a swimlane looks like: one lane is
+        # busy per slot and the others are deliberately blank.
+        c = ws.cell(row=5, column=2 + s, value=s + 1)
+        c.font = Font(bold=True, size=9, color="FF6B7280")
+        c.alignment = Alignment(horizontal="center")
+    ws.row_dimensions[5].height = 20
+
+    # Yellow, blue and green mean fill-in, calculated and worked example
+    # everywhere else in the pack, and the legend on every sheet says so. Using
+    # them for step type instead would have made this the one workbook where a
+    # yellow cell is not something you type in. The type is a glyph in the text.
+    glyph = {"": "", "d": "◆ ", "w": "⏱ ", "r": "↺ "}
+    at = {(l, s): (n, lab, k) for n, l, s, lab, k in SWIM_STEPS}
+    first = 6
+    for li, lane in enumerate(LANES):
+        r = first + li
+        c = ws.cell(row=r, column=1, value=lane)
+        c.font, c.fill = F_B, BAND
+        c.alignment = Alignment(vertical="center", wrap_text=True)
+        ws.row_dimensions[r].height = 40
+        for s in range(12):
+            cell = ws.cell(row=r, column=2 + s)
+            cell.border = Border(left=Side("thin", color="FFD8DEE7"),
+                                 right=Side("thin", color="FFD8DEE7"),
+                                 top=Side("thin", color="FFD8DEE7"),
+                                 bottom=Side("thin", color="FFD8DEE7"))
+            cell.alignment = Alignment(wrap_text=True, vertical="center",
+                                       horizontal="center")
+            hit = at.get((li, s))
+            if hit:
+                n, lab, k = hit
+                cell.value = f"{n}. {glyph[k]}{lab}"
+                cell.fill = EX
+                cell.font = Font(size=9)
+
+    r = first + len(LANES) + 1
+    note_cell(ws, r, 1,
+              "Every box is green because every box is worked example — replace them. "
+              "◆ marks a decision, ⏱ a wait, ↺ a rework loop. "
+              "Steps 6 and 7 are the two that matter here: the agent leaves the "
+              "conversation to fetch a number the billing platform already holds, then "
+              "asks a senior off-system — the informal escalation path that appears in "
+              "no log and is often 10–20% of resolutions. Ask about it directly, because "
+              "nobody volunteers it.", W)
+    r += 2
+    note_cell(ws, r, 1,
+              "Replace every box with your own. Keep the numbering contiguous: the Step "
+              "log counts a handoff wherever consecutive numbers change lane, so a gap in "
+              "the numbers silently drops a handoff from the count.", W)
+
+    # ------------------------------------------------------------- the step log
+    ls = wb.create_sheet("Step log")
+    title(ls, "Step log — the counts that make the map an argument",
+          "A picture persuades nobody on its own. These are the numbers you take to the "
+          "tollgate.", 8)
+    widths(ls, [7, 34, 18, 14, 13, 20, 13, 46])
+    band(ls, 4, "THE STEPS — one row per box on the map, in order", 8)
+    header(ls, 5, ["#", "Step", "Lane", "Type", "Minutes", "System touched",
+                   "Handoff?", "What you saw that the SOP does not say"])
+
+    seen = {
+        1:  ("Chat opened from the billing page", "Web chat", 0.5, ""),
+        2:  ("Bot offers self-serve, customer rejects", "Bot", 1.0,
+             "Deflection is measured as a success even when it adds a minute."),
+        3:  ("Queue wait", "Routing", 6.0, "Wait is invisible in AHT and is most of the "
+             "customer's experience."),
+        4:  ("Opens CRM, re-types the account ID", "CRM", 2.0,
+             "Re-keyed by hand; nothing validates it."),
+        5:  ("Checks the £50 authority threshold", "CRM", 0.5, ""),
+        6:  ("Opens billing platform in a second tab", "Billing", 3.0,
+             "A number the CRM could have shown."),
+        7:  ("Asks a senior agent on Slack", "Slack", 4.0,
+             "Off-system. Appears in no report. This is the rework loop."),
+        8:  ("Recalculates and drafts the credit", "Billing", 5.0, ""),
+        9:  ("Sends for approval", "Email", 1.0, ""),
+        10: ("Approver responds", "Email", 240.0,
+             "Four hours of lead time against 19.5 minutes of touch time for the whole "
+             "case. One approval is 90% of what the customer waits through."),
+        11: ("Credit posted to the account", "Billing", 2.0, ""),
+        12: ("Confirmation sent", "Email", 0.5, ""),
+    }
+    kindname = {"": "Step", "d": "Decision", "w": "Wait", "r": "Rework"}
+    by_n = {n: (li, lab, k) for n, li, s, lab, k in SWIM_STEPS}
+    first_r, last_r = 6, 6 + 24 - 1
+    for i in range(24):
+        r = first_r + i
+        n = i + 1
+        if n in by_n:
+            li, lab, k = by_n[n]
+            sysname, syst, mins, saw = seen[n][1], None, seen[n][2], seen[n][3]
+            for col, val in ((1, n), (2, lab), (3, LANES[li]), (4, kindname[k]),
+                             (5, mins), (6, sysname), (8, saw)):
+                mark(ls, r, col, "ex").value = val
+        else:
+            for col in (1, 2, 3, 4, 5, 6, 8):
+                mark(ls, r, col, "in")
+        # A handoff is a lane change between consecutive steps — the definition
+        # the tool card gives, computed rather than counted by eye.
+        c = ls.cell(row=r, column=7)
+        c.value = (f'=IF(OR(C{r}="",A{r}=""),"",IF(ROW()={first_r},"start",'
+                   f'IF(C{r}<>C{r-1},"HANDOFF","")))' if r > first_r
+                   else f'=IF(C{r}="","","start")')
+        mark(ls, r, 7, "calc")
+
+    ls.auto_filter.ref = f"A5:H{last_r}"
+    bar(ls, "Where the customer's time goes — minutes by step",
+        Reference(ls, min_col=1, min_row=first_r, max_row=last_r),
+        Reference(ls, min_col=5, min_row=first_r, max_row=last_r),
+        "J5")
+
+    r = last_r + 2
+    band(ls, r, "WHAT THE MAP IS TELLING YOU", 8)
+    rows = [
+        ("Handoffs", f'=COUNTIF(G{first_r}:G{last_r},"HANDOFF")',
+         "Every one is a place a defect can enter and a place the customer can wait. "
+         "This is the number to reduce."),
+        ("Decision points", f'=COUNTIF(D{first_r}:D{last_r},"Decision")',
+         "Each one is a rule someone applies from memory. Write down the rule the agent "
+         "actually uses, not the documented one."),
+        ("Rework loops", f'=COUNTIF(D{first_r}:D{last_r},"Rework")',
+         "Where your defects live. An informal loop that appears in no system is still a "
+         "loop, and is usually the biggest one."),
+        ("Lanes touched", f'=SUMPRODUCT((COUNTIF(C{first_r}:C{last_r},'
+                          f'C{first_r}:C{last_r})>0)/(COUNTIF(C{first_r}:C{last_r},'
+                          f'C{first_r}:C{last_r})+(C{first_r}:C{last_r}="")))',
+         "More lanes is more coordination cost, and coordination cost does not appear in "
+         "anyone's handle time."),
+        ("Touch time (min)", f'=SUMIF(D{first_r}:D{last_r},"<>Wait",E{first_r}:E{last_r})',
+         "The work itself."),
+        ("Lead time (min)", f'=SUM(E{first_r}:E{last_r})',
+         "What the customer lives through."),
+        ("Process cycle efficiency", None,
+         "Touch ÷ lead. Under 10% is normal and is the argument: almost none of the "
+         "customer's wait is anybody working. Carry this into 10-value-stream-map.xlsx."),
+    ]
+    for i, (lab, formula, why) in enumerate(rows):
+        rr = r + 1 + i
+        ls.cell(row=rr, column=1, value=lab).font = F_B
+        ls.merge_cells(start_row=rr, start_column=1, end_row=rr, end_column=3)
+        if lab.startswith("Process cycle"):
+            formula = f"=IF(D{rr-2}=0,\"\",D{rr-2}/D{rr-1})"
+        c = ls.cell(row=rr, column=4, value=formula)
+        mark(ls, rr, 4, "calc")
+        if lab.startswith("Process cycle"):
+            c.number_format = "0.0%"
+        note_cell(ls, rr, 5, why, 8)
+
+    howto(wb, LEGEND + [
+        (True, "What this is for"),
+        (False, "Seeing the process as it runs, including the parts that appear in no "
+                "system. Do it at the gemba, sitting with an agent, not in a conference "
+                "room with the process owner."),
+        (True, "Swimlane map tab"),
+        (False, "One lane per actor and one column per step in time order. Number the "
+                "steps and keep the numbering contiguous. A handoff is any two "
+                "consecutive numbers in different lanes — you do not have to draw the "
+                "arrows, because the numbering already shows them and the Step log "
+                "counts them."),
+        (True, "Step log tab"),
+        (False, "One row per box, in the same order. The Handoff column is calculated: it "
+                "flags every lane change. The summary underneath gives you handoffs, "
+                "decision points, rework loops and process cycle efficiency — which is "
+                "the number that makes the case, because it is almost always under 10% "
+                "and nobody believes it until they see their own map."),
+        (True, "The trap"),
+        (False, "If your map matches the documented SOP, you mapped the SOP. Go back. The "
+                "informal escalation path — asking a senior agent off-system — is "
+                "invisible in every log, is often 10–20% of resolutions, and will not "
+                "come up unless you ask about it directly."),
+        (True, "Where the numbers go next"),
+        (False, "Handoff count and the waiting states feed 10-value-stream-map.xlsx. Every "
+                "re-keyed field is a failure mode for 12-fmea.xlsx with a detection score "
+                "that is usually terrible. The system hops you counted here are the input "
+                "to 32-system-hop.xlsx, and any integration you propose gets scored in "
+                "15-solution-selection-matrix.xlsx."),
+    ])
+    return wb, "33-swimlane-process-map.xlsx"
+
+
 BUILDERS = [five_whys, fishbone, stakeholder, kano, doe, pareto, flow, control_charts,
-            erlang, gage_rr, regression, multi_vari, system_hop]
+            erlang, gage_rr, regression, multi_vari, system_hop, swimlane]
 
 
 def main() -> int:

@@ -1154,10 +1154,10 @@ def test_sync() -> None:
            if isinstance(e.get(f), str) and re.search(r"&(\w+|#\d+);", e[f])]
     check(not ent, "no template title or description carries a raw HTML entity",
           ", ".join(ent[:4]))
-    check(len(tpls) == 32, f"32 templates registered (found {len(tpls)})")
+    check(len(tpls) == 33, f"33 templates registered (found {len(tpls)})")
 
     exts = [e.get("ext") for e in tpls.values()]
-    check(exts.count("xlsx") == 21, f"21 Excel workbooks (found {exts.count('xlsx')})")
+    check(exts.count("xlsx") == 22, f"22 Excel workbooks (found {exts.count('xlsx')})")
 
     # The page counts itself out loud, in the schema block, the meta description
     # and the download button. Those numbers had been stale by two since the
@@ -1175,7 +1175,8 @@ def test_sync() -> None:
     # whichever way the number is written.
     WORD = {"nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "seventeen": 17,
             "nineteen": 19, "twenty": 20, "twenty-one": 21, "twenty-eight": 28,
-            "thirty": 30, "thirty-two": 32, "forty-two": 42}
+            "thirty": 30, "thirty-two": 32, "thirty-three": 33, "twenty-two": 22,
+            "forty-two": 42}
 
     def spoken(tok: str):
         return int(tok) if tok.isdigit() else WORD.get(tok.lower())

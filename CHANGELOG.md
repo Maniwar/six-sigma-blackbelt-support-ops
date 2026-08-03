@@ -4,6 +4,13 @@ Release notes for the program hub. These used to live inside the page itself, wh
 
 The live version is shown under the title on the page — check it against the top entry below to see whether you are looking at the current build.
 
+## New in v3.7 &mdash; the swimlane map the tool library has always described
+
+- **New: `33-swimlane-process-map.xlsx`.** The tool library has carried a full Swimlane process map card since the beginning &mdash; when to use it, one lane per actor, mark every handoff, record the decision rule the agent actually uses &mdash; and there was no template behind it. Its two siblings in the same sentence both had one: value stream map and system-hop. This is the third.
+- **The map tab** is one lane per actor (customer, bot/IVR, Tier 1, Tier 2, engineering, approver, system) against twelve time slots, with the steps numbered in order. You do not have to draw arrows: a handoff is any two consecutive numbers that change lane, which the eye follows and the step log counts.
+- **The step log tab** turns the picture into the argument. One row per box, a calculated Handoff column that flags every lane change, and a summary that counts handoffs, decision points, rework loops and lanes touched, then works out process cycle efficiency. The worked example is one billing adjustment: 10 handoffs, 3 decisions, 1 rework loop, 6 lanes, and 19.5 minutes of touch time inside 265 minutes of lead time &mdash; 7.3%, with a single approval accounting for 90% of what the customer waits through.
+- **The rework loop in the example is the informal one** &mdash; the agent asking a senior on Slack. It appears in no system, is often 10&ndash;20% of resolutions, and will not come up unless you ask about it directly. A map that matches the documented SOP is a map of the SOP.
+
 ## New in v3.6 &mdash; the Word copies stop looking like a fax of a spreadsheet
 
 - **Every sheet exported as many columns as it had, not as many as it used.** The stakeholder sheet went to Word as 22 columns of which 11 held anything at all &mdash; the rest were the helper cells that feed the charts and the blank spacer beside a legend, which the on-screen preview hides and the export did not. Twenty-two columns across a Letter page is 0.3 inch each, so every cell wrapped into a vertical ribbon of one- and two-letter lines, and the FMEA was worse at 35. Columns nothing ever writes to are now dropped, and the survivors divide the page in proportion to what they carry rather than equally: a Name column and a nested IF formula are not the same size problem. The chart tables are untouched &mdash; `data-grid` is an explicit instruction from the drawer and is never second-guessed.

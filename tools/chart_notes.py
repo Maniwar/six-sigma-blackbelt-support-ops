@@ -20,6 +20,13 @@ Rendered as a <figcaption> under each chart by tools/chartsvg.py.
 from __future__ import annotations
 
 NOTES: dict[str, str] = {
+    "Where the customer's time goes — minutes by step":
+        "One bar dwarfs the rest, and it is not anybody working. The approval wait is "
+        "240 of the 265 minutes this case takes — 90% of what the customer lives "
+        "through — against 19.5 minutes of touch time across all twelve steps. That "
+        "ratio is process cycle efficiency, and 7% is normal rather than shocking, "
+        "which is exactly why it is worth showing people their own.",
+
     # ---------------------------------------------------------------- define
     "Sample size against margin of error — and where your study sits":
         "Read down, not across: halving the margin of error roughly quadruples the sample. "
@@ -245,6 +252,13 @@ NOTES: dict[str, str] = {
 # the example's own numbers were not verified the action is written against the
 # shape rather than a figure.
 ACTIONS: dict[str, str] = {
+    "Where the customer's time goes — minutes by step":
+        "Attack the tallest bar, not the most annoying one. Here that means the "
+        "approval step: ask what it is protecting against, what a reasonable "
+        "auto-approve threshold would be, and who owns that decision. Shaving "
+        "seconds off the agent's handling while a four-hour wait sits untouched is "
+        "the most common way a support project produces no customer-visible change.",
+
     "Sample size against margin of error — and where your study sits":
         "Fix the margin of error first, then read the sample off the curve and let it set the "
         "duration. Sizing the other way round — picking a duration and accepting whatever "
