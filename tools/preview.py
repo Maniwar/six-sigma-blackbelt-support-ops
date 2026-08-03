@@ -147,6 +147,13 @@ def scaffold_from(ws) -> int | None:
     So they come out of the preview. Anything to the right of the last headed
     column that carries no header of its own is scaffolding, and the reader is
     told it exists rather than shown it raw.
+
+    With one floor. A drawn diagram has no headers either — the fishbone's bones
+    are diagonal borders on merged, empty, unheaded cells, which is the exact
+    signature this looks for. It cut at column U and took the KNOWLEDGE and
+    MEASUREMENT bones with it, so the diagram shipped with four branches drawn
+    and two of them detached. Scaffolding therefore cannot begin before the last
+    column carrying a diagonal or a merge.
     """
     headed = 0
     for row in ws.iter_rows():
@@ -162,7 +169,18 @@ def scaffold_from(ws) -> int | None:
         return None
     has = any(c.value not in (None, "")
               for row in ws.iter_rows(min_col=headed + 1) for c in row)
-    return headed + 1 if has else None
+    drawn = 0
+    for rng in ws.merged_cells.ranges:
+        drawn = max(drawn, rng.max_col)
+    for row in ws.iter_rows():
+        for c in row:
+            b = getattr(c, "border", None)
+            if b is not None and getattr(b, "diagonal", None) and b.diagonal.style:
+                drawn = max(drawn, c.column)
+    cut = headed + 1 if has else None
+    if cut is not None and drawn and cut <= drawn:
+        return None if drawn >= ws.max_column else drawn + 1
+    return cut
 
 
 def sheet_html(ws, shown: dict) -> str:
