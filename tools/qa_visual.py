@@ -546,6 +546,90 @@ def audit_template_export() -> None:
               f"{pick}: shaded={shaded}, wanted {want or 'x/y pairs in the text'}")
 
 
+# Prose fixtures for the glossary matcher. "dPU" is deliberate and looks like a
+# typo: the variant builder lowercases only the FIRST character, so the string
+# an acronym would produce is dPU, never dpu. Probing for "dpu" is what made an
+# earlier attempt at this check unfalsifiable — no mutation could ever move it.
+GLOSS_JS = """
+var G = window.__G;
+function links(txt){
+  var d = document.createElement('div');
+  d.textContent = txt; document.body.appendChild(d);
+  G.autoGloss(d, ''); return d.querySelectorAll('.gl').length;
+}
+var o = document.createElement('div'); o.id = '__gl';
+o.textContent = JSON.stringify({
+  acr_variant: links('we reviewed dPU across the queue this week'),
+  acr_upper:   links('we reviewed DPU across the queue this week'),
+  word_lower:  links('we walked the gemba this morning together'),
+  word_upper:  links('we walked the Gemba this morning together')
+});
+document.body.appendChild(o);
+"""
+
+
+def glossary_behaviour() -> dict | None:
+    """What the glossary matcher DOES, counted off the DOM.
+
+    Replaces two checks that asserted particular lines of JavaScript existed as
+    strings. Those survive any refactor and fail on a harmless rename, and one
+    of them named the wrong cause: the acronym regex and the `t !==
+    t.toUpperCase()` beside it are BOTH sufficient on their own, so removing
+    either alone changes nothing and the pair reads as dead code until you cut
+    both. It is redundancy, not rot, and only a mutation shows that.
+    """
+    import tempfile
+
+    if not Path(CHROME).exists():
+        return None
+    src = HTML.read_text(encoding="utf-8")
+    anchor = "/* ------------------------------------------------------------- wiring */"
+    if src.count(anchor) != 1:
+        check(False, "[GLOSS] the harness can reach autoGloss", "the wiring anchor moved")
+        return None
+    src = src.replace(anchor, "window.__G={autoGloss:autoGloss,GLOSS:GLOSS};\n" + anchor, 1)
+    head, sep, tail = src.rpartition("</body>")
+    src = (head + "<script>window.addEventListener('load',function(){"
+           + GLOSS_JS + "});</script>" + sep + tail)
+    with tempfile.TemporaryDirectory() as td:
+        page = Path(td) / "g.html"
+        page.write_text(src, encoding="utf-8")
+        r = subprocess.run(
+            [CHROME, "--headless", "--disable-gpu", "--virtual-time-budget=9000",
+             "--dump-dom", f"file://{page}"], capture_output=True, text=True, timeout=180)
+    m = re.search(r'<div id="__gl">(.*?)</div>', r.stdout, re.S)
+    if not m:
+        check(False, "[GLOSS] the glossary harness runs", "no output")
+        return None
+    import html as _h
+    return json.loads(_h.unescape(m.group(1)))
+
+
+def audit_glossary() -> None:
+    g = glossary_behaviour()
+    if g is None:
+        return
+    # POSITIVE CONTROLS FIRST. The claim below is that something does NOT get
+    # linked, and a harness where nothing links at all satisfies that for the
+    # wrong reason — which is exactly how the first version of this check passed
+    # while the behaviour it named was disabled. These two make a silent
+    # all-zero result impossible.
+    check(g.get("acr_upper", 0) > 0,
+          "[GLOSS] the matcher links an acronym written normally",
+          f"DPU matched {g.get('acr_upper')} times — with nothing linking, the "
+          f"negative check below would pass without meaning anything")
+    check(g.get("word_lower", 0) > 0,
+          "[GLOSS] a word-shaped term matches when written lower-case",
+          f"'gemba' matched {g.get('word_lower')} times; it appears more often "
+          f"lower-case in this document than capitalised, and used to be "
+          f"clickable only when capitalised")
+    check(g.get("acr_variant", 1) == 0,
+          "[GLOSS] an acronym gets no first-character-lowercased variant",
+          f"'dPU' matched {g.get('acr_variant')} times. Two conditions stop "
+          f"this and either is sufficient, so cutting one proves nothing — the "
+          f"mutation that moves this number removes both")
+
+
 def audit_word_charts() -> None:
     got = word_document()
     if got is None:
@@ -669,6 +753,7 @@ def main() -> int:
     print(f"Looked at {charts} chart(s) across the previews.")
     audit_word_charts()
     audit_template_export()
+    audit_glossary()
     if "--no-render" not in sys.argv:
         n = render(tpls, css)
         if n:

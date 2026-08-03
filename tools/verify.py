@@ -1312,10 +1312,13 @@ def test_sync() -> None:
     # terms are routinely written lower-case mid-sentence, and those matched
     # nothing at all: "gemba" appears more often in this document than "Gemba"
     # did, and only the capitalised form was ever clickable.
-    check("if(/^[A-Z0-9][A-Z0-9'\\u2032&-]{1,7}$/.test(t)) return;" in src,
-          "acronym-shaped terms get no lower-case variant, so IT/OR/US stay safe")
-    check("var lower = t.charAt(0).toLowerCase() + t.slice(1);" in src,
-          "word-shaped glossary terms also match when written lower-case")
+    # Both of these asserted an exact line of JavaScript. qa_visual.audit_glossary
+    # runs the matcher over real prose and counts what it links instead — and the
+    # difference is not academic. The claim attached to the first one named the
+    # acronym regex as what "keeps IT/OR/US safe"; the regex and the
+    # `t !== t.toUpperCase()` beside it are each sufficient alone, so removing
+    # either changes nothing and both look dead until you cut them together.
+    # A source check cannot tell redundancy from rot. A mutation can.
     for term in ("Gemba", "Kaizen", "Poka-yoke"):
         check(f'"{term}"' in src, f"{term} is still a glossary entry")
 
