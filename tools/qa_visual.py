@@ -403,12 +403,8 @@ var o = document.createElement('div'); o.id = '__tpl';
 // clipboard flavour. A chart that survives as an <img> in the HTML can still
 // vanish or leak in either of these.
 var docx = '', plain = '';
-try {
-  var u8 = new Uint8Array(window.__T.D.build('t', html)), b = '';
-  for (var i = 0; i < u8.length; i++) b += String.fromCharCode(u8[i]);
-  docx = btoa(b);
-} catch(e) { docx = 'ERR:' + e.message; }
 try { plain = window.__T.P2 ? window.__T.P2(html) : ''; } catch(e) {}
+function emit(){
 o.textContent = JSON.stringify({
   slug: slug,
   plainCss: /\\.ct\\{|font:700 14px|stroke-width:/.test(plain) ? 1 : 0,
@@ -421,6 +417,25 @@ o.textContent = JSON.stringify({
   text: d.textContent.length
 });
 document.body.appendChild(o);
+}
+// Rasterise first, exactly as the download does. The virtual time budget
+// keeps Chrome awake until the image decoding settles.
+function pack(bytes){
+  var u8 = new Uint8Array(bytes), b = '';
+  for (var i = 0; i < u8.length; i++) b += String.fromCharCode(u8[i]);
+  return btoa(b);
+}
+if (window.__T.R) {
+  window.__T.R(html).then(function(r){
+    try { docx = pack(window.__T.D.build('t', r.html, r.images)); }
+    catch(e) { docx = 'ERR:' + e.message; }
+    emit();
+  }, function(e){ docx = 'ERR:' + e.message; emit(); });
+} else {
+  try { docx = pack(window.__T.D.build('t', html)); }
+  catch(e) { docx = 'ERR:' + e.message; }
+  emit();
+}
 """
 
 
@@ -453,6 +468,7 @@ def template_export(pick: str = "") -> dict | None:
         return None
     handle = ('window.__T={f:tplEmailHTML,P:TPLS,'
               'D:(typeof DOCX!=="undefined"?DOCX:null),'
+              'R:(typeof rasterise!=="undefined"?rasterise:null),'
               'P2:(typeof toPlain!=="undefined"?toPlain:null)};')
     src = src.replace(anchor, handle + "\n" + anchor, 1)
 
@@ -508,12 +524,10 @@ def audit_template_export() -> None:
           "[TPLEXPORT] no stylesheet text in the .docx itself",
           "this is the file the reader opens — the HTML being clean does not "
           "make the document clean, and it was the document that shipped CSS")
-    # Known gap, asserted so it cannot be forgotten or silently 'fixed' by a
-    # change that drops the caption too: DOCX.build renders no <w:drawing>, so
-    # a template chart does not reach Word. The business-case exporter draws
-    # its charts as tables of shaded cells; templates need the same. Until then
-    # the caption naming the chart and pointing at the .xlsx is what stands in
-    # for it, and it has to be there.
+    # The chart is a real embedded image now, so this is no longer standing in
+    # for a missing one. It still has to be there: the caption is what tells a
+    # reader the picture is a snapshot and the working chart is in the .xlsx,
+    # which a picture cannot say for itself.
     check("the live chart is in the .xlsx" in doc,
           "[TPLEXPORT] every chart names itself and says where the live one is",
           "the caption is what a reader has if their client drops the picture")
@@ -521,29 +535,37 @@ def audit_template_export() -> None:
     # only exists in the document if it was rebuilt out of shaded table cells —
     # the same thing the business-case exporter does. Count the shading: an
     # empty table would satisfy a check that only counted tables.
-    bars = len(re.findall(r'w:fill="(?!auto)[0-9A-Fa-f]{6}"', doc))
-    check(bars > 0,
-          "[TPLEXPORT] template charts are drawn as bars in the .docx",
-          "no shaded cell in the document — the chart reaches Word as a "
-          "caption and nothing else")
-    # The two shapes bars cannot express. A combo carries two scales, so each
-    # group is drawn against its own range rather than all of them against one
-    # span, which turned a Pareto's cumulative share into slivers. A scatter has
-    # no categories at all and becomes the pairs it actually is.
-    for pick, want, why in (
-            ("25-pareto", 12, "a combo chart draws each group against its own range"),
-            ("30-regression", 0, "a scatter chart reaches the document as x/y pairs")):
+    # This asserted the stand-in, and passed for as long as the stand-in was
+    # all there was: twenty templates, forty-six charts, zero <w:drawing>.
+    # The chart is now rasterised and embedded as a real image part, so that
+    # is what gets checked, and the media part has to exist to back it.
+    draws = len(re.findall(r"<w:drawing>", doc))
+    media = [n for n in zipfile.ZipFile(io.BytesIO(base64.b64decode(raw))).namelist()
+             if n.startswith("word/media/")]
+    check(draws > 0 and len(media) >= draws,
+          "[TPLEXPORT] template charts reach Word as embedded images",
+          f"{draws} drawing(s) against {len(media)} media part(s) — a chart that "
+          f"is not a picture in the document is not in the document")
+    # The two shapes bars could not express — a combo's second scale, and a
+    # scatter, which has no categories at all. Both used to be checked against
+    # the bar stand-in. They are pictures now, drawn from the same SVG the
+    # reader sees on screen, so the shape is the .xlsx's problem and what this
+    # has to prove is that the picture arrives: one embedded image per chart,
+    # with a media part behind each. The bar renderer still runs for the
+    # business-case export and is still checked there.
+    for pick, charts, why in (
+            ("25-pareto", 2, "a combo chart arrives as a picture, not slivers"),
+            ("30-regression", 2, "a scatter chart arrives as a picture")):
         g2 = template_export(pick)
         if not g2 or str(g2.get("docx", "")).startswith("ERR"):
             check(False, f"[TPLEXPORT] {pick} exports", "no document")
             continue
-        d2 = zipfile.ZipFile(io.BytesIO(base64.b64decode(g2["docx"]))).read(
-            "word/document.xml").decode()
-        shaded = len(re.findall(r'w:fill="(?!auto)[0-9A-Fa-f]{6}"', d2))
-        txt = re.sub(r"<[^>]+>", " ", d2)
-        ok = shaded >= want if want else ("Residual for each contact" in txt)
-        check(ok, f"[TPLEXPORT] {why}",
-              f"{pick}: shaded={shaded}, wanted {want or 'x/y pairs in the text'}")
+        z2 = zipfile.ZipFile(io.BytesIO(base64.b64decode(g2["docx"])))
+        d2 = z2.read("word/document.xml").decode()
+        drew = len(re.findall(r"<w:drawing>", d2))
+        pngs = [n for n in z2.namelist() if n.startswith("word/media/")]
+        check(drew >= charts and len(pngs) >= charts, f"[TPLEXPORT] {why}",
+              f"{pick}: {drew} drawing(s) and {len(pngs)} image(s) for {charts} chart(s)")
 
 
 # Prose fixtures for the glossary matcher. "dPU" is deliberate and looks like a

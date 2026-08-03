@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="app-version" content="3.7">
+<meta name="app-version" content="3.8">
 <title>Six Sigma Black Belt Program — Customer Support Operations</title>
   <meta name="description" content="A complete Lean Six Sigma Black Belt program rebuilt for customer support operations. 26 modules covering the complete ASQ CSSBB and IASSC Lean Six Sigma Black Belt bodies of knowledge, mapped section by section, 52 runnable tools, 33 downloadable templates including 22 Excel workbooks with live formulas and native charts, and 276 plain-English definitions. Free, single-file, no dependencies.">
   <meta name="author" content="Maniwar">
@@ -680,7 +680,7 @@ button.tb-tpl:hover{background:var(--c);color:#fff}
   <div class="brand">
     <div class="k">Operational Excellence</div>
     <h1>Six Sigma Black Belt Program</h1>
-    <p>Customer Support Operations &middot; v3.7</p>
+    <p>Customer Support Operations &middot; v3.8</p>
   </div>
   <div class="navsearch"><input id="q" type="search" placeholder="Filter curriculum modules&hellip;" autocomplete="off"></div>
 
@@ -5256,7 +5256,10 @@ function utf8(str){
 function zip(files){
   var chunks=[], central=[], offset=0;
   files.forEach(function(f){
-    var data = utf8(f.data), crc = crc32(data), n = utf8(f.name);
+    // A PNG is already bytes; running it through the UTF-8 encoder would
+    // re-encode every byte above 0x7F and corrupt the image.
+    var data = (f.data instanceof Uint8Array) ? f.data : utf8(f.data);
+    var crc = crc32(data), n = utf8(f.name);
     var lf = new Uint8Array(30 + n.length);
     var dv = new DataView(lf.buffer);
     dv.setUint32(0, 0x04034b50, true); dv.setUint16(4, 20, true); dv.setUint16(6, 0, true);
@@ -5764,8 +5767,9 @@ function openExport(opts){
   cp.onclick = function(){ copyRich(htmlDoc(opts.title, opts.html), toPlain(opts.html), cp); };
   dh.onclick = function(){ dl(opts.filename+'.html', htmlDoc(opts.title, opts.html), 'text/html'); };
   dw.onclick = function(){
-    dlBlob(opts.filename+'.docx', new Blob([DOCX.build(opts.title, opts.html)],
-      {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}));
+    docxBlob(opts.title, opts.html).then(function(b){
+      dlBlob(opts.filename+'.docx', b);
+    });
   };
   if(opts.xlsx){
     dx.style.display = '';
@@ -6254,9 +6258,40 @@ function bizXlsx(ctx){
    makes Word offer to "repair" the file, and this cannot be tested against
    Word from here. Prefixes always render.
 
-   DOCX.build(title, htmlString) -> Uint8Array
+   DOCX.build(title, htmlString, images) -> Uint8Array
+   Charts are rasterised by rasterise() first; docxBlob() does both.
 =========================================================================== */
 var DOCX = (function(){
+/* The charts, rasterised to PNG before the document is assembled.
+
+   Word draws neither inline SVG nor a data-URI <img>, which is why every
+   template chart reached the reader as nothing at all: 46 charts across 20
+   templates, zero <w:drawing> in any of them. The bar tables were a stand-in
+   and were never the chart. A canvas turns the SVG into pixels Word can
+   embed as a real image part, so the drawing in the .docx is the drawing in
+   the .xlsx rather than an approximation of it. */
+var IMAGES = [];
+var EMU = 914400, PAGE_EMU = Math.round(6.5 * 914400);   // Letter, 1in margins
+
+function drawingXml(i, im){
+  var w = PAGE_EMU, h = Math.round(PAGE_EMU * (im.h / im.w));
+  var id = i + 1;
+  return '<w:p><w:r><w:drawing>'+
+    '<wp:inline distT="0" distB="0" distL="0" distR="0">'+
+    '<wp:extent cx="'+w+'" cy="'+h+'"/>'+
+    '<wp:effectExtent l="0" t="0" r="0" b="0"/>'+
+    '<wp:docPr id="'+id+'" name="Chart '+id+'" descr="'+esc(im.alt||('Chart '+id))+'"/>'+
+    '<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>'+
+    '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'+
+    '<pic:pic><pic:nvPicPr><pic:cNvPr id="'+id+'" name="chart'+id+'.png"/>'+
+    '<pic:cNvPicPr/></pic:nvPicPr>'+
+    '<pic:blipFill><a:blip r:embed="rId'+(i+2)+'"/>'+
+    '<a:stretch><a:fillRect/></a:stretch></pic:blipFill>'+
+    '<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+w+'" cy="'+h+'"/></a:xfrm>'+
+    '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>'+
+    '</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>';
+}
+
 "use strict";
 
 function esc(s){ return String(s==null?'':s)
@@ -6584,6 +6619,11 @@ function blocks(root){
     // A chart's title is a styled div, and a div is not a heading, so it came
     // through as body text sitting above a row of bars with nothing to say it
     // belonged to them.
+    else if(tag === 'IMG' && n.getAttribute('data-img') !== null){
+      var ix = parseInt(n.getAttribute('data-img'), 10);
+      if(IMAGES[ix]) out += drawingXml(ix, IMAGES[ix]);
+      return;
+    }
     else if(tag === 'DIV' && n.getAttribute('data-h') === 'chart')
       out += para(runsFrom(n, {b:true}), {spaceBefore:200});
     // The caption of an image Word will not draw, immediately above the bar
@@ -6622,21 +6662,35 @@ function stylesXml(){
   '</w:styles>';
 }
 
-function build(title, html){
+function build(title, html, images){
   var host = document.createElement('div');
   host.innerHTML = html;
+  IMAGES = images || [];
   var body = blocks(host);
   var doc = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
-    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'+
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'+
+    ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"'+
+    ' xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"'+
+    ' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'+
+    ' xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'+
     '<w:body>'+ body +
     '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/>'+
     '<w:pgMar w:top="1080" w:right="1440" w:bottom="1080" w:left="1440" w:header="720" w:footer="720"/>'+
     '</w:sectPr></w:body></w:document>';
 
+  var media = IMAGES.map(function(im, i){
+    return {name:'word/media/chart'+(i+1)+'.png', data:im.bytes};
+  });
+  var imgRels = IMAGES.map(function(im, i){
+    return '<Relationship Id="rId'+(i+2)+'" Type="http://schemas.openxmlformats.org/'+
+      'officeDocument/2006/relationships/image" Target="media/chart'+(i+1)+'.png"/>';
+  }).join('');
+
   return XLSX.zip([
     {name:'[Content_Types].xml', data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
       '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
       '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
+      '<Default Extension="png" ContentType="image/png"/>'+
       '<Default Extension="xml" ContentType="application/xml"/>'+
       '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'+
       '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>'+
@@ -6648,14 +6702,90 @@ function build(title, html){
     {name:'word/_rels/document.xml.rels', data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
       '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'+
+      imgRels +
       '</Relationships>'},
     {name:'word/styles.xml', data:stylesXml()},
     {name:'word/document.xml', data:doc}
-  ]);
+  ].concat(media));
 }
 
 return {build:build};
 })();
+
+/* Turn every data-URI SVG chart in a block of export HTML into PNG bytes.
+
+   Async, because decoding an image is. Everything that builds a .docx goes
+   through here first and hands build() the result, which keeps build() itself
+   synchronous — the alternative was making the whole export chain return
+   promises for the sake of one step.
+
+   A chart that fails to rasterise is left alone rather than dropped: its bar
+   table is still in the document underneath, so the reader loses the picture
+   and keeps the numbers. */
+function rasterise(html){
+  var host = document.createElement('div');
+  host.innerHTML = html;
+  var imgs = [].slice.call(host.querySelectorAll('img[src^="data:image/svg+xml"]'));
+  if(!imgs.length) return Promise.resolve({html:host.innerHTML, images:[]});
+  return Promise.all(imgs.map(function(el, i){
+    return new Promise(function(done){
+      var im = new Image();
+      im.onload = function(){
+        try {
+          // Three times the drawn size: a chart at 900px CSS width is 2700px
+          // in the file, which is about 415dpi across a 6.5in page and stays
+          // sharp when someone prints the thing.
+          var w = (im.naturalWidth || 900) * 3, h = (im.naturalHeight || 500) * 3;
+          var cv = document.createElement('canvas');
+          cv.width = w; cv.height = h;
+          var cx = cv.getContext('2d');
+          cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, w, h);   // PNG alpha reads grey in Word
+          cx.drawImage(im, 0, 0, w, h);
+          var uri = cv.toDataURL('image/png');
+          var b = atob(uri.slice(uri.indexOf(',') + 1));
+          var bytes = new Uint8Array(b.length);
+          for(var k = 0; k < b.length; k++) bytes[k] = b.charCodeAt(k);
+          done({bytes:bytes, w:w, h:h, alt:el.getAttribute('alt') || '', el:el});
+        } catch(e){ done(null); }
+      };
+      im.onerror = function(){ done(null); };
+      im.src = el.getAttribute('src');
+    });
+  })).then(function(results){
+    var images = [];
+    results.forEach(function(r){
+      if(!r) return;
+      r.el.setAttribute('data-img', images.length);
+      r.el.removeAttribute('src');
+      images.push({bytes:r.bytes, w:r.w, h:r.h, alt:r.alt});
+      // The bar table was a stand-in for a chart Word could not draw. Now that
+      // it can, leaving both in prints every chart twice — once as the picture
+      // and once as its own approximation. This edits only the copy bound for
+      // Word; the HTML export still gets the bars, where a client that drops
+      // the image has nothing else to fall back on.
+      // And with the bars gone the caption no longer repeats a title printed
+      // underneath it, so it goes back to naming the chart it captions.
+      var cap = r.el.nextElementSibling;
+      if(cap && cap.getAttribute && cap.getAttribute('data-h') === 'imgcap')
+        cap.setAttribute('data-h', 'chart');
+    });
+    // Only when every chart made it. If one failed to rasterise its bars are
+    // the only thing that reader has, and dropping the lot to tidy up the
+    // others would take the numbers away with the picture.
+    if(images.length === imgs.length){
+      [].slice.call(host.querySelectorAll('table[data-chart="1"]')).forEach(function(t){
+        t.parentNode.removeChild(t);
+      });
+    }
+    return {html:host.innerHTML, images:images};
+  });
+}
+
+function docxBlob(title, html){
+  return rasterise(html).then(function(r){
+    return new Blob([DOCX.build(title, r.html, r.images)], {type:MIME.docx});
+  });
+}
 
 /* ====================================================== download formats
    A .md file is not a useful deliverable for most people in a support org, so
@@ -6675,7 +6805,7 @@ function dlTemplateAs(slug, fmt){
   if(fmt === 'xlsx'){
     dlBlob(base+'.xlsx', b64ToBlob(t.b64, MIME.xlsx));
   } else if(fmt === 'docx'){
-    dlBlob(base+'.docx', new Blob([DOCX.build(t.title, tplEmailHTML(slug))], {type:MIME.docx}));
+    docxBlob(t.title, tplEmailHTML(slug)).then(function(b){ dlBlob(base+'.docx', b); });
   } else {
     dl(base+'.html', htmlDoc(t.title, tplEmailHTML(slug)), 'text/html');
   }
