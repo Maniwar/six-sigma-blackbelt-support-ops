@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="app-version" content="3.5">
+<meta name="app-version" content="3.6">
 <title>Six Sigma Black Belt Program — Customer Support Operations</title>
   <meta name="description" content="A complete Lean Six Sigma Black Belt program rebuilt for customer support operations. 26 modules covering the complete ASQ CSSBB and IASSC Lean Six Sigma Black Belt bodies of knowledge, mapped section by section, 52 runnable tools, 32 downloadable templates including 21 Excel workbooks with live formulas and native charts, and 276 plain-English definitions. Free, single-file, no dependencies.">
   <meta name="author" content="Maniwar">
@@ -680,7 +680,7 @@ button.tb-tpl:hover{background:var(--c);color:#fff}
   <div class="brand">
     <div class="k">Operational Excellence</div>
     <h1>Six Sigma Black Belt Program</h1>
-    <p>Customer Support Operations &middot; v3.5</p>
+    <p>Customer Support Operations &middot; v3.6</p>
   </div>
   <div class="navsearch"><input id="q" type="search" placeholder="Filter curriculum modules&hellip;" autocomplete="off"></div>
 
@@ -6284,6 +6284,14 @@ function runsFrom(node, fmt){
       else if(tag==='CODE') f.mono = true;
       else if(tag==='BR'){ out += '<w:r><w:br/></w:r>'; return; }
       else if(tag==='A') f.link = true;
+      // A DIV or P inside a cell is a new line in every other renderer, and
+      // was run straight on here: the cell that shows a value with its formula
+      // beneath it arrived in Word as ENGAGE NOW=IF(COUNT(C5:D5)<2,... on one
+      // line. Give the block what it asked for.
+      if(tag==='DIV'||tag==='P'){
+        if(out) out += '<w:r><w:br/></w:r>';
+        if((n.className||'').indexOf('xfml') >= 0){ f.mono = true; f.sz = 15; f.color = '5B6675'; }
+      }
       out += runsFrom(n, f);
     }
   });
@@ -6350,6 +6358,28 @@ function barCell(td, w){
 }
 
 /* ---- tables ---- */
+/* The sheet's cell classes, expressed in the only vocabulary Word has.
+   These are the same colours XCLS paints in the HTML copy — kept beside each
+   other on purpose, because the legend at the top of every template tells the
+   reader what the yellow, blue and green cells mean, and a Word file that
+   drops them leaves the legend describing something that is not there. */
+var XWORD = {
+  'x-title': {fill:'151B24', color:'FFFFFF', b:true},
+  'x-hdr'  : {fill:'333C49', color:'FFFFFF', b:true, head:true},
+  'x-band' : {fill:'EEF1F6', b:true},
+  'x-b'    : {b:true},
+  'x-fill' : {fill:'FFF9E3'},
+  'x-calc' : {fill:'F2F7FF', color:'1D4ED8'},
+  'x-ex'   : {fill:'ECFAEF'},
+  'x-bad'  : {fill:'FDECEC', color:'B42318'}
+};
+function xword(td){
+  if(!td) return {};
+  var cls = (td.className||'').split(/\s+/);
+  for(var i=0;i<cls.length;i++) if(XWORD[cls[i]]) return XWORD[cls[i]];
+  return {};
+}
+
 function tableFrom(tbl){
   // querySelectorAll reaches through nested tables, so a bar drawn as a table
   // inside a cell contributed a phantom blank row to the table around it —
@@ -6360,39 +6390,111 @@ function tableFrom(tbl){
   var widthTotal = 9360;                       // usable width for Letter with 1" margins
   var cols = Math.max.apply(null, rows.map(function(r){ return r.children.length; })) || 1;
   var w = Math.floor(widthTotal/cols);
-  // A chart's columns are a label, the bar and a number. Splitting the page
-  // equally between them leaves the bar a third of the width it was drawn to,
-  // so data-grid carries the proportions across.
-  var hint = (tbl.getAttribute('data-grid')||'').split(',').map(Number);
-  var grid = (hint.length === cols && hint.every(function(n){ return n > 0; }))
-    ? hint.map(function(n){ return Math.round(widthTotal*n/100); })
-    : Array.apply(null,{length:cols}).map(function(){ return w; });
   var chart = tbl.getAttribute('data-chart') === '1';
+
+  // Measure the columns before drawing any of them.
+  //
+  // A sheet carries columns the reader never sees: the helper cells that feed
+  // the chart, and the blank spacer beside a legend. The preview hides them.
+  // This export did not, so the stakeholder sheet went to Word as 22 columns
+  // of which 11 held anything at all — 0.3 inch each, which turns every cell
+  // into a vertical ribbon of one-letter lines. Splitting the page evenly is
+  // also wrong on its own terms: a 'Name' column and a nested IF formula are
+  // not the same size problem.
+  //
+  // So: walk once, resolving colspan, and record how much text each column
+  // actually carries. A column nothing ever writes to is dropped; the rest
+  // divide the page in proportion to what they hold.
+  // Only a cell that occupies one column tells you that column is used. A
+  // spanning cell says nothing about which of the columns under it matter —
+  // and these sheets open with a full-width title row, so counting spans as
+  // evidence marked all 22 columns live and dropped none of them.
+  var load = [], k;
+  for(k=0;k<cols;k++) load[k] = 0;
+  rows.forEach(function(tr){
+    var at = 0;
+    [].slice.call(tr.children).forEach(function(td){
+      var sp = parseInt(td.getAttribute('colspan')||'1', 10) || 1;
+      // A bar is an empty shaded cell: no text, but the column is the chart.
+      var len = (td.textContent||'').trim().length || (td.getAttribute('data-bar') ? 12 : 0);
+      if(sp === 1 && at < cols) load[at] = Math.max(load[at], len);
+      at += sp;
+    });
+  });
+  // data-grid is an explicit instruction from the chart drawer; never second-guess it.
+  var hint = (tbl.getAttribute('data-grid')||'').split(',').map(Number);
+  var explicit = hint.length === cols && hint.every(function(n){ return n > 0; });
+  var keep = [];
+  for(k=0;k<cols;k++) if(explicit || load[k]) keep.push(k);
+  // A table of nothing but spanning rows — a standalone banner — has no column
+  // that carries its own text. Keep it whole rather than deleting it.
+  if(!keep.length) for(k=0;k<cols;k++) keep.push(k);
+
+  var grid = [];
+  if(explicit){
+    grid = hint.map(function(n){ return Math.round(widthTotal*n/100); });
+  } else {
+    // Clamp before weighting: one 300-character cell must not starve every
+    // other column, and a 2-character one still needs room for its heading.
+    var wt = keep.map(function(c){ return Math.min(Math.max(load[c] || 8, 8), 44); });
+    var sum = wt.reduce(function(a,b){ return a+b; }, 0);
+    var used = 0;
+    wt.forEach(function(n, i){
+      var px = i === wt.length-1 ? widthTotal-used : Math.round(widthTotal*n/sum);
+      grid[i] = px; used += px;
+    });
+  }
+  // Re-index onto the surviving columns so a cell still lands under its heading.
+  var at = {}, pos = 0;
+  keep.forEach(function(c){ at[c] = pos++; });
+  cols = keep.length;
   var x = '<w:tbl><w:tblPr><w:tblW w:w="'+widthTotal+'" w:type="dxa"/>'+(chart?'':BORDER)+
     '<w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>'+
     grid.map(function(g){ return '<w:gridCol w:w="'+g+'"/>'; }).join('')+
     '</w:tblGrid>';
   rows.forEach(function(tr){
-    var isHead = tr.children.length && tr.children[0].tagName === 'TH';
+    // The sheet export writes every cell as a <td>, so the TH test was never
+    // once true and not a single table in the pack had a header row: no bold,
+    // no shading, and nothing repeated when a 44-row FMEA broke across pages.
+    // Any cell, not just the first: the Erlang sheet's header rows open with a
+    // blank corner cell, so testing children[0] alone found none of its seven.
+    var isHead = (tr.children.length && tr.children[0].tagName === 'TH') ||
+      [].slice.call(tr.children).some(function(td){ return !!xword(td).head; });
     x += '<w:tr>'+(isHead?'<w:trPr><w:tblHeader/></w:trPr>':'');
-    var cells = [].slice.call(tr.children);
-    for(var i=0;i<cols;i++){
-      var td = cells[i];
-      var span = td && td.getAttribute('colspan') ? parseInt(td.getAttribute('colspan'),10) : 1;
-      var cw = 0;
-      for(var k=i;k<i+span && k<cols;k++) cw += grid[k];
-      if(td && span > 1) i += span-1;
-      var inner = td ? runsFrom(td, isHead?{b:true}:{}) : '';
-      x += '<w:tc><w:tcPr><w:tcW w:w="'+cw+'" w:type="dxa"/>'+
+    // Walk the cells, not the column numbers. The old loop read cells[i] with
+    // i counting columns, then advanced i past a colspan — so the cell after a
+    // spanning one was skipped entirely and every later cell in that row shifted
+    // one column left.
+    var drawn = 0;
+    function cell(cw, span, td){
+      var s = xword(td);
+      var fmt = {};
+      if(s.b) fmt.b = true;
+      if(s.color) fmt.color = s.color;
+      var inner = td ? runsFrom(td, fmt) : '';
+      return '<w:tc><w:tcPr><w:tcW w:w="'+cw+'" w:type="dxa"/>'+
         (span>1?'<w:gridSpan w:val="'+span+'"/>':'')+
-        (isHead?'<w:shd w:val="clear" w:fill="333C49"/>':'')+
+        (s.fill?'<w:shd w:val="clear" w:fill="'+s.fill+'"/>':'')+
         '</w:tcPr>'+
         (td && td.getAttribute('data-bar')
           ? barCell(td, cw) + para('', {tight:true})
-          : para(isHead ? inner.replace(/<w:rPr>/g,'<w:rPr><w:color w:val="FFFFFF"/>') : inner,
-                 {style:'TableText'}))+
+          : para(inner, {style:'TableText'}))+
         '</w:tc>';
     }
+    var atCol = 0;
+    [].slice.call(tr.children).forEach(function(td){
+      var sp = parseInt(td.getAttribute('colspan')||'1', 10) || 1;
+      var start = atCol; atCol += sp;
+      var covered = [];
+      for(var c=start;c<start+sp;c++) if(at.hasOwnProperty(c)) covered.push(at[c]);
+      if(!covered.length) return;            // this cell lived only in dropped columns
+      var cw = 0;
+      covered.forEach(function(p){ cw += grid[p]; });
+      x += cell(cw, covered.length, td);
+      drawn += covered.length;
+    });
+    // Every row has to span the whole grid or Word renders the table ragged.
+    for(var pad=drawn; pad<cols; pad++) x += cell(grid[pad], 1, null);
     x += '</w:tr>';
   });
   return x + '</w:tbl>' + para('');
@@ -6710,13 +6812,27 @@ function tplEmailHTML(slug){
           for(var i=0;i<cls.length;i++){ if(XCLS[cls[i]]){ style = XCLS[cls[i]]; break; } }
           if(!style) style = 'padding:5px 9px;border:1px solid #dde3ec;vertical-align:top;';
           var cs = td.getAttribute('colspan');
-          var txt = eh((td.textContent||'').trim());
-          if(hasF){
+          // textContent flattens <br>, so a cell holding three bullet lines
+          // arrived as one run-on sentence. Turn the breaks into newlines
+          // before escaping, then back into markup afterwards.
+          var tmp = document.createElement('div');
+          tmp.innerHTML = (td.innerHTML||'').replace(/<br\s*\/?>/gi, '\n');
+          var txt = eh((tmp.textContent||'').trim()).replace(/\n/g, '<br>');
+          if(hasF && txt){
+            // Only under a value. An unfilled row's formula returns "" and the
+            // cell would otherwise print nothing but the formula — the RACI
+            // sheet went out as eleven rows of bare nested IFs under a table
+            // of six real ones. The formula is already shown on the rows above.
             var f = td.getAttribute('title') || '';
-            if(f) txt += '<div style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;'+
-                         'color:#5b6675;margin-top:2px;word-break:break-all">'+eh(f)+'</div>';
+            if(f) txt += '<div class="xfml" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;'+
+                         'font-size:10.5px;color:#5b6675;margin-top:2px;word-break:break-all">'+eh(f)+'</div>';
           }
-          out += '<td'+(cs?' colspan="'+cs+'"':'')+' style="'+style+'vertical-align:top">'+txt+'</td>';
+          // Carry the class through as well as the style. Word reads none of
+          // this CSS, so the .docx arrived with every heading, band and colour
+          // coded cell looking identical to body text — while still carrying
+          // the legend that explains what the yellow, blue and green ones mean.
+          out += '<td'+(cs?' colspan="'+cs+'"':'')+' class="'+eh(td.className||'')+'"'+
+                 ' style="'+style+'vertical-align:top">'+txt+'</td>';
         });
         out += '</tr>';
       });
@@ -6755,9 +6871,17 @@ function tplEmailHTML(slug){
         out += chartAsBars(g, title);
       });
     });
-    out += '<div style="'+EM.note+'">Green cells are a worked example &mdash; replace them with your own. '+
-           'Yellow cells are yours to fill in. Blue cells calculate themselves; the formula is printed '+
-           'under each one. Download the .xlsx for the working version.</div>';
+    // Describe the colours this sheet actually uses. The note used to explain
+    // all three on every template, so the calculators and the Erlang sheet —
+    // which carry no worked example at all — arrived telling the reader to
+    // look for green cells that were not there.
+    var used = function(c){ return !!src.querySelector('.'+c); };
+    var key = [];
+    if(used('x-ex'))   key.push('Green cells are a worked example &mdash; replace them with your own.');
+    if(used('x-fill')) key.push('Yellow cells are yours to fill in.');
+    if(used('x-calc')) key.push('Blue cells calculate themselves; the formula is printed under each one.');
+    key.push('Download the .xlsx for the working version.');
+    out += '<div style="'+EM.note+'">'+key.join(' ')+'</div>';
   }
   return out;
 }
