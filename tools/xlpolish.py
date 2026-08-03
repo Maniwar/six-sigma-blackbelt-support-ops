@@ -17,6 +17,7 @@ somebody uses and one they close again.
 from __future__ import annotations
 
 import re
+from copy import copy
 
 from openpyxl.utils import get_column_letter, range_boundaries
 from openpyxl.worksheet.properties import PageSetupProperties
@@ -977,6 +978,105 @@ def _chart_title(ch) -> str:
     return (getattr(strref, "f", "") or "").strip()
 
 
+# ---------------------------------------------------------------- colour key
+#
+# The one definition of what the three fills mean. build_templates builds its
+# LEGEND from this, and reconcile_legend() below repairs a workbook whose key
+# has drifted from its sheets, so there is no second copy to fall out of step.
+LEGEND_KEY = [
+    ("Yellow cells", "FFFFF9E3", "You fill these in."),
+    ("Blue cells", "FFF2F7FF",
+     "Calculated for you. Do not type over them \u2014 they contain formulas."),
+    ("Green cells", "FFECFAEF",
+     "A worked example, so you can see the expected format and the charts say "
+     "something the moment you open the file. Replace it with your own data "
+     "when you start."),
+]
+
+
+def fills_used(wb) -> set:
+    """Every solid fill colour anywhere in the workbook."""
+    seen = set()
+    for ws in wb.worksheets:
+        for row in ws.iter_rows():
+            for c in row:
+                f = getattr(c, "fill", None)
+                if f is None or f.fill_type != "solid":
+                    continue
+                rgb = getattr(getattr(f, "start_color", None), "rgb", None)
+                if isinstance(rgb, str):
+                    seen.add(rgb.upper())
+    return seen
+
+
+def reconcile_legend(wb) -> int:
+    """Add any colour the workbook uses and its key does not mention.
+
+    The key was derived at the end of each builder, which is one step too
+    early: this function's own caller adds fills, so the DOE matrix and the
+    Gage R&R study shipped using green cells their key never mentioned. In
+    memory they had none; the saved file had them. Deriving it here, where
+    every fill exists, is the only place the answer is the final one.
+
+    Only adds. Removing a line would need to be right about a colour being
+    absent from a workbook this pass has not finished with, and the cost of
+    being wrong is a reader looking for cells nobody explained.
+    """
+    if "How to use this" not in wb.sheetnames:
+        return 0
+    ws = wb["How to use this"]
+    used = fills_used(wb)
+    heads = {name for name, _, _ in LEGEND_KEY}
+
+    # Where each colour's heading sits, if it is there at all.
+    at = {}
+    for r in range(1, min(ws.max_row, 12) + 1):
+        v = ws.cell(row=r, column=2).value
+        if isinstance(v, str) and v.strip() in heads:
+            at[v.strip()] = r
+    if not at:
+        return 0                      # no key on this sheet; not ours to invent
+
+    # Copy the look from a heading and an explanation that are already there.
+    any_head = ws.cell(row=min(at.values()), column=2)
+    any_body = ws.cell(row=min(at.values()) + 1, column=2)
+    added = 0
+    for i, (name, colour, text) in enumerate(LEGEND_KEY):
+        if name in at or colour not in used:
+            continue
+        # After the previous colour's explanation, or at the top of the key.
+        prev = [LEGEND_KEY[j][0] for j in range(i) if LEGEND_KEY[j][0] in at]
+        row = (at[prev[-1]] + 2) if prev else min(at.values())
+        # insert_rows moves cells and leaves merged ranges and row heights
+        # where they were, so everything below the insertion came unmerged
+        # from its neighbour. On the Gage R&R sheet that dropped four notes
+        # into column A, which is two characters wide, and the longest of
+        # them wrapped to ninety-two lines. Move them by hand.
+        below = [(r.min_row, r.min_col, r.max_row, r.max_col)
+                 for r in list(ws.merged_cells.ranges) if r.min_row >= row]
+        heights = {r: d.height for r, d in ws.row_dimensions.items()
+                   if r >= row and d.height}
+        for r0, c0, r1, c1 in below:
+            ws.unmerge_cells(start_row=r0, start_column=c0, end_row=r1, end_column=c1)
+        ws.insert_rows(row, 2)
+        for r0, c0, r1, c1 in below:
+            ws.merge_cells(start_row=r0 + 2, start_column=c0,
+                           end_row=r1 + 2, end_column=c1)
+        for r in sorted(heights, reverse=True):
+            ws.row_dimensions[r + 2].height = heights[r]
+        h = ws.cell(row=row, column=2, value=name)
+        h.font = copy(any_head.font)
+        h.alignment = copy(any_head.alignment)
+        b = ws.cell(row=row + 1, column=2, value=text)
+        b.font = copy(any_body.font)
+        b.alignment = copy(any_body.alignment)
+        ws.row_dimensions[row + 1].height = max(15, 15 * (len(text) // 100 + 1))
+        at = {k: (v + 2 if v >= row else v) for k, v in at.items()}
+        at[name] = row
+        added += 1
+    return added
+
+
 def polish_workbook(wb, landscape: bool = True) -> int:
     """Print setup, frozen headers and chart legibility, for every sheet.
 
@@ -1051,4 +1151,6 @@ def polish_workbook(wb, landscape: bool = True) -> int:
 
         if before != (ws.page_setup.fitToWidth, ws.page_setup.orientation, ws.freeze_panes):
             changed += 1
+    # Last, so it sees every fill this pass has put in.
+    changed += reconcile_legend(wb)
     return changed

@@ -142,6 +142,32 @@ RE_JARGON = re.compile(
     r"study variation|lead time|touch time|unit of analysis", re.I)
 
 
+def test_legend_matches_sheets() -> None:
+    """Every workbook's colour key names exactly the fills it uses.
+
+    Both directions are defects and both shipped. The Kanban board and the
+    Erlang table explained green cells they do not have; the control charts
+    and the Gage R&R study used all three and explained one. It reads the
+    SAVED workbook, because the first attempt at this derived the key at the
+    end of the builder — before the polish pass that adds fills — and so
+    reported every workbook clean while two of them shipped wrong.
+    """
+    from openpyxl import load_workbook
+    import xlpolish as X
+
+    for path in sorted(TEMPLATES.glob("*.xlsx")):
+        wb = load_workbook(path)
+        used = X.fills_used(wb)
+        has = {n for n, c, _ in X.LEGEND_KEY if c in used}
+        txt = "\n".join(str(c.value) for ws in wb.worksheets
+                        for row in ws.iter_rows() for c in row
+                        if isinstance(c.value, str))
+        says = {n for n, _, _ in X.LEGEND_KEY if n in txt}
+        check(says == has,
+              f"{path.name}: the colour key matches the sheets",
+              f"key says {sorted(says)}, workbook uses {sorted(has)}")
+
+
 def test_chart_notes() -> None:
     """Every chart says how to read it and what would worry you.
 
@@ -1922,6 +1948,7 @@ def main() -> int:
     print("CITATIONS  every file.md:NN lands on a line that carries the figure")
     test_citations()
     print("CHARTS+    every chart says how to read it")
+    test_legend_matches_sheets()
     test_chart_notes()
     print("GLOSSARY+  every jargon column header carries a plain-English key")
     test_glossary_coverage()

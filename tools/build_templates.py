@@ -30,7 +30,8 @@ from openpyxl.comments import Comment
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import chartsvg  # noqa: E402
 from preview import shown_from, workbook_html  # noqa: E402
-from xlpolish import polish_workbook, save_workbook  # noqa: E402
+from xlpolish import (LEGEND_KEY, fills_used, polish_workbook,  # noqa: E402
+                      save_workbook)
 
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATES = ROOT / "templates"
@@ -108,23 +109,8 @@ def widths(ws, ws_widths):
         ws.column_dimensions[get_column_letter(i)].width = w
 
 
-LEGEND_COLOUR = {"Yellow cells": "FFFFF9E3", "Blue cells": "FFF2F7FF",
-                 "Green cells": "FFECFAEF"}
-
-
-def _fills_used(wb):
-    """Every solid fill colour anywhere in the workbook."""
-    seen = set()
-    for ws in wb.worksheets:
-        for row in ws.iter_rows():
-            for c in row:
-                f = getattr(c, "fill", None)
-                if f is None or f.fill_type != "solid":
-                    continue
-                rgb = getattr(getattr(f, "start_color", None), "rgb", None)
-                if isinstance(rgb, str):
-                    seen.add(rgb.upper())
-    return seen
+LEGEND_COLOUR = {name: colour for name, colour, _ in LEGEND_KEY}
+_fills_used = fills_used
 
 
 def howto(wb, lines):
@@ -242,16 +228,13 @@ def mark(ws, row, col, kind, note=None):
     return c
 
 
-LEGEND = [
-    (True, "Yellow cells"), (False, "You fill these in."),
-    (True, "Blue cells"), (False, "Calculated for you. Do not type over them — they contain formulas."),
-    # Plural, and "replace" rather than "delete": on the sheets that ship seeded
-    # with a full dataset — the control charts, the Gage R&R study, regression —
-    # the worked example IS the entry area. Deleting it leaves an empty chart.
-    (True, "Green cells"), (False, "A worked example, so you can see the expected format and the "
-                                   "charts say something the moment you open the file. Replace it "
-                                   "with your own data when you start."),
-]
+# One definition, in xlpolish, because the same key is repaired there after
+# this pass has run and a second copy would drift.
+#
+# Plural, and "replace" rather than "delete": on the sheets that ship seeded
+# with a full dataset — the control charts, the Gage R&R study, regression —
+# the worked example IS the entry area. Deleting it leaves an empty chart.
+LEGEND = [p for name, _, text in LEGEND_KEY for p in ((True, name), (False, text))]
 
 
 # ---------------------------------------------------------------- 20 five whys
