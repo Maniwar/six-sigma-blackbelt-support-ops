@@ -564,6 +564,15 @@ def patch_plain(wb, wbname: str) -> int:
 # runs to nine rows on the value stream map and twenty-four on a control chart,
 # and deleting it on a seeded sheet leaves an empty chart.
 LEGEND_FIX: list[tuple[str, str, str, object]] = [
+    # The calculators explain their colours in prose — "change the YELLOW cells,
+    # everything else is a formula" — which is true and is not the key every
+    # other workbook in the pack carries. A reader who has learnt to look for
+    # one will not find it here. Same words, same place as the rest.
+    ("19-black-belt-calculators.xlsx", "Start here", "B21", "What the colours mean"),
+    ("19-black-belt-calculators.xlsx", "Start here", "B22",
+     "Yellow cells are yours to fill in."),
+    ("19-black-belt-calculators.xlsx", "Start here", "B23",
+     "Blue cells are calculated for you. Do not type over them \u2014 they contain formulas."),
     ("05-data-collection-plan.xlsx", "Collection plan", "A7", "Green cells"),
     ("05-data-collection-plan.xlsx", "Collection plan", "B7",
      "A realistic worked example, so you can see the expected format and the sheet is not "
