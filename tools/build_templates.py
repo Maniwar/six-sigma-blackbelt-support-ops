@@ -108,7 +108,57 @@ def widths(ws, ws_widths):
         ws.column_dimensions[get_column_letter(i)].width = w
 
 
+LEGEND_COLOUR = {"Yellow cells": "FFFFF9E3", "Blue cells": "FFF2F7FF",
+                 "Green cells": "FFECFAEF"}
+
+
+def _fills_used(wb):
+    """Every solid fill colour anywhere in the workbook."""
+    seen = set()
+    for ws in wb.worksheets:
+        for row in ws.iter_rows():
+            for c in row:
+                f = getattr(c, "fill", None)
+                if f is None or f.fill_type != "solid":
+                    continue
+                rgb = getattr(getattr(f, "start_color", None), "rgb", None)
+                if isinstance(rgb, str):
+                    seen.add(rgb.upper())
+    return seen
+
+
 def howto(wb, lines):
+    # Describe the colours this workbook actually uses, and no others.
+    #
+    # LEGEND explains all three on every sheet, so the Kanban board and the
+    # Erlang staffing table — which have inputs and formulas but no separate
+    # worked example, because on those sheets the seeded input values ARE the
+    # example — both opened by telling the reader to look for green cells that
+    # are not there. This runs at the end of a builder, when every sheet is
+    # already populated, so it can simply look.
+    # It runs in both directions. Two sheets went the other way — the control
+    # charts explained only the blue cells while using all three, and the Gage
+    # R&R study explained none of the ones it uses — so the key is not filtered
+    # from what the caller passed, it is derived from the workbook. Whatever a
+    # builder hands over, the colour key ends up matching the sheets.
+    used = _fills_used(wb)
+    explain, key = {}, None
+    for bold, text in LEGEND:
+        if bold:
+            key = text
+        elif key:
+            explain[key] = text
+            key = None
+
+    rest, skipping = [], False
+    for bold, text in lines:
+        if bold:
+            skipping = text in LEGEND_COLOUR
+        if not skipping:
+            rest.append((bold, text))
+    lines = [p for h, c in LEGEND_COLOUR.items() if c in used and h in explain
+             for p in ((True, h), (False, explain[h]))] + rest
+
     ws = wb.create_sheet("How to use this", 0)
     ws.sheet_view.showGridLines = False
     ws.column_dimensions["A"].width = 2
