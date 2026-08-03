@@ -67,6 +67,11 @@ def cell_text(cell_xml: str) -> str:
     return "".join(cell_lines(cell_xml)).strip()
 
 
+def doc_text(doc: str) -> str:
+    """Everything the document prints, in order."""
+    return "".join(_unesc(t) for t in RE_TEXT.findall(doc))
+
+
 def tables(doc: str) -> list[str]:
     """Innermost tables only — a bar drawn as a nested table is not a data table."""
     return RE_TBL.findall(doc)
@@ -163,6 +168,26 @@ def audit_doc(key: str, doc: str, preview: str = "") -> list[str]:
     # Document-level properties. These are stated once per file rather than
     # per table, because each is about the document being coherent with itself.
     data = [t for t in tables(doc) if not is_chart_bar(t)]
+
+    # Nothing the reader can see may go missing on the way into Word.
+    #
+    # This is the check that was absent when the column trimmer shipped: it
+    # dropped columns nothing wrote to, which is right, and then discarded the
+    # cells that spanned only those columns, which deleted the "HOW TO READ IT"
+    # note under every chart in the pack. Every defect this file exists for is
+    # a variant of the same thing, so compare the two documents directly.
+    # Separate cells with a newline, not a space: joining them let the tail of
+    # one cell and the head of the next form a phrase that exists in neither,
+    # and the check then went looking for it in the document. The heading
+    # pattern below cannot span a newline, so the boundary does the work.
+    body = re.sub(r"<[^>]+>", "\n", preview)
+    body = (body.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+                .replace("&quot;", '"').replace("&#x27;", "'").replace("&nbsp;", " "))
+    seen = " ".join(doc_text(doc).split())
+    for phrase in re.findall(r"[A-Z][A-Z ]{6,}\.", body):   # the sheets' own headings
+        want = " ".join(phrase.split())
+        if want not in seen:
+            bad.append(f"{key}: the preview shows {want[:40]!r} and the document does not")
 
     # A sheet whose preview marks header cells must arrive with header rows:
     # bold, shaded, and repeating when the table breaks across a page. Sheets

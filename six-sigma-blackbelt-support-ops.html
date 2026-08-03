@@ -6379,6 +6379,21 @@ function xword(td){
   for(var i=0;i<cls.length;i++) if(XWORD[cls[i]]) return XWORD[cls[i]];
   return {};
 }
+/* How much of a cell the reader sees on its first line.
+   Sizing columns by textContent counted the formula printed underneath, so in
+   the Pareto the five-character Share column was given 1291dxa against Count's
+   235 — five times the width for the same visible text — because its cells
+   carry a 59-character =IF(OR(B5="",SUM(...))) beneath them. The formula still
+   prints; it just stops buying page width. */
+function visLen(td){
+  if(!td) return 0;
+  var n = 0;
+  [].slice.call(td.childNodes).forEach(function(c){
+    if(c.nodeType === 1 && (c.className||'').indexOf('xfml') >= 0) return;
+    n += ((c.textContent != null ? c.textContent : c.nodeValue) || '').trim().length;
+  });
+  return n;
+}
 
 function tableFrom(tbl){
   // querySelectorAll reaches through nested tables, so a bar drawn as a table
@@ -6416,7 +6431,7 @@ function tableFrom(tbl){
     [].slice.call(tr.children).forEach(function(td){
       var sp = parseInt(td.getAttribute('colspan')||'1', 10) || 1;
       // A bar is an empty shaded cell: no text, but the column is the chart.
-      var len = (td.textContent||'').trim().length || (td.getAttribute('data-bar') ? 12 : 0);
+      var len = visLen(td) || (td.getAttribute('data-bar') ? 12 : 0);
       if(sp === 1 && at < cols) load[at] = Math.max(load[at], len);
       at += sp;
     });
@@ -6443,13 +6458,32 @@ function tableFrom(tbl){
       var px = i === wt.length-1 ? widthTotal-used : Math.round(widthTotal*n/sum);
       grid[i] = px; used += px;
     });
+    // Weighting alone has no floor in real units: the FMEA's OCC and DET
+    // columns came out at 99dxa, which is 0.069in — narrower than the 108+108
+    // Word applies as cell padding when a table declares none, so the text
+    // area was negative and the heading rendered one letter per line. Give
+    // every column enough to hold a short word, taken from the widest ones.
+    var MINCOL = Math.min(470, Math.floor(widthTotal/grid.length));
+    var owed = 0;
+    grid.forEach(function(g, i){ if(g < MINCOL){ owed += MINCOL-g; grid[i] = MINCOL; } });
+    while(owed > 0){
+      var big = grid.indexOf(Math.max.apply(null, grid));
+      var take = Math.min(owed, grid[big]-MINCOL);
+      if(take <= 0) break;
+      grid[big] -= take; owed -= take;
+    }
   }
   // Re-index onto the surviving columns so a cell still lands under its heading.
   var at = {}, pos = 0;
   keep.forEach(function(c){ at[c] = pos++; });
   cols = keep.length;
+  // Declare the cell padding rather than inheriting Word's, so the widths
+  // above describe a text area that actually exists. Order matters:
+  // CT_TblPrBase is tblW, tblBorders, tblLayout, tblCellMar.
+  var CELLMAR = '<w:tblCellMar><w:top w:w="20" w:type="dxa"/><w:left w:w="43" w:type="dxa"/>'+
+    '<w:bottom w:w="20" w:type="dxa"/><w:right w:w="43" w:type="dxa"/></w:tblCellMar>';
   var x = '<w:tbl><w:tblPr><w:tblW w:w="'+widthTotal+'" w:type="dxa"/>'+(chart?'':BORDER)+
-    '<w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>'+
+    '<w:tblLayout w:type="fixed"/>'+(chart?'':CELLMAR)+'</w:tblPr><w:tblGrid>'+
     grid.map(function(g){ return '<w:gridCol w:w="'+g+'"/>'; }).join('')+
     '</w:tblGrid>';
   rows.forEach(function(tr){
@@ -6481,21 +6515,39 @@ function tableFrom(tbl){
           : para(inner, {style:'TableText'}))+
         '</w:tc>';
     }
-    var atCol = 0;
-    [].slice.call(tr.children).forEach(function(td){
+    // A row carrying one piece of text — a title bar, a section band, a note —
+    // should reach the right margin. Padding it with blank cells left the black
+    // 'HOW TO USE THIS SHEET' bar covering 39% of the page with white cells and
+    // vertical rules running through the rest of it.
+    var tds = [].slice.call(tr.children);
+    var full = tds.filter(function(td){ return visLen(td) || td.getAttribute('data-bar'); });
+    var solo = full.length === 1 ? full[0] : null;
+
+    var orphan = '', atCol = 0;
+    tds.forEach(function(td){
       var sp = parseInt(td.getAttribute('colspan')||'1', 10) || 1;
       var start = atCol; atCol += sp;
       var covered = [];
       for(var c=start;c<start+sp;c++) if(at.hasOwnProperty(c)) covered.push(at[c]);
-      if(!covered.length) return;            // this cell lived only in dropped columns
+      if(!covered.length){
+        // Every column this cell covers was dropped as unused — but the cell
+        // itself is not. Discarding it deleted the 'HOW TO READ IT' note under
+        // every chart in the pack: those sit in one wide colspan past the last
+        // column any single-column cell writes to, so nothing scored them and
+        // the whole note went out with the scaffolding. Give it its own row.
+        if(visLen(td)) orphan += cell(widthTotal, cols, td);
+        return;
+      }
+      var span = solo === td ? cols - covered[0] : covered.length;
       var cw = 0;
-      covered.forEach(function(p){ cw += grid[p]; });
-      x += cell(cw, covered.length, td);
-      drawn += covered.length;
+      for(var q=covered[0]; q<covered[0]+span && q<cols; q++) cw += grid[q];
+      x += cell(cw, span, td);
+      drawn = covered[0] + span;
     });
     // Every row has to span the whole grid or Word renders the table ragged.
     for(var pad=drawn; pad<cols; pad++) x += cell(grid[pad], 1, null);
     x += '</w:tr>';
+    if(orphan) x += '<w:tr>'+orphan+'</w:tr>';
   });
   return x + '</w:tbl>' + para('');
 }
@@ -6534,6 +6586,13 @@ function blocks(root){
     // belonged to them.
     else if(tag === 'DIV' && n.getAttribute('data-h') === 'chart')
       out += para(runsFrom(n, {b:true}), {spaceBefore:200});
+    // The caption of an image Word will not draw, immediately above the bar
+    // table that carries the same title in its own first row — so the title
+    // printed twice, 42 times across the pack. Drop the repeated name, keep
+    // the pointer: where the live chart is, is the half the bars cannot say.
+    else if(tag === 'DIV' && n.getAttribute('data-h') === 'imgcap')
+      out += para(run('Drawn as bars below — the live chart is in the .xlsx.',
+                      {i:true, sz:17, color:'5B6675'}), {spaceBefore:120});
     else if(n.children.length || (n.textContent||'').trim()) out += blocks(n);
   });
   return out;
@@ -6860,9 +6919,14 @@ function tplEmailHTML(slug){
                 btoa(unescape(encodeURIComponent(c.outerHTML)));
         } catch(e) { uri = ''; }
         if(!uri) return;
+        // The caption belongs to the image. A reader who gets the image needs
+        // it; Word gets no image and then draws the bar table, which prints the
+        // same title as its own first row — so the .docx said every chart's
+        // name twice, 42 times across the pack. Marked, so the Word walk can
+        // leave it to the drawing it captions.
         out += '<div style="margin:16px 0"><img src="'+uri+'" alt="'+eh(title)+
                '" style="display:block;width:100%;max-width:900px;height:auto">'+
-               '<div style="'+EM.note+'margin-top:4px">'+eh(title)+
+               '<div data-h="imgcap" style="'+EM.note+'margin-top:4px">'+eh(title)+
                ' — the live chart is in the .xlsx</div></div>';
         // Word draws neither inline SVG nor a data-URI image, so the chart is
         // rebuilt out of table cells the way the business case already does.
