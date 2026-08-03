@@ -184,7 +184,13 @@ def sheet_html(ws, shown: dict) -> str:
     if hide_from:
         max_c = hide_from - 1
     out = ['<table class="xgrid">']
+    # A row inside a vertical merge can never be dropped: the rowspan above it
+    # counts rows, so removing one shifts every cell below into the wrong place.
+    vspan_rows = {rr for rng in ws.merged_cells.ranges if rng.max_row > rng.min_row
+                  for rr in range(rng.min_row, rng.max_row + 1)}
     for r in range(1, max_r + 1):
+        row_has_content = False
+        merged_here = r in vspan_rows
         cells = []
         c = 1
         while c <= max_c:
@@ -243,8 +249,26 @@ def sheet_html(ws, shown: dict) -> str:
                 attrs += ' style="%s"' % H.escape(edge, quote=True)
             attrs += title
             cells.append("<td%s>%s</td>" % (attrs, text))
+            if text.strip() or cls or edge:
+                row_has_content = True
             c += span
-        out.append("<tr>" + "".join(cells) + "</tr>")
+        # Collapse a row only when it carries NOTHING — no text, no fill class,
+        # no border. The fishbone reserves four cause slots per branch and the
+        # example fills one or two, so the diagram arrived two-thirds blank and
+        # read as a sparse grid rather than a skeleton. The slots stay in the
+        # .xlsx, where they are live formulas waiting for the Fishbone tab.
+        #
+        # `edge` is what makes this safe: the bones ARE borders on otherwise
+        # empty cells, so a naive "no text" test would delete the diagram it is
+        # trying to tidy.
+        # Marked, not dropped. verify matches preview tooltips to workbook cells
+        # by POSITION, so removing a <tr> shifts every row below it and 21
+        # checks fail — correctly, because the preview would no longer describe
+        # the sheet. Hidden in CSS instead: the row is still there for anything
+        # counting, and the reader does not see four empty cause slots.
+        blank = not row_has_content and not merged_here
+        out.append('<tr class="xblank">' if blank else "<tr>")
+        out.append("".join(cells) + "</tr>")
     out.append("</table>")
     if hide_from:
         out.append(

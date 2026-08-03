@@ -65,7 +65,12 @@ RE_SHEET_END = re.compile(r"(</table>(?:<p class=\"xscaf\">.*?</p>)?)</div>", re
 _PREVIEWS = ROOT / "tools" / "previews.json"
 GENERATED: dict[str, str] = (
     json.loads(_PREVIEWS.read_text(encoding="utf-8")) if _PREVIEWS.exists() else {})
-RE_ROW = re.compile(r"(<tr>)(.*?)(</tr>)", re.S)
+# `<tr[^>]*>`, not `<tr>`. A row can now carry a class — the fishbone marks
+# its reserved-but-empty cause slots so CSS can hide them — and a pattern
+# that only matched the bare tag skipped those rows silently, which showed
+# up as 21 "preview tooltips match the workbook" failures rather than as
+# anything pointing at the regex. RE_TD has always allowed attributes.
+RE_ROW = re.compile(r"(<tr[^>]*>)(.*?)(</tr>)", re.S)
 RE_TD = re.compile(r"<td([^>]*)>(.*?)</td>", re.S)
 
 # Cells whose rendered text the workbook cannot supply on its own: openpyxl
