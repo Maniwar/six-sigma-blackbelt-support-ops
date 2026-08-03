@@ -559,6 +559,8 @@ function links(txt){
 }
 var res = {
   fmlAnchors: document.querySelectorAll('[id^="fml-"]').length,
+  byClick: 0, byKey: 0, sameTerm: false, kbTerm: '',
+  dlNames: [],
   acr_variant: links('we reviewed dPU across the queue this week'),
   acr_upper:   links('we reviewed DPU across the queue this week'),
   word_lower:  links('we walked the gemba this morning together'),
@@ -577,6 +579,40 @@ keys.forEach(function(k){
     return o !== k && o.length > 3 && t.indexOf(o) >= 0; }).length;
   if(n > best){ best = n; pick = k; }
 });
+// Bulk download hands each template back in the format that suits it. Read off
+// the FILENAME that would reach disk, by stubbing the two download primitives —
+// the branch that chooses is not the thing a reader ends up with.
+try {
+  G.setDl(function(n){ res.dlNames.push(n); }, function(n){ res.dlNames.push(n); });
+  var ks = Object.keys(G.TPLS);
+  var xl = ks.filter(function(k){ return G.TPLS[k].ext === 'xlsx'; })[0];
+  var md = ks.filter(function(k){ return G.TPLS[k].ext === 'md'; })[0];
+  if(xl) G.one(G.TPLS[xl]);
+  if(md) G.one(G.TPLS[md]);
+} catch(e) { res.dlErr = String(e && e.message || e); }
+
+// Pointer and keyboard must reach the same explainer. Dispatched as real
+// events on a real .gl, because the claim is about the two HANDLERS agreeing —
+// calling openTerm directly would exercise neither of them.
+try {
+  var gl = document.querySelector('.gl');
+  if(gl){
+    var pop0 = document.getElementById('pop');
+    function opened(kind){
+      pop0.innerHTML = '';
+      gl.dispatchEvent(kind === 'click'
+        ? new MouseEvent('click', {bubbles:true, cancelable:true})
+        : new KeyboardEvent('keydown', {key:'Enter', bubbles:true, cancelable:true}));
+      var t = pop0.querySelector('.pt');
+      return {len: pop0.innerHTML.length, term: t ? t.textContent.trim() : ''};
+    }
+    var c = opened('click'), k = opened('key');
+    res.byClick = c.len; res.byKey = k.len;
+    res.kbTerm = k.term;
+    res.sameTerm = !!c.term && c.term === k.term;
+  }
+} catch(e) { res.kbErr = String(e && e.message || e); }
+
 function finish(){
   var o = document.createElement('div'); o.id = '__gl';
   o.textContent = JSON.stringify(res); document.body.appendChild(o);
@@ -619,7 +655,7 @@ def glossary_behaviour() -> dict | None:
     if src.count(anchor) != 1:
         check(False, "[GLOSS] the harness can reach autoGloss", "the wiring anchor moved")
         return None
-    src = src.replace(anchor, "window.__G={autoGloss:autoGloss,GLOSS:GLOSS,showPop:showPop};\n" + anchor, 1)
+    src = src.replace(anchor, "window.__G={autoGloss:autoGloss,GLOSS:GLOSS,showPop:showPop,TPLS:TPLS,one:function(t){return dlTemplate(t);},setDl:function(a,b){dl=a;dlBlob=b;}};\n" + anchor, 1)
     head, sep, tail = src.rpartition("</body>")
     src = (head + "<script>window.addEventListener('load',function(){"
            + GLOSS_JS + "});</script>" + sep + tail)
@@ -671,6 +707,26 @@ def audit_glossary() -> None:
           "[GLOSS] formula cards carry the anchors their links point at",
           f"{g.get('fmlAnchors')} elements with an fml- id; the test selector "
           f"links into these, and with none the link goes nowhere useful")
+    # Pointer and keyboard parity. The control comes first: if a CLICK does not
+    # open the explainer, "the keyboard matches the pointer" is satisfied by
+    # both doing nothing.
+    check(g.get("byClick", 0) > 0,
+          "[GLOSS] clicking a glossary term opens its explainer",
+          f"the click path produced {g.get('byClick')} characters of popover")
+    check(g.get("byKey", 0) > 0 and g.get("sameTerm"),
+          "[GLOSS] Enter on a glossary term opens the same explainer a click does",
+          f"click gave {g.get('byClick')} chars, Enter gave {g.get('byKey')} "
+          f"({g.get('kbTerm')!r}) — keyboard users lost the explainer entirely "
+          f"when the two paths drifted apart before")
+    names = g.get("dlNames") or []
+    check(any(n.endswith(".xlsx") for n in names),
+          "[GLOSS] bulk download hands a workbook back as Excel",
+          f"downloaded {names} — a workbook exported as .docx loses every "
+          f"formula, which is the whole reason to download it")
+    check(any(n.endswith(".docx") for n in names),
+          "[GLOSS] bulk download hands a document back as Word",
+          f"downloaded {names} — the audience gets Word, not the .md the "
+          f"template is authored in")
     check(g.get("acr_variant", 1) == 0,
           "[GLOSS] an acronym gets no first-character-lowercased variant",
           f"'dPU' matched {g.get('acr_variant')} times. Two conditions stop "

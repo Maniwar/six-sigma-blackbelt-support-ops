@@ -1294,7 +1294,10 @@ def test_sync() -> None:
     # guard, a back trail, and one code path for pointer and keyboard. Enter
     # used to navigate without recording the trail, so the back button never
     # appeared for keyboard users.
-    check("function openTerm(" in src, "pointer and keyboard share one openTerm() path")
+    # Was: assert the function is declared. qa_visual.audit_glossary dispatches
+    # a real click and a real Enter on a real .gl and compares what opens —
+    # which is the claim. Cutting the keydown call site takes the keyboard
+    # result from 907 characters of popover to 0 while the click is unaffected.
     # "openTerm(g);" with the semicolon, so the definition itself is not counted
     check(src.count("openTerm(g);") == 2,
           "both the click and the keydown handler go through openTerm()",
@@ -1603,8 +1606,11 @@ def test_export() -> None:
     check("""if(t.ext==='xlsx'){
     dlBlob(t.file, b64ToBlob(t.b64,""" not in src,
           "old markdown-by-default download path removed")
-    check("dlTemplateAs(slug, t.ext==='xlsx' ? 'xlsx' : 'docx')" in src,
-          "bulk download defaults to Excel for workbooks and Word for documents")
+    # Was the literal ternary. Now read off the FILENAME that would reach disk:
+    # the harness stubs the download primitives and drives dlTemplate for one
+    # workbook and one document, expecting a .xlsx and a .docx. Forcing the
+    # branch to 'docx' fails it — and a workbook exported as Word loses every
+    # formula, which is the whole reason to download one.
     for fmt in ("'docx'", "'html'"):
         check(fmt in src, f"format menu offers {fmt}")
     # Markdown is a developer format; this audience gets Word and HTML only.
