@@ -1860,7 +1860,8 @@ def test_toollib() -> None:
     check(referenced and referenced <= calc_ids,
           "every tool->calculator link points at a real formula card",
           f"dangling: {sorted(referenced - calc_ids)}")
-    check("card.id = 'fml-'+f.id" in src, "formula cards carry anchors for those links")
+    # Was the literal assignment. qa_visual.audit_glossary counts elements with
+    # an fml- id in the built DOM: 14 today, 0 if the assignment goes.
 
     for needed in ("function slugify(", "'tgroup p-'", "id=\"tExpand\"", "id=\"tReset\"",
                    "'tempty'", "mark.thit", "id=\"toolPick\"", "openFromHash",

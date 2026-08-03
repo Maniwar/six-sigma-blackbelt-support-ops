@@ -558,6 +558,7 @@ function links(txt){
   G.autoGloss(d, ''); return d.querySelectorAll('.gl').length;
 }
 var res = {
+  fmlAnchors: document.querySelectorAll('[id^="fml-"]').length,
   acr_variant: links('we reviewed dPU across the queue this week'),
   acr_upper:   links('we reviewed DPU across the queue this week'),
   word_lower:  links('we walked the gemba this morning together'),
@@ -662,6 +663,14 @@ def audit_glossary() -> None:
     check(g.get("popSelf", 1) == 0,
           "[GLOSS] an explainer never links to the term it is explaining",
           f"{g.get('popSelf')} self-link(s) in the {g.get('popTerm')!r} popover")
+    # The formula cards are link targets: the statistical-test selector sends a
+    # reader to a specific card, and without an id the link lands on the page
+    # and leaves them to find it. Counted in the DOM — removing the assignment
+    # takes this from 14 to 0.
+    check(g.get("fmlAnchors", 0) > 0,
+          "[GLOSS] formula cards carry the anchors their links point at",
+          f"{g.get('fmlAnchors')} elements with an fml- id; the test selector "
+          f"links into these, and with none the link goes nowhere useful")
     check(g.get("acr_variant", 1) == 0,
           "[GLOSS] an acronym gets no first-character-lowercased variant",
           f"'dPU' matched {g.get('acr_variant')} times. Two conditions stop "
