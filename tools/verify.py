@@ -1299,9 +1299,12 @@ def test_sync() -> None:
     check(src.count("openTerm(g);") == 2,
           "both the click and the keydown handler go through openTerm()",
           f"found {src.count('openTerm(g);')} call sites")
-    check("autoGloss(pop, key)" in src, "the explainer's own text is glossed")
-    check("if(selfKey && key === selfKey) continue;" in src,
-          "an explainer never links to the term it is explaining")
+    # Was a source string. qa_visual.audit_glossary opens a real popover and
+    # counts the links in it.
+    # Was the literal guard line. Now counted in the DOM: the harness picks
+    # the term whose explainer mentions the most OTHER terms, so the popover
+    # has links to be wrong about — without that, "no self-links" holds
+    # trivially and the check cannot fail.
     check("n.id==='pop'&&!POP_OPEN" in src,
           "#pop is glossed only when showPop asks, not on document-wide passes")
     check(src.count("POP_TRAIL.length = 0") >= 2,

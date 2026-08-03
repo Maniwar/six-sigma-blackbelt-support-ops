@@ -557,14 +557,45 @@ function links(txt){
   d.textContent = txt; document.body.appendChild(d);
   G.autoGloss(d, ''); return d.querySelectorAll('.gl').length;
 }
-var o = document.createElement('div'); o.id = '__gl';
-o.textContent = JSON.stringify({
+var res = {
   acr_variant: links('we reviewed dPU across the queue this week'),
   acr_upper:   links('we reviewed DPU across the queue this week'),
   word_lower:  links('we walked the gemba this morning together'),
-  word_upper:  links('we walked the Gemba this morning together')
+  word_upper:  links('we walked the Gemba this morning together'),
+  popLinks: 0, popSelf: 0, popTerm: ''
+};
+// The explainer. Pick the term whose own definition mentions itself AND the
+// most other terms: without other terms the popover has no links at all, and
+// "no self-links" is then satisfied for the wrong reason.
+var keys = Object.keys(G.GLOSS), pick = '', best = 0;
+keys.forEach(function(k){
+  var d = G.GLOSS[k] || {};
+  var t = [d.plain, d.why, d.how].filter(Boolean).join(' ');
+  if(t.indexOf(k) < 0) return;
+  var n = keys.filter(function(o){
+    return o !== k && o.length > 3 && t.indexOf(o) >= 0; }).length;
+  if(n > best){ best = n; pick = k; }
 });
-document.body.appendChild(o);
+function finish(){
+  var o = document.createElement('div'); o.id = '__gl';
+  o.textContent = JSON.stringify(res); document.body.appendChild(o);
+}
+if(pick){
+  res.popTerm = pick;
+  // showPop(target, key) — passing the key as the target leaves GLOSS[undefined]
+  // and an EMPTY popover, which reads as "no self-links" and proves nothing.
+  var anchor = document.createElement('span');
+  anchor.textContent = pick; document.body.appendChild(anchor);
+  G.showPop(anchor, pick);
+  setTimeout(function(){
+    var pop = document.getElementById('pop');
+    var as = pop ? [].slice.call(pop.querySelectorAll('.gl')) : [];
+    res.popLinks = as.length;
+    res.popSelf = as.filter(function(a){
+      return (a.textContent||'').trim().toLowerCase() === pick.toLowerCase(); }).length;
+    finish();
+  }, 600);
+} else { finish(); }
 """
 
 
@@ -587,7 +618,7 @@ def glossary_behaviour() -> dict | None:
     if src.count(anchor) != 1:
         check(False, "[GLOSS] the harness can reach autoGloss", "the wiring anchor moved")
         return None
-    src = src.replace(anchor, "window.__G={autoGloss:autoGloss,GLOSS:GLOSS};\n" + anchor, 1)
+    src = src.replace(anchor, "window.__G={autoGloss:autoGloss,GLOSS:GLOSS,showPop:showPop};\n" + anchor, 1)
     head, sep, tail = src.rpartition("</body>")
     src = (head + "<script>window.addEventListener('load',function(){"
            + GLOSS_JS + "});</script>" + sep + tail)
@@ -623,6 +654,14 @@ def audit_glossary() -> None:
           f"'gemba' matched {g.get('word_lower')} times; it appears more often "
           f"lower-case in this document than capitalised, and used to be "
           f"clickable only when capitalised")
+    check(g.get("popLinks", 0) > 0,
+          "[GLOSS] an explainer's own text is glossed",
+          f"{g.get('popLinks')} links in the {g.get('popTerm')!r} popover — an "
+          f"explainer leaning on three more undefined terms is not an "
+          f"explanation, and with no links the next check proves nothing")
+    check(g.get("popSelf", 1) == 0,
+          "[GLOSS] an explainer never links to the term it is explaining",
+          f"{g.get('popSelf')} self-link(s) in the {g.get('popTerm')!r} popover")
     check(g.get("acr_variant", 1) == 0,
           "[GLOSS] an acronym gets no first-character-lowercased variant",
           f"'dPU' matched {g.get('acr_variant')} times. Two conditions stop "
