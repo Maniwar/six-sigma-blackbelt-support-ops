@@ -167,6 +167,22 @@ def test_legend_matches_sheets() -> None:
               f"{path.name}: the colour key matches the sheets",
               f"key says {sorted(says)}, workbook uses {sorted(has)}")
 
+        # A key headed "HOW TO USE THIS SHEET" is answerable for that sheet,
+        # not for the workbook. Checking only the workbook lets a sheet with
+        # no worked example sit under a key that promises one, because some
+        # other tab has green cells and satisfies the total.
+        names = [n for n, _, _ in X.LEGEND_KEY]
+        for ws in wb.worksheets:
+            block = {v.strip() for r in range(1, min(ws.max_row, 14) + 1)
+                     for v in [ws.cell(row=r, column=1).value]
+                     if isinstance(v, str) and v.strip() in names}
+            if not block:
+                continue
+            here = {n for n, c, _ in X.LEGEND_KEY if c in X.sheet_fills(ws)}
+            check(block == here,
+                  f"{path.name} / {ws.title}: the sheet's own key matches it",
+                  f"key says {sorted(block)}, sheet uses {sorted(here)}")
+
 
 def test_chart_notes() -> None:
     """Every chart says how to read it and what would worry you.

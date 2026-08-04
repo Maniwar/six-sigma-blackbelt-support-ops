@@ -569,38 +569,11 @@ LEGEND_FIX: list[tuple[str, str, str, object]] = [
     # other workbook in the pack carries. A reader who has learnt to look for
     # one will not find it here. Same words, same place as the rest.
     ("19-black-belt-calculators.xlsx", "Start here", "B21", "What the colours mean"),
-    ("19-black-belt-calculators.xlsx", "Start here", "B22",
-     "Yellow cells are yours to fill in."),
-    ("19-black-belt-calculators.xlsx", "Start here", "B23",
-     "Blue cells are calculated for you. Do not type over them \u2014 they contain formulas."),
-    ("05-data-collection-plan.xlsx", "Collection plan", "A7", "Green cells"),
-    ("05-data-collection-plan.xlsx", "Collection plan", "B7",
-     "A realistic worked example, so you can see the expected format and the sheet is not "
-     "blank when you open it. Replace it with your own."),
-    ("10-value-stream-map.xlsx", "Value stream", "A7", "Green cells"),
-    ("10-value-stream-map.xlsx", "Value stream", "B7",
-     "A realistic worked example, so you can see the expected format and the sheet is not "
-     "blank when you open it. Replace it with your own."),
-    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "A7", "Green cells"),
-    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "B7",
-     "A realistic worked example, so you can see the expected format and the sheet is not "
-     "blank when you open it. Replace it with your own."),
-    ("12-fmea.xlsx", "FMEA", "A7", "Green cells"),
-    ("12-fmea.xlsx", "FMEA", "B7",
-     "A realistic worked example, so you can see the expected format and the sheet is not "
-     "blank when you open it. Replace it with your own."),
-    ("13-hypothesis-test-log.xlsx", "Test log", "A7", "Green cells"),
-    ("13-hypothesis-test-log.xlsx", "Test log", "B7",
-     "A realistic worked example, so you can see the expected format and the sheet is not "
-     "blank when you open it. Replace it with your own."),
-    ("15-solution-selection-matrix.xlsx", "Solution selection", "A7", "Green cells"),
-    ("15-solution-selection-matrix.xlsx", "Solution selection", "B7",
-     "A realistic worked example, so you can see the expected format and the sheet is not "
-     "blank when you open it. Replace it with your own."),
-    ("17-control-plan.xlsx", "Control plan", "A7", "Green cells"),
-    ("17-control-plan.xlsx", "Control plan", "B7",
-     "A realistic worked example, so you can see the expected format and the sheet is not "
-     "blank when you open it. Replace it with your own."),
+    ("19-black-belt-calculators.xlsx", "Start here", "B22", "Yellow cells"),
+    ("19-black-belt-calculators.xlsx", "Start here", "B23", "You fill these in."),
+    ("19-black-belt-calculators.xlsx", "Start here", "B24", "Blue cells"),
+    ("19-black-belt-calculators.xlsx", "Start here", "B25",
+     "Calculated for you. Do not type over them \u2014 they contain formulas."),
     ("12-fmea.xlsx", "How to use this", "B6",
      "1.  Open the FMEA tab. The green rows are a worked example — read them, then "
      "overwrite them with your own failure modes."),

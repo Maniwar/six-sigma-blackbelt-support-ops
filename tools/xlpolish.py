@@ -1030,7 +1030,7 @@ def reconcile_legend(wb) -> int:
 
     # Where each colour's heading sits, if it is there at all.
     at = {}
-    for r in range(1, min(ws.max_row, 12) + 1):
+    for r in range(1, min(ws.max_row, 40) + 1):
         v = ws.cell(row=r, column=2).value
         if isinstance(v, str) and v.strip() in heads:
             at[v.strip()] = r
@@ -1075,6 +1075,69 @@ def reconcile_legend(wb) -> int:
         at[name] = row
         added += 1
     return added
+
+
+def sheet_fills(ws) -> set:
+    """Solid fill colours on one sheet."""
+    seen = set()
+    for row in ws.iter_rows():
+        for c in row:
+            f = getattr(c, "fill", None)
+            if f is None or f.fill_type != "solid":
+                continue
+            rgb = getattr(getattr(f, "start_color", None), "rgb", None)
+            if isinstance(rgb, str):
+                seen.add(rgb.upper())
+    return seen
+
+
+def reconcile_sheet_key(ws) -> int:
+    """The colour key that sits under 'HOW TO USE THIS SHEET' on a data sheet.
+
+    A different shape from the one on a 'How to use this' tab: the heading is
+    in column A and its explanation shares the row in column B, and it
+    describes THAT SHEET rather than the workbook. It was written by a fixed
+    list of cell addresses asserting all three colours, so it was right only
+    for as long as nobody changed a sheet underneath it.
+
+    Rows are rewritten in place, never inserted or deleted. The data on these
+    sheets starts a couple of rows below and several hundred cell addresses in
+    patch_workbooks point at it, so shifting a row to tidy a legend would move
+    every one of them. A colour the sheet does not use empties its row and the
+    rest close up above it.
+
+    The wording already on the sheet is kept. These sheets say the worked
+    example is "realistic" and the tabs say it makes the charts say something
+    straight away; both are true of their own sheet and neither is this
+    function's to rewrite.
+    """
+    names = [n for n, _, _ in LEGEND_KEY]
+    rows = {}
+    for r in range(1, min(ws.max_row, 14) + 1):
+        v = ws.cell(row=r, column=1).value
+        if isinstance(v, str) and v.strip() in names:
+            rows[v.strip()] = r
+    if not rows:
+        return 0
+    span = sorted(rows.values())
+    used = sheet_fills(ws)
+    want = [(n, t) for n, c, t in LEGEND_KEY if c in used]
+    # More colours than the block has rows: adding one means inserting a row,
+    # which is the thing this must not do. Leave it and let verify say so.
+    if len(want) > len(span):
+        return 0
+    keep = {n: ws.cell(row=r, column=2).value for n, r in rows.items()}
+    changed = 0
+    for i, r in enumerate(span):
+        head, body = (want[i][0], keep.get(want[i][0]) or want[i][1]) \
+            if i < len(want) else (None, None)
+        if ws.cell(row=r, column=1).value != head:
+            ws.cell(row=r, column=1).value = head
+            changed += 1
+        if ws.cell(row=r, column=2).value != body:
+            ws.cell(row=r, column=2).value = body
+            changed += 1
+    return changed
 
 
 def polish_workbook(wb, landscape: bool = True) -> int:
@@ -1151,6 +1214,8 @@ def polish_workbook(wb, landscape: bool = True) -> int:
 
         if before != (ws.page_setup.fitToWidth, ws.page_setup.orientation, ws.freeze_panes):
             changed += 1
-    # Last, so it sees every fill this pass has put in.
+    # Last, so both see every fill this pass has put in.
     changed += reconcile_legend(wb)
+    for ws in wb.worksheets:
+        changed += reconcile_sheet_key(ws)
     return changed
