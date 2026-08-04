@@ -198,6 +198,19 @@ REPEATED: list[tuple[str, str, str, str, range]] = [
 
 # Literal value / label corrections: (workbook, sheet, cell, value)
 VALUES: list[tuple[str, str, str, object]] = [
+    # The calculator's own D8 note tells the reader that pricing a reopen at
+    # cost-to-serve is "the defect its charter records", and that the rate and
+    # the volume must be measured on the SAME population — then B5 and B8
+    # committed both errors, on the sheet the note is attached to. 480,000 is
+    # the whole billing queue; 14.2% and 8.0% are measured on in-scope
+    # adjustments. Same numbers as the charter now: 11,592 x 6.2 points at
+    # $38.60, realised at 0.85.
+    ("19-black-belt-calculators.xlsx", "8 Benefit — avoided contacts", "B5", 11592),
+    ("19-black-belt-calculators.xlsx", "8 Benefit — avoided contacts", "B8", 38.6),
+    ("19-black-belt-calculators.xlsx", "8 Benefit — avoided contacts", "D5",
+     "Units per year in the population the rates below are measured on — not the "
+     "wider queue it sits inside. The worked example uses 11,592 in-scope billing "
+     "adjustments, not the 266,000 contacts of the queue around them."),
     # A column heading that went through an HTML escaper on its way into the
     # workbook and never came back out. Excel shows the entity, and so do the
     # preview and the Word export, because all three read the cell. The phrase
@@ -243,7 +256,22 @@ VALUES: list[tuple[str, str, str, object]] = [
     # a generic calculator must let you type a benefit that came from anywhere.
     # What it may not do is ship a worked example that contradicts the tab next
     # to it, so the example is now tab 8's own output and the note says so.
-    ("19-black-belt-calculators.xlsx", "9 ROI and payback", "B6", 172012.80),
+    # Sheet 9 carries sheet 8's realised benefit as a literal, so it moves
+    # with it: 11,592 x 6.2 points x $38.60 x 0.85.
+    ("19-black-belt-calculators.xlsx", "9 ROI and payback", "B6", 23580.68),
+    # And say what the numbers below it now show. On the corrected benefit this
+    # example does not pay back inside the model, which is the honest result
+    # for the programme's worked project and worth more as an example than a
+    # comfortable one would be.
+    ("19-black-belt-calculators.xlsx", "9 ROI and payback", "D6",
+     "Validated and realised — not gross, not the pilot rate. Signed by Finance after "
+     "90 days of control data. The worked example carries tab 8's own realised benefit "
+     "so this workbook agrees with itself; replace it with yours, from whichever tab or "
+     "source produced it. Note what it produces below: against $193,000 of investment "
+     "this project never pays back inside three years, and the NPV stays negative. That "
+     "is the correct answer for it — its charter records that it does not clear the "
+     "$50,000 Finance floor — and a worked example that came out comfortable would be "
+     "teaching you the wrong thing."),
     ("19-black-belt-calculators.xlsx", "9 ROI and payback", "D6",
      "Validated and realised — not gross, not the pilot rate. Signed by Finance after 90 days "
      "of control data. The worked example carries tab 8's own realised benefit so this "
