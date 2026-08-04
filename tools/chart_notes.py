@@ -112,7 +112,7 @@ NOTES: dict[str, str] = {
         "heaviest pair here takes 198 of 737 logged seconds — 26.9% of all the swivelling "
         "on one pair. Check the re-key column beside it: a hop that re-types data is both "
         "the waste and a defect opportunity.",
-    "Seconds spent hopping, contact by contact":
+    "Hop time is not evenly spread — a few contacts carry it":
         "One bar per contact, so the shape tells you whether the swivel is universal or "
         "concentrated. Even bars mean every contact pays it and the fix is worth the "
         "whole volume; a few tall bars mean a subset of cases is doing something the "
@@ -317,7 +317,7 @@ ACTIONS: dict[str, str] = {
         "Build the integration for the top pair first — 26.9% of all swivel time sits on one of "
         "them. Where the re-key column is ticked, count the defect opportunity in the FMEA too, "
         "because re-typing is both waste and a failure mode.",
-    "Seconds spent hopping, contact by contact":
+    "Hop time is not evenly spread — a few contacts carry it":
         "Even bars mean fix it for everyone and size the benefit on full volume. A few tall bars "
         "mean define what those contacts have in common before building anything.",
     "p-value by test, against alpha = 0.05":

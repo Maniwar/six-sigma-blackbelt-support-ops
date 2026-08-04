@@ -1089,7 +1089,12 @@ def audit_markdown(path: Path) -> None:
 def main() -> int:
     fast = "--fast" in sys.argv
     visual = "--visual" in sys.argv
-    rubric = "--rubric" in sys.argv
+    # On by default now. It was opt-in, and the consequence was exactly what an
+    # opt-in check produces: the only audit that grades whether a chart is worth
+    # shipping had never been run against the three most recent workbooks, and
+    # nothing anywhere forced an INTENT entry when one was added. --no-rubric
+    # remains for when you want the fast structural pass on its own.
+    rubric = "--no-rubric" not in sys.argv
     only = [a for a in sys.argv[1:] if not a.startswith("-")]
     books = sorted(TEMPLATES.glob("*.xlsx"))
     if only:

@@ -4170,15 +4170,33 @@ def system_hop():
               "halved it, and then prove the real number in a pilot (16-pilot-protocol.md) "
               "against a control group.", W)
 
+    # Both charts drew bars and left the reader to decide what counted as big.
+    # The mean, on the data, is the smallest thing that turns a picture of
+    # numbers into a decision: above the line is where an integration pays.
+    ws.cell(row=P0 - 1, column=9, value="Mean seconds per pair").font = F_NOTE
+    for r in range(P0, PL + 1):
+        ws.cell(row=r, column=9,
+                value=f'=IF(COUNT($E${P0}:$E${PL})=0,"",'
+                      f'AVERAGE($E${P0}:$E${PL}))').font = F_NOTE
     pch = bar(ws, "Where the hop time goes — total seconds by system pair",
               Reference(ws, min_col=3, min_row=P0, max_row=PL),
               Reference(ws, min_col=5, min_row=P0, max_row=PL),
               "J4", horizontal=True, name="Total seconds observed")
+    overlay(pch, ws, Reference(ws, min_col=9, min_row=P0, max_row=PL),
+            "Mean — a pair above this line is worth an integration")
     pch.width = 19          # a pair name is two system names and an arrow
-    cch = bar(ws, "Seconds spent hopping, contact by contact",
+    ws.cell(row=C0 - 1, column=9, value="Mean seconds per contact").font = F_NOTE
+    for r in range(C0, CL + 1):
+        ws.cell(row=r, column=9,
+                value=f'=IF(COUNT($C${C0}:$C${CL})=0,"",'
+                      f'AVERAGE($C${C0}:$C${CL}))').font = F_NOTE
+    # The title captioned the axes instead of saying what the chart found.
+    cch = bar(ws, "Hop time is not evenly spread — a few contacts carry it",
               Reference(ws, min_col=2, min_row=C0, max_row=CL),
               Reference(ws, min_col=3, min_row=C0, max_row=CL),
               "J20", name="Seconds in system hops")
+    overlay(cch, ws, Reference(ws, min_col=9, min_row=C0, max_row=CL),
+            "Mean — the contacts above it are the ones to watch")
     # Same reason as the multi-vari agent chart: left alone the axis starts just
     # under the quickest contact, and 112 seconds against 136 draws as a sliver
     # against a tower. Seconds start at zero whatever the data says.
@@ -4381,10 +4399,21 @@ def swimlane():
         mark(ls, r, 7, "calc")
 
     ls.auto_filter.ref = f"A5:H{last_r}"
-    bar(ls, "Where the customer's time goes — minutes by step",
-        Reference(ls, min_col=1, min_row=first_r, max_row=last_r),
-        Reference(ls, min_col=5, min_row=first_r, max_row=last_r),
-        "J5")
+    # The mean, drawn on the data. Without it the chart is a row of bars and
+    # the reader has to decide for themselves what counts as tall — which is
+    # the whole judgement the chart was supposed to make for them.
+    ls.cell(row=first_r - 1, column=9, value="Mean minutes per step").font = F_NOTE
+    for r in range(first_r, last_r + 1):
+        c = ls.cell(row=r, column=9,
+                    value=f'=IF(COUNT($E${first_r}:$E${last_r})=0,"",'
+                          f'AVERAGE($E${first_r}:$E${last_r}))')
+        c.font = F_NOTE
+    sw = bar(ls, "Where the customer's time goes — minutes by step",
+             Reference(ls, min_col=1, min_row=first_r, max_row=last_r),
+             Reference(ls, min_col=5, min_row=first_r, max_row=last_r),
+             "K5", name="Minutes at this step")
+    overlay(sw, ls, Reference(ls, min_col=9, min_row=first_r, max_row=last_r),
+            "Mean — anything above this line is where the time actually goes")
 
     r = last_r + 2
     band(ls, r, "WHAT THE MAP IS TELLING YOU", 8)

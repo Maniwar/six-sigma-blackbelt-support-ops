@@ -40,6 +40,14 @@ QUESTION_FORM = {
 }
 
 INTENT = {
+    # Declared late: these three workbooks were added after INTENT stopped
+    # being updated, so the only check that grades whether a chart is worth
+    # shipping had never seen them.
+    ("31-multi-vari.xlsx", "Where the variation lives"): RANK,
+    ("31-multi-vari.xlsx", "Mean handle time by agent"): COMPARE,
+    ("32-system-hop.xlsx", "Where the hop time goes"): RANK,
+    ("32-system-hop.xlsx", "Hop time is not evenly spread"): SHAPE,
+    ("33-swimlane-process-map.xlsx", "Where the customer's time goes"): COMPARE,
     ("05-data-collection-plan.xlsx", "Sample size against"): SHAPE,
     ("10-value-stream-map.xlsx", "Where the time actually goes"): STEPS,
     ("11-cause-effect-xy-matrix.xlsx", "Weighted total by candidate"): RANK,
@@ -261,12 +269,26 @@ def grade(book: str, ch: dict, wb) -> dict:
         # different magnitude. Tripling the inputs put 95 of 97 points outside
         # the frame. A static bound is now the defect, unless it is a bound
         # that is true by definition for every possible input (kappa is 0..1).
+        #
+        # `max` is None when the ceiling is automatic, and reading that as 0
+        # made this rule fire on min=0/max=auto — a zero baseline with a
+        # ceiling that follows the data, which is the correct setup for a bar
+        # chart and the opposite of a bound taken from the example. It failed
+        # two charts that were right. Zero is where a bar has to start for its
+        # length to mean anything; it is not a number computed from my rows.
         DEFINITIONAL = {(0.0, 1.0)}
-        if val_ax is not None and val_ax["min"] is not None:
-            pair = (float(val_ax["min"]), float(val_ax["max"] or 0))
-            if pair not in DEFINITIONAL:
+        mn = val_ax["min"] if val_ax is not None else None
+        mx = val_ax["max"] if val_ax is not None else None
+        if mn is not None or mx is not None:
+            lo = float(mn) if mn is not None else None
+            hi = float(mx) if mx is not None else None
+            pinned = not (lo in (0.0, None) and hi is None) \
+                and (lo or 0.0, hi or 0.0) not in DEFINITIONAL
+            if pinned:
                 readable = False
-                notes.append(f"axis pinned to {pair[0]:,.4g}..{pair[1]:,.4g}, which was "
+                shown = (f"{lo:,.4g}" if lo is not None else "auto") + ".." + \
+                        (f"{hi:,.4g}" if hi is not None else "auto")
+                notes.append(f"axis pinned to {shown}, which was "
                              "computed from the shipped example — paste data of a "
                              "different magnitude and the plot frames nothing")
         cat_ax = next((a for a in ch["axes"] if a["kind"] == "catAx"), None)

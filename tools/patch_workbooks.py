@@ -198,6 +198,13 @@ REPEATED: list[tuple[str, str, str, str, range]] = [
 
 # Literal value / label corrections: (workbook, sheet, cell, value)
 VALUES: list[tuple[str, str, str, object]] = [
+    # A column heading that went through an HTML escaper on its way into the
+    # workbook and never came back out. Excel shows the entity, and so do the
+    # preview and the Word export, because all three read the cell. The phrase
+    # check in qa_wordtables unescapes before comparing, so it structurally
+    # could not see this; a sweep of every cell in all 22 workbooks for a raw
+    # entity found this one and no others.
+    ("10-value-stream-map.xlsx", "Value stream", "G9", "% complete & accurate"),
     # The worked example used the bare number 2, which is not a member of the
     # cell's own dropdown list ("2 Design it out"). 17-control-plan already uses
     # the string form.
