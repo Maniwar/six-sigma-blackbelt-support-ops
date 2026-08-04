@@ -426,53 +426,97 @@ def test_glossary_coverage() -> None:
 
 
 def test_case_study() -> None:
-    """The curriculum's worked project says its figures are internally
-    consistent. That has to be true of the one a reader would quote.
+    """The worked project has to be the project the templates document.
 
-    It was true of every step except the last. Define closes: 480,000 contacts
-    x 6.2 points is 29,800 avoidable, x $6.80 is $203,000. Results closes as
-    far as the volume: 14.2% to 8.6% is 5.6 points, x 480,000 is 26,900. Then
-    the benefit was stated as $190,400, which is $7.08 a contact — against the
-    $6.80 the same page states in Define, and above the gross the page's own
-    numbers produce. The headline stat repeated it. A benefit a reader cannot
-    reproduce from the numbers printed beside it is the exact defect this
-    example exists to teach against, sitting in the example.
+    Every figure here used to be checked against the page's own stated volume,
+    which made the example self-consistent by construction and blind to the one
+    thing that mattered: it was a different project. The page said 480,000
+    contacts and every template says 266,000 for the same billing queue over
+    the same twelve months. 790 checks never saw it, because none of them ever
+    compared the two.
+
+    It ran deeper than the volume. The page applied the adjustment-level
+    6.2-point gap to the WHOLE queue and priced an avoided reopen at $6.80 —
+    the cost to serve one contact — which is the exact substitution
+    01-project-charter.md:52 calls a defect, sitting inside the example that
+    exists to teach against it. The templates cap a queue-wide move at 0.62
+    points and price a reopen at $38.60.
+
+    So the checks are now anchored to the templates, not to the page: the
+    volume, the in-scope population and the unit cost all have to come from
+    the charter, and the chain has to close on the charter's own numbers.
     """
     src = HTML.read_text(encoding="utf-8")
+    charter = (TEMPLATES / "01-project-charter.md").read_text(encoding="utf-8")
 
-    def num(pattern: str):
-        m = re.search(pattern, src)
+    def num(pattern: str, text: str = src):
+        m = re.search(pattern, text)
         return float(m.group(1).replace(",", "")) if m else None
 
-    vol = num(r"across ([\d,]+) contacts")
-    avoidable = num(r"represents ([\d,]+) avoidable contacts")
-    cost = num(r"\$([\d.]+) = \$[\d,]+ gross")
-    cut = num(r"Volume reduction ([\d,]+) contacts annualized")
+    # What the templates say. These are the anchors; the page is judged
+    # against them rather than against itself.
+    tpl_vol = num(r"([\d,]{6,}) billing tickets a year", charter)
+    tpl_adj = num(r"([\d,]{5,}) in-scope billing adjustments a year", charter)
+    check(None not in (tpl_vol, tpl_adj),
+          "the charter states the queue volume and the in-scope population",
+          f"queue={tpl_vol} adjustments={tpl_adj} — the wording moved, so the "
+          f"page can no longer be checked against it")
+
+    vol = num(r"queue's\s*\n?\s*([\d,]+) contacts a year")
+    adj = num(r"Adjustments are ([\d,]+) of the billing")
+    avoidable = num(r"represents ([\d,]+) avoidable\s*\n?\s*reopens")
+    cost = num(r"\$([\d.]+) it costs to serve a billing contact twice")
+    cut = num(r"([\d,]+) reopens avoided annualized")
     gross = num(r"= \$([\d,]+) gross")
-    realised = num(r"benefit\s*</?\w*>?\s*\$([\d,]+)")
+    realised = num(r"benefit\s*\n?\s*<strong>\$([\d,]+)</strong>")
     factor = num(r"gross, &times; ([\d.]+) realisation")
-    check(None not in (vol, avoidable, cost, cut, gross, realised, factor),
+    check(None not in (vol, adj, avoidable, cost, cut, gross, realised, factor),
           "the case study's benefit chain is still readable from the page",
-          f"vol={vol} avoidable={avoidable} cost={cost} cut={cut} "
+          f"vol={vol} adj={adj} avoidable={avoidable} cost={cost} cut={cut} "
           f"gross={gross} realised={realised} factor={factor}")
-    if None in (vol, avoidable, cost, cut, gross, realised, factor):
+    if None in (vol, adj, avoidable, cost, cut, gross, realised, factor):
         return
-    check(abs(vol * 0.062 - avoidable) < 100,
-          "case study: the avoidable-contact count follows from volume x the gap",
-          f"{vol:,.0f} x 6.2 points = {vol * 0.062:,.0f}, page says {avoidable:,.0f}")
-    check(abs(vol * 0.056 - cut) < 100,
-          "case study: the volume reduction follows from the improvement achieved",
-          f"{vol:,.0f} x 5.6 points = {vol * 0.056:,.0f}, page says {cut:,.0f}")
-    check(abs(cut * cost - gross) < 100,
-          "case study: gross benefit is the volume reduction at the stated unit cost",
+
+    check(vol == tpl_vol,
+          "the worked example's queue volume matches the templates",
+          f"the page says {vol:,.0f} and the charter says {tpl_vol:,.0f} for "
+          f"the same queue over the same period")
+    check(adj == tpl_adj,
+          "the worked example's in-scope population matches the templates",
+          f"the page says {adj:,.0f} adjustments, the charter says {tpl_adj:,.0f}")
+    # The gap applies to the in-scope population, never to the queue. Applying
+    # it queue-wide is the error the charter records, and it is what the page
+    # used to do.
+    check(abs(adj * 0.062 - avoidable) < 2,
+          "case study: avoidable reopens follow from the IN-SCOPE population",
+          f"{adj:,.0f} x 6.2 points = {adj * 0.062:,.0f}, page says {avoidable:,.0f}")
+    check(abs(adj * 0.056 - cut) < 2,
+          "case study: the reduction achieved follows from the same population",
+          f"{adj:,.0f} x 5.6 points = {adj * 0.056:,.0f}, page says {cut:,.0f}")
+    # A reopen is priced at what a reopen costs, not at cost-to-serve.
+    reopen_cost = num(r"\$([\d.]+) a reopen", charter) or 38.60
+    check(abs(cost - reopen_cost) < 0.01,
+          "case study: an avoided reopen is priced at the cost of a reopen",
+          f"the page prices it at ${cost}, the charter's cost of record is "
+          f"${reopen_cost} — pricing a reopen at cost-to-serve is the defect "
+          f"the charter records")
+    check(abs(cut * cost - gross) < 2,
+          "case study: gross benefit is the reduction at the stated unit cost",
           f"{cut:,.0f} x ${cost} = {cut * cost:,.0f}, page says {gross:,.0f}")
-    check(abs(gross * factor - realised) < 100,
+    check(abs(gross * factor - realised) < 2,
           "case study: the realised benefit is the gross at the stated factor",
           f"{gross:,.0f} x {factor} = {gross * factor:,.0f}, page says {realised:,.0f}")
-    head = re.search(r'<div class="num">\$(\d+)k</div><div class="lbl">Validated annu', src)
-    check(head and abs(int(head.group(1)) * 1000 - realised) < 1000,
+    head = re.search(r'<div class="num">\$([\d.]+)k</div><div class="lbl">Validated', src)
+    check(head and abs(float(head.group(1)) * 1000 - realised) < 100,
           "case study: the headline stat matches the benefit the page derives",
           f"headline ${head.group(1) if head else '?'}k against ${realised:,.0f}")
+    # And the honest number does not clear the floor. That is the lesson, so
+    # the page has to say it rather than round up to something bookable.
+    floor = num(r"\$([\d,]+) Finance floor", charter) or 50000
+    check(realised < floor and "not bookable as chartered" in src,
+          "case study: the page says the benefit misses the Finance floor",
+          f"${realised:,.0f} against a ${floor:,.0f} floor — the example must "
+          f"state that it does not clear it, which is what it is teaching")
 
 
 def test_guidance() -> None:
