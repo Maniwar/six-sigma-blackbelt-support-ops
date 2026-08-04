@@ -936,6 +936,9 @@ WORD_MUTANTS = [("word: negative bar drawn short", wm_short_negative_bar),
                 ("word: a chart missing from the .docx", wm_drop_word_table)]
 
 
+skipped: list[str] = []
+
+
 def run_word() -> tuple[int, int, list[str]]:
     import copy
 
@@ -943,6 +946,11 @@ def run_word() -> tuple[int, int, list[str]]:
     import qa_visual as V
     got = V.word_document()
     if got is None:
+        # No browser, so there is no document to mutate. Reported as a layer
+        # that did not run, never as zero mutants: the caller's `if a:` guard
+        # printed nothing at all for a zero-attempt layer, so the suite went on
+        # to say "Every check still has teeth" with this whole layer absent.
+        skipped.append("(Word export): " + (V.browser_missing() or "no document"))
         return 0, 0, []
     doc, geo = got
     real = V.word_document
@@ -1174,6 +1182,8 @@ def main() -> int:
         if a:
             print(f"  {'(Word export)':36s} {k}/{a} mutants killed"
                   f"{'' if k == a else '   <-- a check did not fire'}")
+        else:
+            print(f"  {'(Word export)':36s} NOT RUN")
         k, a, s = run_visual()
         total_k += k
         total_a += a
@@ -1191,6 +1201,13 @@ def main() -> int:
     if survivors:
         print(f"\n{len(survivors)} SURVIVING MUTANT(S) — these checks cannot fail:")
         print("\n".join(sorted(set(survivors))))
+        return 1
+    if skipped:
+        # "Every check still has teeth" is a claim about checks that ran. A
+        # layer that never ran has no teeth to report on, and saying it anyway
+        # is the exact failure this suite exists to catch.
+        print(f"\n{len(skipped)} LAYER(S) NOT RUN — their checks were not tested:")
+        print("\n".join("  - " + n for n in skipped))
         return 1
     print("\nEvery check still has teeth.")
     return 0

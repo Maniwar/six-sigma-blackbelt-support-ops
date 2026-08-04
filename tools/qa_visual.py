@@ -34,6 +34,8 @@ from __future__ import annotations
 import json
 import math
 import re
+import os
+import shutil
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -45,10 +47,61 @@ from sync_html import extract_tpls                               # noqa: E402
 
 HTML = ROOT / "six-sigma-blackbelt-support-ops.html"
 OUT = ROOT / ".qa-visual"
-CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+# Where Chrome might be. One hardcoded path was itself part of the problem
+# below: a machine that had Chrome somewhere else looked identical to a machine
+# that had none, and both reported success.
+CHROME_CANDIDATES = [
+    os.environ.get("CHROME"),
+    os.environ.get("CHROME_PATH"),
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary",
+    shutil.which("google-chrome"),
+    shutil.which("chromium"),
+    shutil.which("chromium-browser"),
+]
+CHROME = next((c for c in CHROME_CANDIDATES if c and Path(c).exists()), "")
+
+# Set by main() when the operator has said, in as many words, that they know
+# the browser-backed checks will not run. Nothing else may set it.
+SKIP_BROWSER = [False]
+
+
+def browser_missing() -> str:
+    """Why the browser checks cannot run, or '' if they can.
+
+    Everything that drives a real page goes through here. Each of those used to
+    return None on a missing binary without recording anything, so pointing
+    CHROME at a path that does not exist took the run from 219 checks to 172
+    and it still printed "172 visual check(s) passed" and exited 0. Forty-seven
+    checks — every one that reads what the page actually produces rather than
+    what its source says — disappeared without a line of output.
+    """
+    if CHROME and Path(CHROME).exists():
+        return ""
+    return ("no Chrome or Chromium found — set $CHROME to its path. Tried: "
+            + ", ".join(c for c in CHROME_CANDIDATES if c))
+
+
+def need_browser(label: str):
+    """Record that a browser-backed audit could not run. Never silent.
+
+    Returns True when the caller must bail out. A run that skips these is not a
+    passing run: it fails, unless --skip-browser was passed, and then it says
+    so in the summary and never counts them as passes.
+    """
+    why = browser_missing()
+    if not why:
+        return False
+    if SKIP_BROWSER[0]:
+        not_run.append(f"{label}: {why}")
+    else:
+        check(False, f"{label} could run at all", why)
+    return True
 
 fails: list[str] = []
 passes = [0]
+not_run: list[str] = []
 
 
 def check(cond: bool, label: str, detail: str = "") -> None:
@@ -294,7 +347,7 @@ def word_document() -> tuple[str, list] | None:
     import tempfile
     import zipfile
 
-    if not Path(CHROME).exists():
+    if need_browser("[WORD] the business-case Word export"):
         return None
     src = HTML.read_text(encoding="utf-8")
     if src.count(WORD_ANCHOR) != 1:
@@ -455,7 +508,7 @@ def template_export(pick: str = "") -> dict | None:
     """
     import tempfile
 
-    if not Path(CHROME).exists():
+    if need_browser("[TPLEXPORT] the template Word export"):
         return None
     src = HTML.read_text(encoding="utf-8")
     # tplEmailHTML lives inside the page's IIFE, so it has to be handed out the
@@ -670,7 +723,7 @@ def glossary_behaviour() -> dict | None:
     """
     import tempfile
 
-    if not Path(CHROME).exists():
+    if need_browser("[GLOSS] the glossary behaviour"):
         return None
     src = HTML.read_text(encoding="utf-8")
     anchor = "/* ------------------------------------------------------------- wiring */"
@@ -857,6 +910,14 @@ def render(entries: dict, css: str) -> int:
 
 
 def main() -> int:
+    # An operator may say they know the browser checks will not run. Nobody and
+    # nothing else may decide that, and even then the summary reports them as
+    # NOT RUN rather than folding them into a count of what passed.
+    SKIP_BROWSER[0] = "--skip-browser" in sys.argv
+    if SKIP_BROWSER[0] and not browser_missing():
+        print("--skip-browser, but a browser is available; running them anyway.")
+        SKIP_BROWSER[0] = False
+
     src = HTML.read_text(encoding="utf-8")
     _, _, tpls = extract_tpls(src)
     css = src[src.index("/* ---- workbook preview ---- */"):
@@ -888,7 +949,19 @@ def main() -> int:
     if fails:
         print(f"\n{len(fails)} VISUAL FAILURE(S):")
         print("\n".join(fails))
+        if not_run:
+            print(f"\n...and {len(not_run)} audit(s) NOT RUN:")
+            print("\n".join("  - " + n for n in not_run))
         return 1
+    if not_run:
+        # Never the plain "N passed" line. A summary that reports only what ran
+        # reads exactly like a summary of everything, which is how a missing
+        # browser turned 219 checks into 172 and still looked like success.
+        print(f"\n{passes[0]} visual check(s) passed, "
+              f"{len(not_run)} audit(s) NOT RUN:")
+        print("\n".join("  - " + n for n in not_run))
+        print("\nThis run did not check what the page produces in a browser.")
+        return 0
     print(f"\n{passes[0]} visual check(s) passed.")
     return 0
 

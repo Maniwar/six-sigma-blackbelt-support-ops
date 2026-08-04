@@ -47,6 +47,13 @@ CALC = "19-black-belt-calculators.xlsx"
 
 FAILURES: list[str] = []
 PASSES = [0]
+# Layers that did not run, as (what, the operator asked for it).
+#
+# Asking for a skip and getting one is fine; the run just must not then claim
+# it checked everything. Not asking and getting one anyway — a missing binary,
+# an uninstalled package — is a failure, because that is the case that reads
+# as success on a machine nobody looked at.
+NOT_RUN: list[tuple[str, bool]] = []
 
 
 def check(cond: bool, label: str, detail: str = "") -> None:
@@ -1666,7 +1673,8 @@ def test_export() -> None:
     js = src[src.index(JS_START):src.index(JS_END)]
 
     if not shutil.which("node"):
-        print("           node not found - skipping the generated-workbook test")
+        NOT_RUN.append(("the generated-workbook recalculation: node not found", False))
+        print("           node NOT FOUND - the generated-workbook test did not run")
         return
 
     with tempfile.TemporaryDirectory() as td:
@@ -1941,6 +1949,7 @@ def test_toollib() -> None:
 # --------------------------------------------------------------------- main
 def main() -> int:
     fast = "--fast" in sys.argv
+    skip_ok = "--skip-optional" in sys.argv
     print("BOK        every cited certification section exists")
     test_bok()
     print("EXPORT-CH  the email export carries charts and the legend")
@@ -1975,24 +1984,41 @@ def main() -> int:
     print("EXPORT     business case HTML + live-formula workbook")
     test_export()
     if fast:
+        NOT_RUN.append(("NUMERIC: --fast was passed", True))
         print("NUMERIC    skipped (--fast)")
     else:
         try:
             import formulas  # noqa: F401
         except ImportError:
-            print("NUMERIC    SKIPPED - pip install formulas to run the recalculation tests")
+            # This used to print and carry on to "PASSED all N checks". The
+            # most expensive question the harness asks — does every shipped
+            # workbook actually compute — answered itself "skipped" on any
+            # machine without an optional dependency, and the run still ended
+            # in the word PASSED. That is the default on a fresh clone.
+            NOT_RUN.append(("NUMERIC: the `formulas` package is not installed "
+                            "(pip install formulas)", False))
+            print("NUMERIC    NOT RUN - pip install formulas to run the recalculation tests")
         else:
             print("NUMERIC    recalculating fixed formulas")
             test_numeric()
             test_numeric_other()
 
     print()
+    for what, asked in NOT_RUN:
+        if not asked and not skip_ok:
+            FAILURES.append(f"a layer did not run and nobody asked it to skip: {what}")
     if FAILURES:
         print(f"FAILED  {len(FAILURES)} check(s), {PASSES[0]} passed\n")
         for f in FAILURES:
             print("  x " + f)
         return 1
-    print(f"PASSED  all {PASSES[0]} checks")
+    if NOT_RUN:
+        print(f"PASSED  {PASSES[0]} checks, but {len(NOT_RUN)} layer(s) NOT RUN:")
+        for what, _ in NOT_RUN:
+            print(f"          - {what}")
+        print("\n        This run did not check everything it can check.")
+    else:
+        print(f"PASSED  all {PASSES[0]} checks")
     return 0
 
 

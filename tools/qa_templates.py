@@ -79,6 +79,14 @@ def warn(book: str, layer: str, msg: str) -> None:
     warns.append(f"  warn [{layer}] {book}: {msg}")
 
 
+# Layers that did not run at all, which is not the same as a warning: a
+# warning is something the run looked at and had a view on. A missing
+# `formulas` package made every NUMERIC layer a warning, and warnings never
+# reach the exit code, so the run ended in "All checks passed." with the
+# question "does this workbook compute" never asked.
+not_run: list[str] = []
+
+
 # ---------------------------------------------------------------- helpers
 
 
@@ -844,7 +852,8 @@ def audit_numeric(path: Path) -> None:
     try:
         import formulas
     except ImportError:
-        warn(book, "NUMERIC", "the `formulas` package is not installed — skipped")
+        if book not in [n.split(":")[0] for n in not_run]:
+            not_run.append(f"{book}: NUMERIC — the `formulas` package is not installed")
         return
     warnings.filterwarnings("ignore")
     try:
@@ -1138,10 +1147,21 @@ def main() -> int:
     if warns:
         print(f"\n{len(warns)} warning(s):")
         print("\n".join(warns))
+    if not_run and "--skip-optional" not in sys.argv:
+        fails.append(f"  FAIL [NUMERIC] {len(not_run)} workbook(s) were never "
+                     f"recalculated — pip install formulas, or pass "
+                     f"--skip-optional to say you meant it")
     if fails:
         print(f"\n{len(fails)} FAILURE(S):")
         print("\n".join(fails))
         return 1
+    if not_run:
+        print(f"\nAll checks that ran passed, but {len(not_run)} workbook(s) "
+              f"were NOT recalculated:")
+        print("\n".join("  - " + n for n in not_run[:5]))
+        if len(not_run) > 5:
+            print(f"  ... and {len(not_run)-5} more")
+        return 0
     print("\nAll checks passed.")
     return 0
 
