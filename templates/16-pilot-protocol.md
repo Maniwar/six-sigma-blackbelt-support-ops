@@ -152,7 +152,7 @@ support improvement programs.**
 > the reason — "Higher than for handle-time projects, because an avoided contact is
 > unambiguously avoided" — there is no harvesting argument to make, because the work never
 > arrives, whereas a handle-time saving only becomes money if schedules change
-> (the band itself is stated at six-sigma-blackbelt-support-ops.html:3647, "0.8–0.9 is
+> (the band itself is stated at six-sigma-blackbelt-support-ops.html:3665, "0.8–0.9 is
 > reasonable ... because an avoided contact is unambiguously avoided"). **The worked
 > example is an avoided-contact project**, so the 20–40% figure above is not its band and
 > the 0.85 in the table below is not a departure from it.
@@ -167,7 +167,7 @@ support improvement programs.**
 | Field | Value |
 |---|---|
 | Pilot effect | *-4.9 percentage points (CI -6.1 to -3.7), treatment against concurrent control* |
-| Assumed realization factor | *0.85 — the value 19-black-belt-calculators.xlsx '8 Benefit — avoided contacts'!B9 carries, inside the 0.8–0.9 band six-sigma-blackbelt-support-ops.html:3647 gives for this archetype, and not the 0.6–0.8 handle-time band in the note above. Applied here, to the effect size, and not again to the money* |
+| Assumed realization factor | *0.85 — the value 19-black-belt-calculators.xlsx '8 Benefit — avoided contacts'!B9 carries, inside the 0.8–0.9 band six-sigma-blackbelt-support-ops.html:3665 gives for this archetype, and not the 0.6–0.8 handle-time band in the note above. Applied here, to the effect size, and not again to the money* |
 | **Forecast at full rollout** | *-4.2 points (-4.9 × 0.85) on the in-scope adjustment population, worth $18,798 a year less the handle time the fix adds — see the chain below. **It does not clear the $50,000 Finance floor.*** |
 | Basis for the realization assumption | *Sites B and D have a different release cadence, so uptake lags by about a quarter* |
 

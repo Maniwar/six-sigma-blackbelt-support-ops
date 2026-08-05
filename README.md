@@ -73,7 +73,7 @@ Two further harnesses exist because the audit alone kept passing things a reader
   fire, and those look identical from a green run. 309 mutants, all killed, or the build fails.
 
 ### Built for people who are not statisticians
-- **Every acronym is clickable.** 276 glossary entries, matched in either case. Anything with a dotted underline opens a plain-English explainer: what it means, why it matters, and exactly where to find the number in your own systems.
+- **Every acronym is clickable.** 270 glossary entries, matched in either case. Anything with a dotted underline opens a plain-English explainer: what it means, why it matters, and exactly where to find the number in your own systems.
 - **14 live formula cards.** Change any input and the arithmetic redoes itself line by line — you see the substitution, not just the answer. Each one ends with what the result actually means for your operation.
 - **"Where does this number come from?" on every input** — the calculators, the wizard, the glossary, and every yellow cell in every workbook.
 
