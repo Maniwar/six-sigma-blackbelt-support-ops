@@ -379,7 +379,7 @@ EXAMPLE = {
         'Customer interviews': 'Customers with a disputed charge | Reopened tickets | Purposive, 6 sessions | 6 | Black Belt | May | Recruited from reopens, so biased toward failure',
         'Complaint / escalation review': 'Formal complaints, billing | All | Census, 12 weeks | 61 | Complaints team | Apr-Jun | Small n, high signal',
         'Churn exit reasons': 'Cancellation survey | Cancelling accounts | Census | 340 | Retention | Apr-Jun | Self-reported and post-hoc',
-        'Internal (VOB / VOE)': 'Agent forum and QA notes | Billing agents | Ongoing | n/a | QA lead | Ongoing | Agents name the posting delay unprompted',
+        'Internal — Voice of the Business / Voice of the Employee': 'Agent forum and QA notes | Billing agents | Ongoing | n/a | QA lead | Ongoing | Agents name the posting delay unprompted',
         '1': 'Do not make me chase it | The adjustment posts before I am told it is done | 7-day reopen rate, in-scope billing adjustments | <= 8.0% | OD-BIL-004-ADJ | In-scope billing adjustments | Census',
         '2': 'Tell me when it will be resolved | A committed date given at first contact | Share of contacts with a commitment logged | >= 90% | QA audit item 7 | Sampled contacts | 200/week stratified',
         '3': 'Do not make me repeat myself | Resolved without a second contact | 7-day reopen rate, all billing tickets | No target — context only; the 8.0% belongs to the adjustment population | OD-BIL-004 v2 | All billing tickets | Census',
@@ -388,7 +388,7 @@ EXAMPLE = {
         "Customer interviews": "Disputed-charge customers | 6 sessions | n=6 | Recruited from reopens, so biased to failure",
         "Complaint / escalation review": "Formal complaints, billing | 12 weeks | n=61 | Small n, high signal",
         "Churn exit reasons": "Cancellation survey | 12 weeks | n=340 | Free text, self-reported",
-        "Internal (VOB / VOE)": "Agent forum and QA notes | ongoing | n/a | Agents name the same posting delay",
+        "Internal — Voice of the Business / Voice of the Employee": "Agent forum and QA notes | ongoing | n/a | M. Alvarez (Tier 1 Team Lead)",
     },
 }
 

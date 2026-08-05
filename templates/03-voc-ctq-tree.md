@@ -19,12 +19,12 @@
 
 | Method | Population | Sample plan | n | Who | When | Known bias |
 |---|---|---|---|---|---|---|
-| Survey verbatims | *CSAT free text, billing reasons* | *12 weeks* | *n=2,180* | *Only 14% respond — survivorship* | *1 Mar – 31 May; sent 48h after every billing contact, extract pulled 2 Jun* | Non-response; bimodal responders |
-| Contact transcripts | *Chat and email, billing queue* | *4 weeks* | *n=8,400* | *Topic-modelled, then read 200 by hand* | *4 weeks to 31 May; topic model rerun each Monday, the 200 hand-reads in the week of 2 Jun* | Only contacts that happened |
-| Customer interviews | *Disputed-charge customers* | *6 sessions* | *n=6* | *Recruited from reopens, so biased to failure* | *8–19 Apr; each session booked 7–10 days after that customer's reopen* | Selection; social desirability |
-| Complaint / escalation review | *Formal complaints, billing* | *12 weeks* | *n=61* | *Small n, high signal* | *1 Mar – 31 May, read at the Thursday complaints panel as they land* | Extreme cases only |
-| Churn exit reasons | *Cancellation survey* | *12 weeks* | *n=340* | *Free text, self-reported* | *1 Mar – 31 May, taken with the monthly churn file on the 3rd* | Post-hoc rationalization |
-| Internal (VOB / VOE) | *Agent forum and QA notes* | *ongoing* | *n/a* | *Agents name the same posting delay* | *Ongoing — forum threads read weekly, QA notes taken at the Friday calibration* | *Agents only meet the ones that come back; a credit that posts is never discussed* |
+| Survey verbatims | *CSAT free text, billing reasons* | *12 weeks* | *n=2,180* | *Black Belt* | *1 Mar – 31 May; sent 48h after every billing contact, extract pulled 2 Jun* | Non-response; bimodal responders |
+| Contact transcripts | *Chat and email, billing queue* | *4 weeks* | *n=8,400* | *Black Belt; the 200 hand-read with K. Tanaka (QA Lead)* | *4 weeks to 31 May; topic model rerun each Monday, the 200 hand-reads in the week of 2 Jun* | Only contacts that happened |
+| Customer interviews | *Disputed-charge customers* | *6 sessions* | *n=6* | *Black Belt* | *8–19 Apr; each session booked 7–10 days after that customer's reopen* | Selection; social desirability |
+| Complaint / escalation review | *Formal complaints, billing* | *12 weeks* | *n=61* | *D. Byrne (Compliance), at the Thursday panel* | *1 Mar – 31 May, read at the Thursday complaints panel as they land* | Extreme cases only |
+| Churn exit reasons | *Cancellation survey* | *12 weeks* | *n=340* | *Black Belt, from the monthly churn file* | *1 Mar – 31 May, taken with the monthly churn file on the 3rd* | Post-hoc rationalization |
+| Internal — Voice of the Business / Voice of the Employee | *Agent forum and QA notes* | *ongoing* | *n/a* | *M. Alvarez (Tier 1 Team Lead)* | *Ongoing — forum threads read weekly, QA notes taken at the Friday calibration* | *Agents only meet the ones that come back; a credit that posts is never discussed* |
 
 ## 2. Affinity themes
 
