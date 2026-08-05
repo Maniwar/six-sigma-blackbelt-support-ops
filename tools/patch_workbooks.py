@@ -198,6 +198,15 @@ REPEATED: list[tuple[str, str, str, str, range]] = [
 
 # Literal value / label corrections: (workbook, sheet, cell, value)
 VALUES: list[tuple[str, str, str, object]] = [
+    # The collection plan gave the baseline window as a calendar quarter while
+    # 09-baseline-document.md gives it as 2026-01-05 to 2026-03-29, "12 whole
+    # weeks", and the charter says in terms that the 61,400 is "over a 12-week
+    # window at ~5,100/week ... not one quarter". The dates decide it: that
+    # span is 84 days, Monday to Sunday, and 61,400 over 12 weeks is 5,117 a
+    # week and annualises to 266,067 — the pack's 266,000. Read as the 90-day
+    # quarter this cell stated, the same 61,400 annualises to 249,011, which
+    # appears nowhere.
+    ("05-data-collection-plan.xlsx", "Collection plan", "G10", "2026-01-05 to 2026-03-29"),
     # The calculator's own D8 note tells the reader that pricing a reopen at
     # cost-to-serve is "the defect its charter records", and that the rate and
     # the volume must be measured on the SAME population — then B5 and B8

@@ -425,6 +425,47 @@ def test_glossary_coverage() -> None:
           f"(49 at the start of this pass)")
 
 
+def test_baseline_window() -> None:
+    """The collection plan's window is the one the baseline document used.
+
+    It said 2026-01-01 to 2026-03-31 while the baseline document says
+    2026-01-05 to 2026-03-29, "12 whole weeks". They are not the same claim
+    and they do not annualise to the same place: 61,400 over 12 weeks is
+    266,067 a year, which is the pack's 266,000, while the same 61,400 over
+    the 90-day quarter is 249,011, which appears nowhere. The charter
+    pre-empts the misreading in terms — "not one quarter" — which is how a
+    plan and a baseline can disagree for a long time without anyone noticing.
+    """
+    from datetime import date
+
+    from openpyxl import load_workbook
+
+    doc = (TEMPLATES / "09-baseline-document.md").read_text(encoding="utf-8")
+    m = re.search(r"(\d{4}-\d\d-\d\d) to (\d{4}-\d\d-\d\d)", doc)
+    check(m is not None,
+          "the baseline document states its period",
+          "no date range found, so the collection plan cannot be checked against it")
+    if not m:
+        return
+    ws = load_workbook(TEMPLATES / "05-data-collection-plan.xlsx")["Collection plan"]
+    plan = str(ws["G10"].value or "").strip()
+    want = f"{m.group(1)} to {m.group(2)}"
+    check(plan == want,
+          "the collection plan's window matches the baseline document",
+          f"the plan says {plan!r} and the baseline document says {want!r}; the "
+          f"same record count annualises to two different volumes depending on "
+          f"which one a reader believes")
+
+    # And the window has to be whole weeks, because every downstream figure
+    # annualises it as weeks.
+    a, b = (date.fromisoformat(x) for x in (m.group(1), m.group(2)))
+    days = (b - a).days + 1
+    check(days % 7 == 0,
+          "the baseline window is a whole number of weeks",
+          f"{a} to {b} is {days} days, {days / 7:.2f} weeks — the pack "
+          f"annualises it as weeks, so a part week silently rescales everything")
+
+
 def test_case_study() -> None:
     """The worked project has to be the project the templates document.
 
@@ -2022,6 +2063,7 @@ def main() -> int:
     print("GLOSSARY+  every jargon column header carries a plain-English key")
     test_glossary_coverage()
     print("CASE       the worked project's figures reproduce from each other")
+    test_baseline_window()
     test_case_study()
     print("GUIDANCE   the template filler's numbers match the pack's")
     test_guidance()
