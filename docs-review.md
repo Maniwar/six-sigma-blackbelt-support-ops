@@ -1,5 +1,33 @@
 # Markdown template review — findings
 
+> **Status: a point-in-time audit, not a live worklist.**
+>
+> Recorded 2026-08-01 at commit `bbbcd23` and never updated. Two things follow
+> from that, and both matter before you act on anything below.
+>
+> **The `L` numbers are stale.** They address lines as they stood at `bbbcd23`.
+> Several of these documents have gained and lost lines since, so an `L50` here
+> is not `L50` today. Search for the quoted text instead of trusting the number.
+>
+> **Nothing below records whether it was fixed.** Every finding is marked
+> CONFIRMED and carries a prescriptive **Fix.**, in the present tense, because
+> that is how it was written — not because it is still open. A good many have
+> since been closed, and this file cannot tell you which. What is known:
+>
+> | Cluster | Where it stands |
+> |---|---|
+> | The population / volume / unit-cost disagreement — the theme of the note below, and of most of the high findings | Closed in v3.9. The worked example runs the charter's chain: 11,592 in-scope adjustments, $38.60 a reopen, $23,590 realised, under the $50,000 floor. `verify` now reads the volume, population, unit cost and floor from `01-project-charter.md` rather than from the page, so the two cannot drift apart again |
+> | The baseline window stated as a calendar quarter | Closed in v3.9, and checked against `09-baseline-document.md` |
+> | Gage R&R teaching the sampling bias backwards | Closed in v3.9, in both the `.md` and the workbook cell that duplicated it |
+> | Fleiss' kappa cited but never implemented | Closed in v3.9 — the template now says the pack does not compute it, and gives the pairwise route that it does |
+> | The VOC plan's unowned methods, and VOB / VOE undefined | Closed in v3.9 |
+> | The operational definition's blank two-observer test | Closed in v3.9 |
+> | Everything else | **Not re-audited.** Some is closed, some is not, and telling them apart means re-reading the document rather than trusting this file |
+>
+> Release notes are the record of what actually changed: see `CHANGELOG.md`.
+> If you want this file to be a worklist again, the honest move is to re-run the
+> audit against the current documents rather than to tick boxes here.
+
 Eleven documents read line by line and adversarially verified. 86 findings confirmed
 (31 high, 49 medium, 6 low); 12 rejected as taste or
 already covered by the machine audits.
