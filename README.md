@@ -39,11 +39,11 @@ Every module carries its BOK mapping, learning objectives, the support-specific 
 - **Interactive statistical test selector** — six branches down to the exact test plus its caveat
 - **Business case & ROI wizard** — seven guided steps from "something is wrong" to a costed business case, with every field explaining where the number comes from. The finished case opens on screen with four charts — benefit bridge, discounted benefit by year, cumulative position against breakeven, and NPV by scenario — and every arithmetic step printed as `input × input = result`. One button copies it formatted straight into an email; another saves it as a standalone page; a third downloads **an Excel workbook where every figure is a live formula and the charts are native Excel charts bound to the cells**. Finance can change any assumption and watch the whole case move.
 - **A full worked project** — charter through 6-month re-audit, including the measurement-system finding that redirected it
-- **30 templates you can actually download** — including **19 real Excel workbooks with live formulas**, data-validation dropdowns and conditional formatting. RPN, weighted scores, Process Cycle Efficiency, kappa, sigma level and ROI all calculate themselves. Every workbook has a "how to use this" tab, a worked example row, and a legend telling you which cells to fill in. Download offers a **format** rather than assuming one: Word for the documents you fill in and sign, a web page, or the Excel workbook itself. Every template also has an **Email version** — one click renders it as email-safe HTML you can paste into Outlook or Gmail with formatting intact, with each calculated cell showing its formula underneath the value.
+- **33 templates you can actually download** — including **22 real Excel workbooks with live formulas**, data-validation dropdowns and conditional formatting. RPN, weighted scores, Process Cycle Efficiency, kappa, sigma level and ROI all calculate themselves. Every workbook has a "how to use this" tab, a worked example row, and a legend telling you which cells to fill in. Download offers a **format** rather than assuming one: Word for the documents you fill in and sign, a web page, or the Excel workbook itself. Every template also has an **Email version** — one click renders it as email-safe HTML you can paste into Outlook or Gmail with formatting intact, with each calculated cell showing its formula underneath the value.
 
 ### Every workbook produces a picture, not just a number
 
-38 native Excel charts across the 19 workbooks — bound to the cells, so they move when you change an
+43 native Excel charts across the 22 workbooks — bound to the cells, so they move when you change an
 assumption. A value stream map that shows touch time against waiting time step by step. An FMEA with RPN
 before and after the action. Seven control chart types — I-MR, Laney p′, Laney u′, Xbar-R, EWMA, CUSUM and
 t/g — each on its own tab with a picker that sends you to the right one, and every control limit written as
@@ -70,16 +70,16 @@ Two further harnesses exist because the audit alone kept passing things a reader
   magnitude.
 - **`tools/qa_selftest.py`** reintroduces each defect the repo has actually shipped and asserts the audit
   still catches it. A check that has passed for months is either guarding a solved problem or unable to
-  fire, and those look identical from a green run. 135 mutants, all killed, or the build fails.
+  fire, and those look identical from a green run. 309 mutants, all killed, or the build fails.
 
 ### Built for people who are not statisticians
-- **Every acronym is clickable.** 265 glossary entries, matched in either case. Anything with a dotted underline opens a plain-English explainer: what it means, why it matters, and exactly where to find the number in your own systems.
+- **Every acronym is clickable.** 276 glossary entries, matched in either case. Anything with a dotted underline opens a plain-English explainer: what it means, why it matters, and exactly where to find the number in your own systems.
 - **14 live formula cards.** Change any input and the arithmetic redoes itself line by line — you see the substitution, not just the answer. Each one ends with what the result actually means for your operation.
 - **"Where does this number come from?" on every input** — the calculators, the wizard, the glossary, and every yellow cell in every workbook.
 
 ### The Black Belt Calculator Workbook
 
-One of the thirty templates is a nine-tab Excel workbook: sigma level and DPMO, QA analyst agreement (kappa), SLA capability and breach rate, backlog and lead time, process cycle efficiency, staffing, two benefit models, and ROI / payback / NPV. Change the yellow cells; everything else recalculates, and each tab carries a chart — your DPMO against the sigma scale, your resolution-time distribution against the SLA limit, the cumulative discounted position crossing zero at payback. Every input carries a note naming the system that number lives in and the trap to watch for when you pull it.
+One of the thirty-three templates is a nine-tab Excel workbook: sigma level and DPMO, QA analyst agreement (kappa), SLA capability and breach rate, backlog and lead time, process cycle efficiency, staffing, two benefit models, and ROI / payback / NPV. Change the yellow cells; everything else recalculates, and each tab carries a chart — your DPMO against the sigma scale, your resolution-time distribution against the SLA limit, the cumulative discounted position crossing zero at payback. Every input carries a note naming the system that number lives in and the trap to watch for when you pull it.
 
 ### Phase 3 — Deployment
 24-month rollout sequence, two-year investment and return model, the benefit accounting policy to agree with Finance before you start, project pipeline sources and a weighted selection matrix, governance forums and role definitions, ten program health KPIs, and a failure-mode register.

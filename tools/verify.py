@@ -425,6 +425,40 @@ def test_glossary_coverage() -> None:
           f"(49 at the start of this pass)")
 
 
+def test_docs_counts() -> None:
+    """README, PUBLISH and the issue template have to count the same pack.
+
+    verify already enforced 33 templates and 22 workbooks against the page, so
+    the numbers were right everywhere a check looked — and README said 30
+    templates, 19 workbooks, 38 charts, 265 glossary entries and 135 mutants,
+    PUBLISH said 19 templates and "93 checks", and the bug-report dropdown said
+    19. They were the only documents in the pack allowed to be wrong about it,
+    because they were the only ones nothing read.
+    """
+    _, _, tpls = extract_tpls(HTML.read_text(encoding="utf-8"))
+    xlsx = sum(1 for v in tpls.values() if v.get("ext") == "xlsx")
+    md = sum(1 for v in tpls.values() if v.get("ext") == "md")
+
+    for name, wants in (
+            ("README.md", [(f"{len(tpls)} templates", "template count"),
+                           (f"{xlsx} real Excel workbooks", "workbook count"),
+                           (f"across the {xlsx} workbooks", "workbook count in the charts line")]),
+            ("PUBLISH.md", [(f"{len(tpls)} project templates", "template count"),
+                            (f"{md} Markdown documents, {xlsx} Excel workbooks", "the split")]),
+            (".github/ISSUE_TEMPLATE/bug_report.yml",
+             [(f"one of the {xlsx} workbooks", "workbook count")])):
+        path = ROOT / name
+        if not path.exists():
+            check(False, f"{name} exists to be checked", "file missing")
+            continue
+        text = path.read_text(encoding="utf-8")
+        for phrase, what in wants:
+            check(phrase in text,
+                  f"{name}: {what} matches the pack",
+                  f"expected {phrase!r}; the pack has {len(tpls)} templates, "
+                  f"{xlsx} workbooks and {md} markdown documents")
+
+
 def test_baseline_window() -> None:
     """The collection plan's window is the one the baseline document used.
 
@@ -2063,6 +2097,7 @@ def main() -> int:
     print("GLOSSARY+  every jargon column header carries a plain-English key")
     test_glossary_coverage()
     print("CASE       the worked project's figures reproduce from each other")
+    test_docs_counts()
     test_baseline_window()
     test_case_study()
     print("GUIDANCE   the template filler's numbers match the pack's")

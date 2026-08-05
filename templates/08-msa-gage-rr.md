@@ -9,7 +9,7 @@
 
 **Who signs it.** Black Belt runs it · the system owner fixes what it finds
 
-**The mistake this prevents.** Accepting a study whose parts do not span the real range. If every sampled contact is a routine one, %study variation flatters itself and the gage looks better than it is.
+**The mistake this prevents.** Accepting a study whose parts do not span the real range — and then reading the result backwards. If every sampled contact is a routine one, part-to-part variation collapses, and %study variation measures the gage against the *total*, so the gage's share rises: a sound gage is condemned, and `ndc` falls with it. Narrow sampling does not flatter a gage, it fails one. The number that does not move with part spread is **%Tolerance** (B65 in the workbook), which measures the gage against the spec width instead — use it when you cannot get the range, and say which one you judged on.
 
 *Italic entries below are a worked example from one project — billing adjustments closing before the posting confirms, driving a 7-day reopen rate on in-scope billing adjustments of 14.2% against a target of 8%. That rate is the project's Y, defined separately as OD-BIL-004-ADJ and measured at 137 reopens in 966 in-scope adjustments in the baseline month (09-baseline-document.md:90). The whole Billing queue's 7-day reopen rate under OD-BIL-004 v2 is also 14.2%; it is a different quantity, and it is context only. Delete them as you fill your own in.*
 
@@ -20,7 +20,7 @@
 ## How to work this out
 
 You do not have to do this by hand. **`29-msa-gage-rr.xlsx`** in this same pack is the
-crossed ANOVA: type the 90 readings into the yellow grid and every number in the tables
+crossed ANOVA: type the 90 readings into the green grid at B13:J22 and every number in the tables
 below appears, with each sum of squares written as a formula you can point at.
 
 The arithmetic it runs, so you know what you are signing:

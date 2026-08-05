@@ -57,7 +57,7 @@ CDN has not caught up yet.
 |---|---|
 | `six-sigma-blackbelt-support-ops.html` | The whole program — one self-contained file, no dependencies |
 | `docs/index.html` | Generated copy of the above, served by GitHub Pages |
-| `templates/` | 19 project templates — 11 Markdown documents, 8 Excel workbooks |
+| `templates/` | 33 project templates — 11 Markdown documents, 22 Excel workbooks |
 | `tools/` | Build and test scripts for the templates (see below) |
 | `README.md` | Repo front page |
 | `LICENSE` | CC BY 4.0 |
@@ -100,7 +100,7 @@ for every calculated cell. To change one:
 python3 -m pip install openpyxl formulas
 python3 tools/patch_workbooks.py   # apply the canonical formulas to templates/*.xlsx
 python3 tools/sync_html.py         # re-embed workbooks, tooltips and docs/index.html
-python3 tools/verify.py            # 93 checks: structure, arithmetic, four-way sync
+python3 tools/verify.py            # 798 checks: structure, arithmetic, four-way sync
 ```
 
 `patch_workbooks.py` is idempotent — running it twice changes nothing. Do not

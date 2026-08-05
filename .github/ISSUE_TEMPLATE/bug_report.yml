@@ -13,7 +13,7 @@ body:
       label: Where did you see it?
       options:
         - A calculator or formula card on the page
-        - An Excel workbook (one of the 19 templates)
+        - An Excel workbook (one of the 22 workbooks)
         - The business case & ROI wizard
         - A download (Word, Excel or web page)
         - The curriculum, tool library or glossary

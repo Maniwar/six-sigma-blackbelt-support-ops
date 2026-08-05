@@ -62,9 +62,15 @@ analysts pass about 70% of contacts, so luck alone gets them to 0.70 × 0.70 + 0
 0.30 = 0.58. They actually agreed on 80% of the 50 contacts. kappa = (0.80 − 0.58) /
 (1 − 0.58) = 0.22 / 0.42 = 0.52 — 80% agreement, of which nearly three-quarters was
 luck.* Tab **2 QA agreement (kappa)** of `19-black-belt-calculators.xlsx` in this pack
-does the same arithmetic from a raw pass/fail grid, including Fleiss' kappa for more
-than two appraisers; the sample size, and the power it buys you, come from the sample
-size calculator in `05-data-collection-plan.xlsx`. The overall figures above are for
+does the same arithmetic from a raw pass/fail grid — Cohen's kappa, from the four
+counts two appraisers produce, which is what that tab takes. **The pack does not compute
+Fleiss' kappa.** With more than two appraisers, run the tab once per pair and report the
+spread as well as the mean: four appraisers is six runs, and one pair sitting well below
+the others is the finding. For an exact Fleiss' kappa use Minitab's *Attribute Agreement
+Analysis*, or `statsmodels.stats.inter_rater.fleiss_kappa` in Python. The sample size
+calculator in `05-data-collection-plan.xlsx` sizes a comparison of two rates — you give
+it the power you want and it returns the sample size per group — so it does not size an
+attribute study, which is items x appraisers x replicates. The overall figures above are for
 the contact-level pass/fail verdict, which is why they sit below the per-item numbers
 in section 4 — the verdict flips whenever any single item does.
 

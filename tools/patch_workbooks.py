@@ -198,6 +198,18 @@ REPEATED: list[tuple[str, str, str, str, range]] = [
 
 # Literal value / label corrections: (workbook, sheet, cell, value)
 VALUES: list[tuple[str, str, str, object]] = [
+    # The workbook's own formulas say the opposite of this note. Part-to-part
+    # is B58 = MAX(0,($D$47-$D$49)/9) and total is B59 = B55 + B58, so
+    # collapsing part spread shrinks the denominator and RAISES the gage's
+    # share; ndc = 1.41*SQRT(B58)/SQRT(B55) falls with it. Narrow sampling
+    # condemns a sound gage, it does not flatter one. Same inversion sat in
+    # 08-msa-gage-rr.md, so fixing one would have left the other.
+    ("29-msa-gage-rr.xlsx", "Gage R&R study", "C6",
+     "Ten minimum, and they must span the RANGE YOU ACTUALLY SEE. Sampling ten routine "
+     "contacts collapses part-to-part variation, which inflates %study variation and drives "
+     "ndc down — it condemns a sound gage rather than flattering it. When you cannot get the "
+     "spread, judge on %Tolerance (B65) instead, which measures the gage against the spec "
+     "width and does not move with the parts you happened to pick."),
     # The collection plan gave the baseline window as a calendar quarter while
     # 09-baseline-document.md gives it as 2026-01-05 to 2026-03-29, "12 whole
     # weeks", and the charter says in terms that the 61,400 is "over a 12-week
