@@ -547,11 +547,19 @@ def hypothesis_log(wb) -> int:
     # fifths of the axis. Key on the row number instead.
     for r in range(11, LAST + 1):
         sh.put(r, 20, f'=IF(A{r}="","",$B$8)', fmt="0.000")
-    sh.put(10, 20, "alpha", bold=True)
-    _line(ws, "p-value by test, against alpha = 0.05",
+    # The line moved to $B$8 but the title and the legend kept saying 0.05, so
+    # setting alpha to 0.01 — which verify.py:1114 does deliberately, to prove
+    # the line follows — drew a line at 0.01 under a title reading 0.05. That
+    # is the "reference line that contradicts the sheet it sits on" this
+    # workbook's own checks exist to catch. Neither now states a value it
+    # cannot keep: the legend reads it out of the cell, and the title says
+    # what the chart is for rather than what alpha happened to be.
+    sh.put(10, 20, '=IF($B$8="","alpha","alpha ("&TEXT($B$8,"0.###")&")")', bold=True)
+    _line(ws, "p-value by test — anything under the alpha line is a real difference",
           Reference(ws, min_col=1, min_row=11, max_row=LAST),
           [(Reference(ws, min_col=10, min_row=11, max_row=LAST), "p-value", BLUE, False, True),
-           (Reference(ws, min_col=20, min_row=11, max_row=LAST), "alpha (0.05)", RED, True, False)],
+           (Reference(ws, min_col=20, min_row=11, max_row=LAST),
+            "alpha — the value in B8", RED, True, False)],
           "T10", fmt="0.000", height=9, width=20, y_title="p-value")
     return sh.changed
 

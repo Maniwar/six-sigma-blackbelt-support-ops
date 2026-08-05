@@ -953,7 +953,12 @@ def prune_cache(paths) -> int:
     if not CACHE.exists():
         return 0
     cache = json.loads(CACHE.read_text(encoding="utf-8"))
-    live = {_digest(p) for p in paths}
+    # A key is digest + "-" + render version (see charts_html), so comparing
+    # against a bare digest matched nothing and marked every entry dead. The
+    # cache emptied itself on every sync — committed at 2 bytes — which meant a
+    # machine without LibreOffice hit values_for()'s RuntimeError instead of
+    # the cached fallback, which is the one case the cache exists for.
+    live = {_digest(p) + "-" + _render_version() for p in paths}
     dead = [k for k in cache if k not in live]
     for k in dead:
         del cache[k]

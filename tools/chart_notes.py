@@ -117,7 +117,7 @@ NOTES: dict[str, str] = {
         "concentrated. Even bars mean every contact pays it and the fix is worth the "
         "whole volume; a few tall bars mean a subset of cases is doing something the "
         "others are not, and that subset is the thing to define.",
-    "p-value by test, against alpha = 0.05":
+    "p-value by test — anything under the alpha line is a real difference":
         "The line is your alpha, not a verdict. A p-value below it says the difference "
         "is unlikely to be noise — it says nothing about whether the difference is worth "
         "acting on, which is what the practical threshold you registered beforehand is "
@@ -320,7 +320,7 @@ ACTIONS: dict[str, str] = {
     "Hop time is not evenly spread — a few contacts carry it":
         "Even bars mean fix it for everyone and size the benefit on full volume. A few tall bars "
         "mean define what those contacts have in common before building anything.",
-    "p-value by test, against alpha = 0.05":
+    "p-value by test — anything under the alpha line is a real difference":
         "Act only where the result clears the practical threshold you registered before the test. "
         "A p-value under the line with an effect below that threshold is a finding you should "
         "record and not fund.",

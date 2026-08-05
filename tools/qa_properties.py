@@ -322,29 +322,18 @@ def test_axis_survives_rescale(path):
                   f"points outside, e.g. {outside[:3]}")
 
 
-def test_preview_matches_workbook(path):
-    """The preview printed in the page must equal what the workbook computes."""
-    import json
-    cache = ROOT / "tools" / "previews.json"
-    if not cache.exists():
-        return
-    shown = json.loads(cache.read_text(encoding="utf-8"))
-    if path.name not in shown:
-        return
-    html = shown[path.name]
-    # every tooltip carries the formula; the visible text is what we check
-    try:
-        sol = _engine(path).calculate()
-    except Exception:                                            # noqa: BLE001
-        return
-    bad = []
-    for m in re.finditer(r'title="([^"]*)"[^>]*>([^<]*)</td>', html):
-        pass                                    # positional mapping lives in
-        # sync_html; re-deriving it here would duplicate that logic, so the
-        # preview check is deliberately limited to the cached headline values
-    check(not bad, f"{path.name}: preview agrees with the workbook",
-          "; ".join(bad[:3]))
-
+# test_preview_matches_workbook lived here and was deleted rather than fixed.
+#
+# Its loop body was a bare `pass`, so `bad` could never be appended to and
+# check(not bad, ...) could only pass; and nothing called it — main() ran the
+# other two. A function that cannot fail, that nothing runs, reads in a listing
+# exactly like coverage.
+#
+# The concern is real and is covered where the data actually lives:
+# verify.py's _check_preview_generated asserts the preview in the page IS the
+# one build_templates generated from the workbook, and the builder regenerates
+# it from the workbook on every run. Re-deriving the positional mapping here,
+# which is what the deleted body gave up on, would have duplicated sync_html.
 
 def test_chart_responds(path):
     """Change an input; something plotted must move.

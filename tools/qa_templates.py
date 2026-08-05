@@ -1095,6 +1095,15 @@ def main() -> int:
     # nothing anywhere forced an INTENT entry when one was added. --no-rubric
     # remains for when you want the fast structural pass on its own.
     rubric = "--no-rubric" not in sys.argv
+    # Asking for a skip and getting one is fine; the run must not then claim it
+    # checked everything. verify.py states that rule and honours it, and the
+    # missing-`formulas` path below honours it — this was the one place it was
+    # not applied, so --fast and --no-rubric both ended on a flat "All checks
+    # passed" with a layer that never executed.
+    if "--fast" in sys.argv:
+        not_run.append("NUMERIC: --fast was passed")
+    if not rubric:
+        not_run.append("RUBRIC: --no-rubric was passed")
     only = [a for a in sys.argv[1:] if not a.startswith("-")]
     books = sorted(TEMPLATES.glob("*.xlsx"))
     if only:
@@ -1152,8 +1161,9 @@ def main() -> int:
     if warns:
         print(f"\n{len(warns)} warning(s):")
         print("\n".join(warns))
-    if not_run and "--skip-optional" not in sys.argv:
-        fails.append(f"  FAIL [NUMERIC] {len(not_run)} workbook(s) were never "
+    unasked = [n for n in not_run if "was passed" not in n]
+    if unasked and "--skip-optional" not in sys.argv:
+        fails.append(f"  FAIL [NUMERIC] {len(unasked)} workbook(s) were never "
                      f"recalculated — pip install formulas, or pass "
                      f"--skip-optional to say you meant it")
     if fails:
@@ -1161,8 +1171,7 @@ def main() -> int:
         print("\n".join(fails))
         return 1
     if not_run:
-        print(f"\nAll checks that ran passed, but {len(not_run)} workbook(s) "
-              f"were NOT recalculated:")
+        print(f"\nAll checks that ran passed, but {len(not_run)} layer(s) NOT RUN:")
         print("\n".join("  - " + n for n in not_run[:5]))
         if len(not_run) > 5:
             print(f"  ... and {len(not_run)-5} more")
