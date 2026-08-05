@@ -49,12 +49,16 @@
 | *TCK-118455* | *Resolved 20 Mar 16:48. Reopened 21 Mar 02:14 by the batch service account after the nightly posting failed. No customer contact before or since* | *No* | *The metric says the customer reopens it, and this customer never did — the system noticed first, which is the behaviour we want. Counting it would mix the failure with its own early warning. Tracked separately as a posting failure so the fix still sees it, and if auto-reopen ever notifies the customer this record class comes back in* |
 
 ## Two-observer test
-Two people independently applied this definition to the same 20 records.
+Two people independently applied this definition to the same 20 records. The 20 were
+deliberately loaded with reopens whose reason differed from the original contact — the
+ambiguous cases — not drawn at random. A random sample of a mostly-unambiguous
+population agrees by luck and tells you nothing, which is the trap
+`07-msa-attribute-agreement.md:34-37` spells out.
 
 | | Result |
 |---|---|
-| Agreement | ___ / 20 |
+| Agreement | *14 / 20 — and all six disagreements were the same cause, which is what makes it a definition problem rather than a rater problem. Scattered disagreement means retraining; a single systematic split means the definition is ambiguous, and this one was.* |
 | Disagreements and resolution | *Reporting counted same-reason reopens only; operations wanted any-reason. Resolved 2026-04-24 in favour of any-reason, and the baseline was recut.* |
-| Definition revised? | Yes / No |
+| Definition revised? | *Yes — reworded to any-reason on 2026-04-24, and the baseline recut on the new definition before any of it was used.* |
 
 Reviewed by: ____________  Date: __________
