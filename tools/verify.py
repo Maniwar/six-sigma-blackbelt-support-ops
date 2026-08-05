@@ -425,6 +425,60 @@ def test_glossary_coverage() -> None:
           f"(49 at the start of this pass)")
 
 
+def test_control_limits_close() -> None:
+    """The baseline's control limits must follow from the numbers beside them.
+
+    They did not. The document declared sigma z = 4.25 at n ~ 5,100 and p =
+    14.2%, which puts the limits at 20.4% / 8.0%, and shipped 17.1% / 11.3%.
+    The limits were the right ones — 17.1/11.3 is exactly sigma z 1.98, and at
+    20.4% the special cause the document spends a section explaining stops
+    signalling, while the LCL lands on the 8.0% specification. It was the
+    declared factor that was wrong, corroborated by nothing and derived
+    nowhere. Recomputing it here is three lines and would have caught it.
+    """
+    import math
+
+    doc = (TEMPLATES / "09-baseline-document.md").read_text(encoding="utf-8")
+
+    def one(pattern: str):
+        m = re.search(pattern, doc)
+        return float(m.group(1)) if m else None
+
+    p_bar = one(r"Centre line \| \*([\d.]+)%")
+    ucl = one(r"UCL / LCL \| \*([\d.]+)%")
+    lcl = one(r"UCL / LCL \| \*[\d.]+% / ([\d.]+)%")
+    z = one(r"σ_z \(if attribute chart\) \| \*([\d.]+)")
+    n = one(r"~([\d,]+) billing tickets/week".replace(",", "[,]?"))
+    if n is None:
+        m = re.search(r"~([\d,]+) billing tickets/week", doc)
+        n = float(m.group(1).replace(",", "")) if m else None
+
+    check(None not in (p_bar, ucl, lcl, z, n),
+          "the baseline states a centre line, limits, sigma z and a denominator",
+          f"p={p_bar} ucl={ucl} lcl={lcl} z={z} n={n}")
+    if None in (p_bar, ucl, lcl, z, n):
+        return
+
+    pp = p_bar / 100
+    sigma = math.sqrt(pp * (1 - pp) / n) * 100          # in percentage points
+    want_hw = 3 * sigma * z
+    got_hw = (ucl - lcl) / 2
+    check(abs(want_hw - got_hw) < 0.06,
+          "the baseline's control limits follow from its own sigma z",
+          f"sigma z {z} at p={p_bar}% and n={n:,.0f} gives a half-width of "
+          f"{want_hw:.3f} points ({p_bar + want_hw:.1f}% / {p_bar - want_hw:.1f}%), "
+          f"but the document ships {ucl}% / {lcl}%, a half-width of {got_hw:.3f}")
+    check(abs((ucl + lcl) / 2 - p_bar) < 0.06,
+          "the baseline's limits are centred on its centre line",
+          f"({ucl}+{lcl})/2 = {(ucl + lcl) / 2:.2f}, centre line is {p_bar}")
+    # A Laney factor is MAX(1, ...) in the pack's own workbook: it can widen an
+    # ordinary p-chart, never tighten it.
+    check(z >= 1.0,
+          "the baseline's sigma z is at least 1",
+          f"sigma z {z} would tighten the ordinary p-chart, which the pack's own "
+          f"formula MAX(1, B6/1.128) cannot do")
+
+
 def test_docs_counts() -> None:
     """README, PUBLISH and the issue template have to count the same pack.
 
@@ -2097,6 +2151,7 @@ def main() -> int:
     print("GLOSSARY+  every jargon column header carries a plain-English key")
     test_glossary_coverage()
     print("CASE       the worked project's figures reproduce from each other")
+    test_control_limits_close()
     test_docs_counts()
     test_baseline_window()
     test_case_study()

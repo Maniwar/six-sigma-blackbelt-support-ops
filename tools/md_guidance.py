@@ -305,7 +305,7 @@ EXAMPLE = {
         "Extract query / job ref": "warehouse job bl_reopen_baseline, commit 4f2a9c1",
         "Immutable snapshot stored at": "s3://analytics-snapshots/BIL-2026-014/baseline.parquet",
         "Chart type used": "Laney p-prime",
-        "Chart type justification": "Proportion at ~5,100 tickets/week; sigma z = 4.25, so an ordinary p-chart would signal on almost every point",
+        "Chart type justification": "Proportion at ~5,100 tickets/week; sigma z = 1.98, so an ordinary p-chart is too tight — its limits would be 15.7% / 12.7%",
         "Centre line": "14.2%",
     },
     "16-pilot-protocol": {

@@ -33,14 +33,14 @@
 
 | Field | Value |
 |---|---|
-| Chart type used | (I-MR / X̄-S / Laney p′ / Laney u′) |
-| Chart type justification | *Proportion at ~5,100 billing tickets/week — the whole queue; sigma z = 4.25, so an ordinary p-chart would signal on almost every point* |
+| Chart type used | *Laney p′* |
+| Chart type justification | *Proportion at ~5,100 billing tickets/week — the whole queue; σ_z = 1.98, so an ordinary p-chart is too tight. Its limits would be 15.7% / 12.7%, and this document's own percentiles put p90 at 16.2% and p10 at 12.3% — at least a fifth of the twelve weeks outside, with no special cause behind them* |
 | Centre line | *14.2% — the 7-day reopen rate on all billing tickets (OD-BIL-004 v2). The in-scope adjustment population is not separately charted anywhere in this document: `<weekly control chart, centre line and limits for OD-BIL-004-ADJ — Analytics to produce before the benefit in section 7 is re-signed>`* |
 | UCL / LCL | *17.1% / 11.3%* |
-| σ_z (if attribute chart) | (near 1.0 = no overdispersion; >1.2 = use Laney) |
+| σ_z (if attribute chart) | *1.98 — read off the limits: half-width 2.90 points ÷ the ordinary 3σ half-width of 1.4663 points. Over 1.2, so Laney is the right chart* |
 | Special causes found | *One week (w/c 2026-02-16) above the UCL — a billing platform release* |
 | Special causes excluded (and why) | *None excluded. The release is a real process condition and will recur.* |
-| **Process stable?** | Yes / No |
+| **Process stable?** | *No — one point above the UCL. The mean of an unstable window averages two process states, so section 4 reports **Ppu**, a long-term performance index describing what this process did, rather than a Cpk-style prediction of what it will do. That is the honest index for a window with a signal in it, and it is why the release week is kept rather than excluded* |
 
 > Capability is meaningless on an unstable process. Demonstrate stability first.
 
