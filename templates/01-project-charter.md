@@ -46,7 +46,7 @@ Reduce / increase `<metric>` from `<baseline>` to `<target>` by `<date>`, while 
 |---|---|---|
 | Benefit denominator — in-scope adjustment volume (annual) | *11,592 in-scope billing adjustments a year — 966 a month x 12* | *966 in-scope adjustments in the baseline month (09-baseline-document.md:106), the same 966 the baseline strata total to at 09-baseline-document.md:90. Nobody has pulled a 12-month in-scope count: the reporting team who pulled the queue volume below must pull the same 12 months to 31 May on the in-scope adjustment scope, before the 90-day benefit checkpoint on 2027-02-12 (18-handover-and-benefit-validation.md:142) — §8 records every tollgate, Improve and Control included, as already closed, so there is no gate left to make this due at — and this row is a 12x extrapolation of one measured month until they do* |
 | Billing queue volume (annual) — CONTEXT ONLY, never a benefit multiplier | *266,000 billing tickets a year. The 61,400 in the baseline document is the same queue over a 12-week window at ~5,100/week (09-baseline-document.md:37,51), not one quarter* | *Warehouse table `dw_ticket_fact`, queue = Billing, 12 months to 31 May — pulled by the reporting team 3 Jun. The project changes how adjustments are closed, so this figure sizes the queue the work sits in and never multiplies the benefit — see §11* |
-| Baseline metric | *14.2% of in-scope billing adjustments reopened within 7 days — 137 reopens in 966 contacts* | *09-baseline-document.md:90, counted per OD-BIL-004-ADJ (7-day reopen rate, in-scope billing adjustments). Baseline month: `<start and end dates of the month the 966 were counted over>` — A. Okafor, who signed the baseline, must state it before this v2.0 revision is signed (§11), which is the same ask, on the same owner, that 09-baseline-document.md:90 carries; the pack dates this figure to "one baseline month" and never says which. The whole-queue rate under OD-BIL-004 v2 is also 14.2% (06-data-lineage.md:60, 1–31 Mar) and is a different measurement of a different population* |
+| Baseline metric | *14.2% of in-scope billing adjustments reopened within 7 days — 137 reopens in 966 contacts* | *09-baseline-document.md:90, counted per OD-BIL-004-ADJ (7-day reopen rate, in-scope billing adjustments). Baseline month: `<start and end dates of the month the 966 were counted over>` — A. Okafor, who signed the baseline, must state it before this v2.0 revision is signed (§11), which is the same ask, on the same owner, that 09-baseline-document.md:90 carries; the pack dates this figure to "one baseline month" and never says which. The whole-queue rate under OD-BIL-004 v2 is also 14.2% (06-data-lineage.md:61, 1–31 Mar) and is a different measurement of a different population* |
 | Target metric | *8.0%, on the same in-scope adjustment population* | *FY26 support quality plan, section 4 — the rate the non-billing queues already run at* |
 | Units avoided / improved | *719 reopens avoided a year — 11,592 in-scope adjustments x 6.2 points* | *Arithmetic, not a system: 11,592 x (14.2% less 8.0%) = 718.7. The 16,492 this row used to carry applied the same 6.2 points to the 266,000 queue, which is the error recorded in §11* |
 | Unit cost basis ($) | *$38.60 fully-loaded cost of a reopened contact* | *Finance's 2026 rate with the facilities allocation removed (09-baseline-document.md:107). It supersedes the $41.00 estimate the same row attributes to this charter. The $6.80 previously carried here is the Finance cost-to-serve model's cost of serving one contact, not the price of a reopen; using it as one is a defect* |
@@ -103,7 +103,7 @@ Signed by WFM:     ____________________  Date: __________
 ## 4. Scope
 
 *Every row below is scoped to the in-scope billing adjustment population — the population
-OD-BIL-004-ADJ is defined on (06-data-lineage.md:61) — and never to the Billing queue,
+OD-BIL-004-ADJ is defined on (06-data-lineage.md:62) — and never to the Billing queue,
 which appears in §3 and §5 as context only. A scope row that says "billing" without saying
 which of the two it means is the defect this table exists to prevent.*
 
@@ -111,18 +111,18 @@ which of the two it means is the defect this table exists to prevent.*
 |---|---|
 | First process step | *Customer submits a billing dispute* |
 | Last process step | *Adjustment has posted and the customer has confirmed* |
-| In scope | *In-scope billing adjustments as OD-BIL-004-ADJ defines them: consumer accounts, voice / chat / email, sites A-D, up to the $250 Billing Ops authority limit, including the ones Tier 1 hands over because they exceed $50 (02-sipoc.md:42,43; 06-data-lineage.md:61). This is the population the metric Y in §5, the 137 / 966 baseline in §3 and the 11,592 benefit denominator are all cut on. The $250 ceiling is constitutive of it, not a detail — the same cap governs the vendor fallback at §9* |
-| Out of scope | *Fraud holds, collections, anything requiring a manual refund cheque, and credits Billing Ops raises proactively with no customer contact — no dispute, so no reopen to avoid (02-sipoc.md:48,49,51). The proactive-credit exclusion is part of what OD-BIL-004-ADJ counts (06-data-lineage.md:61), not housekeeping* |
+| In scope | *In-scope billing adjustments as OD-BIL-004-ADJ defines them: consumer accounts, voice / chat / email, sites A-D, up to the $250 Billing Ops authority limit, including the ones Tier 1 hands over because they exceed $50 (02-sipoc.md:42,43; 06-data-lineage.md:62). This is the population the metric Y in §5, the 137 / 966 baseline in §3 and the 11,592 benefit denominator are all cut on. The $250 ceiling is constitutive of it, not a detail — the same cap governs the vendor fallback at §9* |
+| Out of scope | *Fraud holds, collections, anything requiring a manual refund cheque, and credits Billing Ops raises proactively with no customer contact — no dispute, so no reopen to avoid (02-sipoc.md:48,49,51). The proactive-credit exclusion is part of what OD-BIL-004-ADJ counts (06-data-lineage.md:62), not housekeeping* |
 | Channels included | *Voice, chat, email — the channels of the in-scope adjustment population, not of the whole Billing queue* |
 | Sites / vendors included | *Sites A-D; no outsourced volume in scope* |
-| Customer segments included | *All consumer accounts that raise an in-scope adjustment; enterprise excluded (different billing stack). The consumer restriction is part of what OD-BIL-004-ADJ counts (06-data-lineage.md:61), not a queue-level filter* |
+| Customer segments included | *All consumer accounts that raise an in-scope adjustment; enterprise excluded (different billing stack). The consumer restriction is part of what OD-BIL-004-ADJ counts (06-data-lineage.md:62), not a queue-level filter* |
 
 ## 5. Metric hierarchy
 
 | Type | Metric | Baseline | Target | Op. definition ref |
 |---|---|---|---|---|
 | Primary | *7-day reopen rate, in-scope billing adjustments* | *14.2% — 137 reopens / 966 contacts* | *8.0%* | *OD-BIL-004-ADJ — a separate definition written for this population* |
-| Context, not a project metric | *7-day reopen rate, all billing tickets* | *14.2% — whole Billing queue* | *none; it is not a project target* | *OD-BIL-004 v2 (06-data-lineage.md:60)* |
+| Context, not a project metric | *7-day reopen rate, all billing tickets* | *14.2% — whole Billing queue* | *none; it is not a project target* | *OD-BIL-004 v2 (06-data-lineage.md:61)* |
 | Secondary | *Median resolution time, billing* | *4.6 h* | *4.0 h* | *OD-BIL-007 v1* |
 | Counter-balancing | *CSAT, billing contacts* | *4.11* | *no decline* | *OD-CX-002 v3* |
 

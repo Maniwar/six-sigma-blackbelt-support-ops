@@ -32,13 +32,14 @@ the baseline.
 
 ## Single-record walkthrough
 
-| Stage | Value at this stage | Matches previous? | If not, why |
+| Stage | Value at this stage, for TCK-118377 | Matches previous? | If not, why |
 |---|---|---|---|
-| Event capture | *Agent clicks Resolved* | — | *Zendesk UI* |
-| Source table | *zendesk.tickets* | *replicated hourly* | *timezone converted to UTC here* |
-| ETL output | *stg_tickets* | *dbt run 02:00* | *merged tickets collapsed to the survivor* |
-| Warehouse | *warehouse.tickets* | *02:40* | *test tickets filtered on requester domain* |
-| Dashboard | *Ops weekly reopen tile* | *Looker* | *filters to billing reasons only — the whole queue, not the adjustment scope* |
+| Event capture | *hop 1, Zendesk UI: resolved_at written as 2026-03-09 17:20, with no timezone on it — the agent's browser clock* | — | *Start of the trace. TCK-118377 is a consumer billing adjustment on a disputed charge, voice channel, resolved inside the 2026-01-05 to 2026-03-29 baseline window; the credit posts and the agent clicks Resolved* |
+| Source table | *hop 2, zendesk.tickets: resolved_at = 2026-03-09 16:20 UTC* | *No — and this is the one stage where the value legitimately changes* | *The same instant, rewritten: the hourly replication infers the site's +01:00 offset and stores UTC, so 17:20 local becomes 16:20 UTC. Nothing is added and nothing is dropped. The date survives only because 17:20 is nowhere near midnight — the identical rewrite moves the DATE for anything resolved between 23:00 and 01:00 local, which is the Medium finding below* |
+| ETL output | *hop 3, stg_tickets: resolved_at = 2026-03-09 16:20 UTC* | *Yes* | *TCK-118377 is nobody's merged child, so the survivor collapse at this hop leaves it alone. Had it been merged into another ticket, its reopen event would have been dropped here and every row below would have read zero without saying so* |
+| Warehouse | *hop 4, warehouse.tickets: resolved_at = 2026-03-09 16:20 UTC; channel = voice; reason = disputed charge* | *Yes* | *The requester is a consumer address, so the internal-domain test-ticket filter does not remove it* |
+| Semantic layer | *hop 5, warehouse.reopen_daily: reopened_at = 2026-03-11 09:05 UTC, and 2026-03-11 09:05 minus 2026-03-09 16:20 = 40h 45m, inside 168h, so reopen_flag = 1 — one reopen counted against the 2026-03-09 resolve* | *Yes* | *The timestamps are carried through untouched and the flag is derived from them; deriving is not changing. This is the hop that applies the 168-hour rule, and the hop at which this record enters the OD-BIL-004 v2 numerator — the all-billing-tickets rate. TCK-118377 is an in-scope billing adjustment as well, and no hop in this trace counts it into OD-BIL-004-ADJ: this model carries no adjustment scope and nothing downstream of it builds one* |
+| Dashboard | *hop 6, Looker Ops weekly reopen tile: 1 in the denominator, 0 in the numerator — this reopen does not appear on the tile* | *No — and this one is a defect, not a conversion* | *The tile counts only reopens whose reason matches the original. TCK-118377 was resolved on a disputed charge and reopened about a replacement handset that had not arrived, so the same-reason filter drops it from the numerator while leaving it in the denominator. It clears the legacy chat filter only because it is voice: the same ticket taken on chat would leave the tile altogether, denominator and all. This is one record's instance of the 1.8 points between the 14.2% at hop 5 and the 12.4% on the tile — the same-reason share of that gap, not the 0.4 points the chat filter takes* |
 
 ## Competing definitions in circulation
 Support organizations routinely have several figures called the same thing. Two of the

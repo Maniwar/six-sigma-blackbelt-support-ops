@@ -11,7 +11,7 @@
 
 **The mistake this prevents.** Deciding the success criterion after seeing the data. Write the practical threshold and the kill criteria into this document first, and the pilot can only tell you one of two things.
 
-*Italic entries below are a worked example from one project — billing adjustments closing before the posting confirms, driving a 14.2% 7-day reopen rate on in-scope billing adjustments (OD-BIL-004-ADJ — 137 reopens in 966 contacts, 09-baseline-document.md:90) against a target of 8.0%. The whole Billing queue's 7-day reopen rate under OD-BIL-004 v2 is also 14.2% (06-data-lineage.md:60); it is a different measurement of a different population and it is never this pilot's metric. Delete them as you fill your own in.*
+*Italic entries below are a worked example from one project — billing adjustments closing before the posting confirms, driving a 14.2% 7-day reopen rate on in-scope billing adjustments (OD-BIL-004-ADJ — 137 reopens in 966 contacts, 09-baseline-document.md:90) against a target of 8.0%. The whole Billing queue's 7-day reopen rate under OD-BIL-004 v2 is also 14.2% (06-data-lineage.md:61); it is a different measurement of a different population and it is never this pilot's metric. Delete them as you fill your own in.*
 
 ---
 

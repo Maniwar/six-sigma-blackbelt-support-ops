@@ -11,7 +11,7 @@
 
 **The mistake this prevents.** Accepting a cause on one key. A statistical result without a mechanism is a correlation, and a mechanism without a statistical result is a strongly held opinion. Both, every time, or it does not go in the pack.
 
-*Italic entries below are a worked example from one project — billing adjustments closing before the posting confirms, driving a 14.2% 7-day reopen rate on in-scope billing adjustments (OD-BIL-004-ADJ; 137 reopens / 966 contacts in the baseline month, templates/09-baseline-document.md:90) against a target of 8%. The whole Billing queue also runs a 14.2% 7-day reopen rate, under OD-BIL-004 v2 on a far wider population (templates/06-data-lineage.md:60) — a different quantity, and context only. Every sample size and every population on this page names which of the two it means; a bare "14.2% reopen rate" is the defect. Delete them as you fill your own in.*
+*Italic entries below are a worked example from one project — billing adjustments closing before the posting confirms, driving a 14.2% 7-day reopen rate on in-scope billing adjustments (OD-BIL-004-ADJ; 137 reopens / 966 contacts in the baseline month, templates/09-baseline-document.md:90) against a target of 8%. The whole Billing queue also runs a 14.2% 7-day reopen rate, under OD-BIL-004 v2 on a far wider population (templates/06-data-lineage.md:61) — a different quantity, and context only. Every sample size and every population on this page names which of the two it means; a bare "14.2% reopen rate" is the defect. Delete them as you fill your own in.*
 
 ---
 
