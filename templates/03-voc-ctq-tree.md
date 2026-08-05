@@ -59,25 +59,26 @@ Need:      "<customer's words>"
 | # | Need | Driver | CTQ | Spec / target | Measurement method | Population | Sampling |
 |---|---|---|---|---|---|---|---|
 | 1 | *Do not make me chase it* | *The adjustment posts before I am told it is done* | *7-day reopen rate, in-scope billing adjustments* | *<= 8.0%* | *OD-BIL-004-ADJ — a new definition, lineage not yet traced (see the note below)* | *In-scope billing adjustments (02-sipoc scope: consumer, voice/chat/email, sites A–D, up to $250; fraud holds, collections, manual refund cheques, enterprise accounts and proactive credits excluded — 02-sipoc.md:48-51, the same five exclusions restated at 06-data-lineage.md:62)* | *Census — 966 adjustments in the baseline month* |
-| 2 | *Tell me when it will be resolved* | *A committed date given at first contact* | *Share of contacts with a commitment date logged* | *>= 90%* | *`<no operational definition exists for this CTQ anywhere in the pack — L. Haddad, QA manager (01-project-charter.md §7 metric-impact disclosure, :175), must write one stating what counts as a logged commitment date and which rubric item carries it, before the 90-day checkpoint on 2027-02-12 (18-handover-and-benefit-validation.md:142)>`. "QA audit item 7" cannot stand as the method: the only item 7 the pack records is "empathy demonstrated" (07-msa-attribute-agreement.md §4, :89)* | *`<not stated — L. Haddad must name the audit frame at the same time: row 1's in-scope adjustment population, or the whole Billing queue. The attribute agreement study sampled in-scope adjustments (07-msa-attribute-agreement.md §1, :25); the routine 200/week audit is bound to neither>`* | *200/week stratified* |
-| 3 | *Do not make me repeat myself* | *Resolved without a second contact* | *7-day reopen rate, all billing tickets* | *No target — context only. The 8.0% belongs to row 1's adjustment population and to nothing else (01-project-charter.md §5 metric hierarchy, primary row at :124); the same table's context row carries "none; it is not a project target" for this rate (:125). Closing every in-scope adjustment reopen moves it 0.62 points, 14.2% to 13.58%, so it is not this project's to deliver (see the note below)* | *OD-BIL-004 v2* | *All billing tickets reaching Resolved — the whole Billing queue* | *Census* |
+| 2 | *Do not make me chase it* | *The adjustment posts before I am told it is done* | *Share of in-scope adjustments confirmed posted before the case is closed* | *`<no target may be set until the share is measured, and nothing in the pack measures it. A. Okafor, Billing Ops process owner, must measure it on the same in-scope adjustment population and the same baseline month as the 966 (09-baseline-document.md:90), and agree a target with the Black Belt, before the 90-day checkpoint on 2027-02-12 (18-handover-and-benefit-validation.md:142). The two figures the pack does carry are not this rate: 4 of 11 closures watched at the gemba closed before the webhook returned, and 31 of 50 reviewed reopens were closed pre-posting (14-root-cause-evidence-pack.md:62,64) — an observation of eleven, and a share conditioned on having reopened>`* | *`<no operational definition exists. The mechanism is named — 12-fmea.xlsx 'FMEA' E11, "System closes the ticket before the posting webhook confirms" — but no query is: 06-data-lineage.md:68 records that OD-BIL-004-ADJ has no lineage at all; 14-root-cause-evidence-pack.md:65 records that the ticket status model has no pending-adjustment state, so the comparison cannot be made from ticket data as it stands. Analytics and Data Eng, who own that trace (06-data-lineage.md:68), must define it as the share of in-scope adjustments whose posting-webhook confirmation timestamp precedes the first Resolved timestamp, and register it as its own operational definition, by the same date>`* | *In-scope billing adjustments — row 1's population and no other (02-sipoc.md:48-51; 06-data-lineage.md:61)* | *Census — the same adjustments row 1 is cut on, so the two are read on one population* |
+| 3 | *Tell me when it will be resolved* | *A committed date given at first contact* | *Share of contacts with a commitment date logged* | *>= 90%* | *`<no operational definition exists for this CTQ anywhere in the pack — L. Haddad, QA manager (01-project-charter.md §7 metric-impact disclosure, :175), must write one stating what counts as a logged commitment date and which rubric item carries it, before the 90-day checkpoint on 2027-02-12 (18-handover-and-benefit-validation.md:142)>`. "QA audit item 7" cannot stand as the method: the only item 7 the pack records is "empathy demonstrated" (07-msa-attribute-agreement.md §4, :89)* | *`<not stated — L. Haddad must name the audit frame at the same time: row 1's in-scope adjustment population, or the whole Billing queue. The attribute agreement study sampled in-scope adjustments (07-msa-attribute-agreement.md §1, :25); the routine 200/week audit is bound to neither>`* | *200/week stratified* |
+| 4 | *Do not make me repeat myself* | *Resolved without a second contact* | *7-day reopen rate, all billing tickets* | *No target — context only. The 8.0% belongs to row 1's adjustment population and to nothing else (01-project-charter.md §5 metric hierarchy, primary row at :124); the same table's context row carries "none; it is not a project target" for this rate (:125). Closing every in-scope adjustment reopen moves it 0.62 points, 14.2% to 13.58%, so it is not this project's to deliver (see the note below)* | *OD-BIL-004 v2* | *All billing tickets reaching Resolved — the whole Billing queue* | *Census* |
 
 **Completion test:** if two people could measure this CTQ differently, it is not
 finished. Every row above must survive that test.
 
-**Two rates can wear the same name.** Rows 1 and 3 are both "a 7-day reopen rate"
+**Two rates can wear the same name.** Rows 1 and 4 are both "a 7-day reopen rate"
 and they are different quantities. Bind every row to its population as well as to
 its query, or the rate measured on one population ends up multiplied by the volume
 of another — the most common way a real benefit case dies.
 > *Both rows read 14.2% today, which is exactly why nobody noticed. Row 1 is
 > OD-BIL-004-ADJ — in-scope billing adjustments only, measured at 137 reopens in
-> 966 adjustments in the baseline month (09-baseline-document, section 5). Row 3 is
+> 966 adjustments in the baseline month (09-baseline-document, section 5). Row 4 is
 > OD-BIL-004 v2 — every billing ticket reaching Resolved, 14.2% over 1–31 Mar
 > (06-data-lineage, competing-definitions table). The 6.2-point gap the project is
 > signed up to close is row 1's gap and cannot be carried to row 3's population: 966
 > adjustments a month is 11,592 a year against 266,000 billing contacts a year
 > (01-project-charter), so in-scope adjustments are 4.4% of the queue and 1,646 of
-> its 37,772 reopens. Fixing every one of them moves row 3 from 14.2% to 13.58% —
+> its 37,772 reopens. Fixing every one of them moves row 4 from 14.2% to 13.58% —
 > 0.62 points, a tenth of the 6.2 that was claimed against the whole queue.*
 
 **Adjustment-level rate over the full baseline window:** `<not yet measured>`
@@ -93,9 +94,35 @@ of another — the most common way a real benefit case dies.
 
 ## 5. CTQ weighting (feeds the X-Y matrix)
 
-| CTQ | Weight (1–10) | Rationale |
-|---|---|---|
-| *7-day reopen rate, in-scope billing adjustments (OD-BIL-004-ADJ)* | *10* | *The project Y. 14.2% — 137 reopens in 966 adjustments in the baseline month — against a target of 8.0% is why the charter was signed, and every other CTQ earns its weight by moving this one. Not the whole-queue rate of the same name under OD-BIL-004 v2, which reads 14.2% too and is a different quantity* |
-| *Share of adjustments confirmed posted before the case is closed* | *9* | *The biggest bar on the Pareto — 412 coded VOC contacts. Closing the case before the nightly posting batch confirms is the mechanism the project exists to break* |
-| *Share of contacts with a commitment date logged* | *7* | *Weaker link to the reopen rate, but it is the one thing a Tier 1 agent controls inside the call, and it covers the 74 coded VOC contacts about refund timing on its own* |
-| *Mean handle time, billing adjustments* | *4* | *A guardrail rather than a goal: it is on the list so a fix cannot buy the reopen rate back with a longer call. 412 s today — seconds, not the 412 coded contacts two rows up — and anything outside 363–468 s is a signal* |
+| CTQ | Tree row (section 4) | Weight (1–10) | Rationale |
+|---|---|---|---|
+| *7-day reopen rate, in-scope billing adjustments (OD-BIL-004-ADJ)* | *Row 1* | *10* | *The project Y. 14.2% — 137 reopens in 966 adjustments in the baseline month — against a target of 8.0% is why the charter was signed, and every other CTQ earns its weight by moving this one. Not the whole-queue rate of the same name under OD-BIL-004 v2, which reads 14.2% too and is a different quantity* |
+| *Share of in-scope adjustments confirmed posted before the case is closed* | *Row 2* | *9* | *The biggest bar on the Pareto — 412 coded VOC contacts, 43% of the 966 coded (section 2) — and the must-be need in section 3. Closing the case before the nightly posting batch confirms is the mechanism the project exists to break. The weight stands on that customer evidence; the tree row it now sits on carries no baseline and no target, and neither may be filled in here instead* |
+| *Share of contacts with a commitment date logged* | *Row 3* | *7* | *Weaker link to the reopen rate, but it is the one thing a Tier 1 agent controls inside the call, and it covers the 74 coded VOC contacts about refund timing on its own* |
+| *Mean handle time, in-scope billing adjustments* | *None — it is not a CTQ. No verbatim, theme or Kano row in sections 1–3 asks for a shorter call* | *Not weighted — guardrail* | *A guardrail rather than a goal: it is here so a fix cannot buy the reopen rate back with a longer call. 412 s today — seconds, not the 412 coded contacts two rows up — and anything outside 363–468 s is a signal. It is carried as a counter-balancing metric with a tolerance, not as a weighted requirement: 16-pilot-protocol.md:102 (+8%, 445 s, and no point above the 468 s upper limit) and 01-project-charter.md:173 (the Tier 1 target moved 412 s to 450 s for the pilot quarter, R. Mehta, 22 Mar)* |
+
+**Every weight must come from a row of the tree above.** `11-cause-effect-xy-matrix.xlsx`
+'How to use this' B14: *"Weights come from the CTQ tree, which came from customers. If the
+team invents the weights in the room, you have built an opinion aggregator, not a
+prioritisation."* A CTQ weighted here but missing from section 4 has no spec, no
+measurement method, no population and no sampling standing behind its weight — so the
+weight came from the room by construction, whatever anyone remembers agreeing. The tree-row
+column is here so that failure is visible without reading the two sections side by side.
+
+**A guardrail cannot be weighted into this matrix, only tracked beside it.** The matrix
+scores every cause 9 strong / 6 moderate / 3 weak / 1 none (`11-cause-effect-xy-matrix.xlsx`
+'How to use this' B9), and those scores carry no sign. A cause that lengthens the call and
+a cause that shortens it both score 9 against a handle-time column, so on the weight of 4
+this row used to carry both would collect 4 x 9 = 36 toward being investigated first,
+against 4 x 1 = 4 for a cause unrelated to handle time — a 32-point swing awarded with no
+regard to direction. The same workbook calls the 9-point gap between rank 1 and rank 2 of
+its own worked example "inside anyone's scoring noise", so a sign-blind 32 can reorder the
+top of the ranking on its own. And the direction is not open: 01-project-charter.md:173
+records the Tier 1 handle-time target formally moved from 412 s to 450 s for the pilot
+quarter, so the project has already agreed to move this guardrail the wrong way — a
+weighted column would have paid the causes that do it.
+
+**Row 4 of the tree is not weighted, and that is deliberate.** The whole-queue 7-day reopen
+rate (OD-BIL-004 v2) carries no target and is context only, so it has no customer weight to
+contribute. Weighting it would put the queue's 266,000 contacts a year back into a matrix
+that ranks causes for a population of 11,592.
