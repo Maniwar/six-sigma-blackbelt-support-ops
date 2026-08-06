@@ -591,6 +591,7 @@ def _mirrored(ws, col, rows) -> bool:
 
 
 from xlpolish import gloss_short as _short   # noqa: E402
+from xlpolish import best_terms as _best_terms   # noqa: E402
 from xlpolish import matches as _matches      # noqa: E402
 
 
@@ -621,14 +622,15 @@ def audit_jargon(path: Path, wb) -> None:
                 if not (isinstance(head, str) and head.strip()):
                     continue
                 lab = head.strip().lower()
-                for term in GLOSSES:
-                    # THE matcher, not a third copy of it. This kept its own,
-                    # and when xlpolish stopped letting a key prefix-match
-                    # across an "of" this one carried on pairing "Share of hop
-                    # time" with the Pareto's "Share" — then failed the sheet
-                    # for not carrying a gloss that no longer belonged on it.
-                    if not _matches(head, term):
-                        continue
+                # THE selection, not a second copy of it. This iterated every
+                # matching term and demanded a gloss for each, so when the
+                # writer began dropping terms subsumed by a more specific one —
+                # "SL" inside "SL (down)" — the check went on failing the sheet
+                # for the gloss that had been correctly left off. Same mistake
+                # as the matcher it already shares: the fix and the check have
+                # to agree on which terms a header needs, or one of them is
+                # always wrong about the other.
+                for term in _best_terms(head):
                     # Ask for the canonical gloss verbatim. Guessing at the
                     # shape of an explanation ("term =", "term /") reported the
                     # Xbar-R sheet as unexplained while the explanation sat two

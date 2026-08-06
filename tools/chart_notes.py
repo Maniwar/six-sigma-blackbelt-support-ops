@@ -382,7 +382,7 @@ ACTIONS: dict[str, str] = {
         "find the cause the same week — a point outside the limits is worth more the day it "
         "happens than in any monthly review.",
     "Laney u′ — defects per unit":
-        "A rate that trebles is a special cause: audit those weeks' contacts rather than "
+        "Two weeks above the upper limit is a special cause: audit those weeks' contacts rather than "
         "re-training the team. And if sigma z is well above 1, say so when you report — the "
         "limits are wider than a plain chart would have drawn and that is the honest picture.",
     "Xbar — is the average stable?":

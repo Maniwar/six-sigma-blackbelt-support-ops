@@ -132,8 +132,20 @@ def _header_row(ws) -> int | None:
 GLOSSES = {
     "OBS": "OBS 1..n are your individual measurements in one subgroup — one row per period",
     "CL": "CL = centre line, the average the chart is drawn around",
-    "UCL": "UCL / LCL = upper and lower control limits, ±3 sigma from the centre line",
-    "LCL": "UCL / LCL = upper and lower control limits, ±3 sigma from the centre line",
+    # Not "±3 sigma" flatly: this gloss is shared by every control chart, and
+    # it is only true of the ones that plot single points. The EWMA tab sets
+    # lambda 0.2 and L 2.7, which draws its limits at ±0.54 sigma on the first
+    # period widening to ±0.90 — a third of what the key claimed, and the
+    # narrowness is the entire reason that chart catches drifts an individuals
+    # chart sleeps through. Saying ±3 there taught the reader the opposite.
+    "UCL": "UCL / LCL = upper and lower control limits, a fixed number of standard errors "
+           "either side of the centre line — ±3 sigma where each point is plotted on its "
+           "own, and narrower on EWMA or CUSUM, where the statistic already averages "
+           "several periods and so varies less than a single point does",
+    "LCL": "UCL / LCL = upper and lower control limits, a fixed number of standard errors "
+           "either side of the centre line — ±3 sigma where each point is plotted on its "
+           "own, and narrower on EWMA or CUSUM, where the statistic already averages "
+           "several periods and so varies less than a single point does",
     "MR": "MR = moving range, the gap between one point and the one before it",
     "R-bar": "R-bar = the average range within your subgroups",
     "X-double-bar": "X-double-bar = the average of the subgroup averages",
@@ -148,6 +160,13 @@ GLOSSES = {
     "CI": "CI = confidence interval, the range the true value plausibly sits in",
     "Effect size": "Effect size = how big the difference is, in units a manager can act on",
     "ASA": "ASA = average speed of answer, in seconds",
+    # More specific first: on a CUSUM sheet the headers are "SH (up)" and
+    # "SL (down)", and the bare "SL" gloss prefix-matched them, so the key on
+    # that tab defined its lower cumulative sum as a service level.
+    "SH (up)": "SH (up) = the running sum of how far the process has drifted ABOVE target, "
+               "counting only the part beyond the slack k, and held at zero otherwise",
+    "SL (down)": "SL (down) = the running sum of how far the process has drifted BELOW target, "
+                 "counting only the part beyond the slack k, and held at zero otherwise",
     "SL": "SL = service level, the share of contacts answered inside your target time",
     "Occupancy": "Occupancy = the share of logged-in time an agent is actually handling contacts",
     "Erlang A": "Erlang A = the staffing model that allows for callers hanging up; Erlang C assumes nobody does",
@@ -366,6 +385,23 @@ def matches(label: str, term: str) -> bool:
             or (lab.startswith(t + " ") and not lab.startswith(t + " of ")))
 
 
+def best_terms(label: str):
+    """Every gloss the header needs, and none it does not.
+
+    Taking ALL matching terms explained the CUSUM key's "SL (down)" as both a
+    cumulative sum and a service level. Taking only the LONGEST match instead
+    then dropped "CI" from "Odds ratio 95% CI high", because "Odds ratio" is
+    longer — and that header genuinely needs both, they are different words.
+
+    The distinction is subsumption, not length. "SL" is contained in
+    "SL (down)", so it is the same term said less precisely and the precise one
+    wins. "CI" is not contained in "Odds ratio", so both stand.
+    """
+    hit = [t for t in GLOSSES if matches(label, t)]
+    return [t for t in hit
+            if not any(o is not t and t.lower() in o.lower() for o in hit)]
+
+
 def glossed(label: str) -> bool:
     """Would a key line explain this header?"""
     return any(matches(label, t) for t in GLOSSES)
@@ -408,8 +444,14 @@ def write_full_glossary(wb) -> int:
             continue
         for hrow, cols in _header_rows(ws).items():
             for label in cols.values():
-                for term in GLOSSES:
-                    if matches(label, term) and term not in used:
+                # The MOST SPECIFIC match, not every match. A header can match
+                # several terms — "SL (down)" matches both itself and the bare
+                # "SL" — and taking all of them printed the CUSUM key's lower
+                # cumulative sum and a service level side by side, one of them
+                # nonsense on that sheet. Longest term wins, which is the one
+                # that knows most about the header.
+                for term in best_terms(label):
+                    if term not in used:
                         used.append(term)
     used = [t for t in used if gloss_short(GLOSSES[t]) != GLOSSES[t]]
     if not used:
@@ -485,20 +527,23 @@ def explain_headers(wb) -> int:
         for hrow, cols in _header_rows(ws).items():
             seen, wanted = set(), []
             for label in cols.values():
-                for term, gloss in GLOSSES.items():
-                    t = term.lower()
-                    lab = label.lower()
-                    # "X of Y" is a different quantity from "X", so a key must
-                    # not prefix-match across an "of". The Pareto's "Share"
-                    # otherwise explained "Share of handle time" on the
-                    # system-hop sheet and "Share of total" on the multi-vari
-                    # one, in terms of a category's count over 966 contacts.
-                    # Suffix and interior matches are safe and wanted: "OCC"
-                    # has to reach "New OCC", "trial" has to reach "A trial 1".
-                    hit = matches(label, term)
-                    if hit and gloss not in seen:
-                        seen.add(gloss)
-                        wanted.append(gloss_short(gloss))
+                # "X of Y" is a different quantity from "X", so a key must not
+                # prefix-match across an "of". The Pareto's "Share" otherwise
+                # explained "Share of handle time" on the system-hop sheet and
+                # "Share of total" on the multi-vari one, in terms of a
+                # category's count over 966 contacts. Suffix and interior
+                # matches are safe and wanted: "OCC" has to reach "New OCC",
+                # "trial" has to reach "A trial 1". That is matches().
+                #
+                # Then take only the MOST SPECIFIC term that matched. A header
+                # can satisfy several — "SL (down)" matches itself and the bare
+                # "SL" — and explaining it with both printed a cumulative sum
+                # and a service level side by side on the CUSUM key, one of
+                # them meaningless on that sheet.
+                for term in best_terms(label):
+                    if GLOSSES[term] not in seen:
+                        seen.add(GLOSSES[term])
+                        wanted.append(gloss_short(GLOSSES[term]))
             if not wanted:
                 continue
             # One term per LINE. Joined with " · " these ran together into a
