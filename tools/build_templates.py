@@ -2426,7 +2426,7 @@ def erlang():
 PARTS, OPS, REPS = 10, 3, 3
 
 # Ninety readings, in minutes: ten parts down, then A/B/C × three trials across.
-# A study whose parts do not span the real range flatters itself, so these span
+# A study whose parts do not span the real range condemns a sound gage, so these span
 # 5.2 to 15.9 minutes. Appraiser B reads consistently long and C consistently
 # short, which is what makes reproducibility (26.1%) dominate repeatability
 # (11.2%) — the finding the document reports, and the reason the fix is a
@@ -2464,7 +2464,11 @@ def gage_rr():
          "and 'handle time as the analyst clocks it' are two different gages."),
         ("Parts / items in the study", PARTS, "0",
          "Ten minimum, and they must span the RANGE YOU ACTUALLY SEE. Sampling ten "
-         "routine contacts is the single most common way a study flatters the gage."),
+         "routine contacts collapses part-to-part variation, which inflates %study "
+         "variation and drives ndc down — it condemns a sound gage rather than "
+         "flattering it. When you cannot get the spread, judge on %Tolerance (B65) "
+         "instead, which measures the gage against the spec width and does not move "
+         "with the parts you happened to pick."),
         ("Appraisers / observers", OPS, "0",
          "Three minimum. Fewer and reproducibility is a guess."),
         ("Replicates (each appraiser measures each part this many times)", REPS, "0",
@@ -2729,7 +2733,9 @@ def gage_rr():
         (False, "Pick 10 parts that SPAN THE RANGE YOU ACTUALLY SEE — not ten typical ones. Have "
                 "3 appraisers measure each part 3 times. Randomise the order, and make sure no "
                 "appraiser can see their own earlier answer or anyone else's. Type the 90 "
-                "readings into the yellow grid; the rest of the workbook is formulas."),
+                "readings over the green grid at B13:J22 on the 'Gage R&R study' tab — the "
+                "yellow cells above it (B5:B9) are the five study-design settings, not "
+                "somewhere to put readings; the rest of the workbook is formulas."),
         (True, "Reading the answer"),
         (False, "% Study variation is the headline: under 10% acceptable, 10–30% marginal, over "
                 "30% unacceptable. Then look at the split. Repeatability high means the method is "

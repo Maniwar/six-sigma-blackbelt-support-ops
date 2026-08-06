@@ -88,8 +88,8 @@ HOWTO = {
         "Measure, before capability or any hypothesis test on a continuous metric.",
         "Black Belt runs it · the system owner fixes what it finds",
         "Accepting a study whose parts do not span the real range. If every sampled "
-        "contact is a routine one, %study variation flatters itself and the gage looks "
-        "better than it is."),
+        "contact is a routine one, part-to-part variation collapses, %study variation "
+        "measures the gage against the total, and a sound gage is condemned."),
     "09-baseline-document": (
         "The number the project is judged against, with the evidence that it is stable "
         "enough to be judged against.",

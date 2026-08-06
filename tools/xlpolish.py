@@ -942,7 +942,19 @@ def write_chart_notes(wb) -> int:
             cell.font = Font(italic=True, size=9, color="FF4B5563")
             cell.alignment = Alignment(wrap_text=True, vertical="top")
             span = 9
-            if not any((row, c) in taken for c in range(col, col + span)):
+            # Refusing only cells that are already MERGED is not enough: a cell
+            # can be occupied without being merged, and merging over it destroys
+            # what it held silently. On both Laney tabs this note took O22:W22
+            # and swallowed the baseline index at T22, so p-bar, u-bar and sigma
+            # z were computed from 19 of the 20 points the sheet promises — and
+            # nothing showed, because a merge leaves no gap where the value was.
+            # The I-MR tab was spared only because its note starts a column
+            # earlier and stops at S.
+            for c in range(col + 1, col + span):
+                if ws.cell(row=row, column=c).value not in (None, ""):
+                    span = c - col
+                    break
+            if span > 1 and not any((row, c) in taken for c in range(col, col + span)):
                 ws.merge_cells(start_row=row, start_column=col,
                                end_row=row, end_column=col + span - 1)
                 taken.update((row, c) for c in range(col, col + span))
