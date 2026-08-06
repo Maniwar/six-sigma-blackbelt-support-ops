@@ -479,6 +479,34 @@ def test_control_limits_close() -> None:
           f"formula MAX(1, B6/1.128) cannot do")
 
 
+def test_pages_publishes_as_is() -> None:
+    """docs/ must publish without Jekyll touching it.
+
+    The site is one self-contained HTML file. Without a .nojekyll marker every
+    deploy still runs it through Jekyll, which has nothing to do for it and is
+    one more stage between a push and a reader. It is also a stage that can
+    fail on its own: a Pages build for 8c63cfc errored with duration 0 and
+    nothing but "Page build failed", and the next commit — a superset of it —
+    built in 73 seconds.
+
+    Adding the marker is only safe while the page carries no Liquid, so that
+    is checked too rather than assumed. A `{{` or `{%` reaching docs/index.html
+    would be rendered by Jekyll today and served literally with the marker in
+    place, which is a change of behaviour someone has to notice.
+    """
+    check((DOCS.parent / ".nojekyll").exists(),
+          "docs/.nojekyll exists, so Pages serves the file as it is",
+          "without it every deploy runs Jekyll over a self-contained page for "
+          "no reason, and Jekyll is a stage that can fail on its own")
+    page = DOCS.read_text(encoding="utf-8")
+    for token, what in (("{{", "Liquid output"), ("{%", "Liquid tag")):
+        check(token not in page,
+              f"the published page contains no {what}",
+              f"{page.count(token)} occurrence(s) of {token!r} — with .nojekyll "
+              f"in place Jekyll no longer renders these, so they would reach "
+              f"the reader literally")
+
+
 def test_docs_counts() -> None:
     """README, PUBLISH and the issue template have to count the same pack.
 
@@ -2152,6 +2180,7 @@ def main() -> int:
     test_glossary_coverage()
     print("CASE       the worked project's figures reproduce from each other")
     test_control_limits_close()
+    test_pages_publishes_as_is()
     test_docs_counts()
     test_baseline_window()
     test_case_study()
