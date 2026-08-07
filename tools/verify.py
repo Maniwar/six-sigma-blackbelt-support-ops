@@ -479,6 +479,40 @@ def test_control_limits_close() -> None:
           f"formula MAX(1, B6/1.128) cannot do")
 
 
+def test_waves_tile() -> None:
+    """The curriculum sells four five-day waves; the modules have to add up.
+
+    They summed to 19.75: wave 1 exactly 5.00, wave 2 4.25, wave 3 exactly
+    5.00, wave 4 5.50. Two waves landing exactly on 5.00 is what says the
+    tiling is intended rather than approximate — a quarter-day of slop in one
+    place is a rounding, two exact waves and two wrong ones is a slip.
+
+    Nobody could have noticed by reading: the durations sit in 26 separate
+    spans hundreds of lines apart, and the totals appear nowhere. Adding them
+    up is three lines and this is the check that does it.
+    """
+    page = HTML.read_text(encoding="utf-8")
+    mods = {int(m.group(1)[1:]): float(m.group(2)) for m in
+            re.finditer(r'(M\d\d).{0,600}?<span class="mmeta">([\d.]+)\s*day',
+                        page, re.S)}
+    check(len(mods) == 26,
+          "all 26 curriculum modules state a duration",
+          f"found {len(mods)} — the check cannot add up what it cannot find")
+    if len(mods) != 26:
+        return
+    for name, rng in (("1", range(1, 8)), ("2", range(8, 14)),
+                      ("3", range(14, 20)), ("4", range(20, 27))):
+        got = sum(mods.get(i, 0) for i in rng)
+        check(abs(got - 5.0) < 0.001,
+              f"wave {name} is five days of teaching",
+              f"its modules add to {got:.2f} days, and the page calls it a "
+              f"five-day wave")
+    total = sum(mods.values())
+    check(abs(total - 20.0) < 0.001,
+          "the four waves add to twenty days",
+          f"they add to {total:.2f}")
+
+
 def test_kappa_bands_agree() -> None:
     """One set of kappa acceptance bands, everywhere the pack states them.
 
@@ -2212,6 +2246,7 @@ def main() -> int:
     test_glossary_coverage()
     print("CASE       the worked project's figures reproduce from each other")
     test_control_limits_close()
+    test_waves_tile()
     test_kappa_bands_agree()
     test_pages_publishes_as_is()
     test_docs_counts()
