@@ -479,6 +479,44 @@ def test_control_limits_close() -> None:
           f"formula MAX(1, B6/1.128) cannot do")
 
 
+def test_no_contrast_aliases() -> None:
+    """No glossary entry may claim its own opposite as another name for it.
+
+    Three did. "Hold time" listed "Talk time"; "Tier 2" listed "Tier 1";
+    "Value-add" listed "Non-value-add" and "Business-value-add". Those are not
+    aliases, they are the terms each entry contrasts itself with — and because
+    an alias binds the word to that entry, clicking "non-value-add" gave the
+    reader the definition of value-add, in a pack whose Lean sections turn on
+    telling the two apart.
+
+    Cheap to state as a rule: a term and its negation cannot be the same thing,
+    and neither can two numbered tiers.
+    """
+    page = HTML.read_text(encoding="utf-8")
+    # aka lists are written inline as aka:["A","B"] right after each entry.
+    for m in re.finditer(r'"([^"]{2,40})"\s*:\s*\{full:.*?aka:\[([^\]]*)\]', page):
+        key, akas = m.group(1), re.findall(r'"([^"]+)"', m.group(2))
+        k = key.lower().replace("-", " ").strip()
+        for a in akas:
+            al = a.lower().replace("-", " ").strip()
+            # A negation of the key, or the key a negation of it.
+            neg = ({"non " + k, "non" + k} & {al}) or ({"non " + al, "non" + al} & {k})
+            check(not neg,
+                  f"glossary: {key!r} does not claim {a!r} as another name for it",
+                  "an alias binds that word to this entry, so the reader asking "
+                  "about one gets the definition of its opposite")
+            # Tier 1 / Tier 2 and the like.
+            kt = re.fullmatch(r"(\w+)\s+(\d+|one|two|three)", k)
+            at = re.fullmatch(r"(\w+)\s+(\d+|one|two|three)", al)
+            if kt and at and kt.group(1) == at.group(1):
+                same = {"1": "one", "2": "two", "3": "three"}
+                a_n = same.get(at.group(2), at.group(2))
+                k_n = same.get(kt.group(2), kt.group(2))
+                check(a_n == k_n,
+                      f"glossary: {key!r} does not claim {a!r} as another name for it",
+                      "different numbered levels are different things")
+
+
 def test_waves_tile() -> None:
     """The curriculum sells four five-day waves; the modules have to add up.
 
@@ -2246,6 +2284,7 @@ def main() -> int:
     test_glossary_coverage()
     print("CASE       the worked project's figures reproduce from each other")
     test_control_limits_close()
+    test_no_contrast_aliases()
     test_waves_tile()
     test_kappa_bands_agree()
     test_pages_publishes_as_is()
