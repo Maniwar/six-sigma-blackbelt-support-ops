@@ -479,6 +479,50 @@ def test_control_limits_close() -> None:
           f"formula MAX(1, B6/1.128) cannot do")
 
 
+def test_benefit_calculators_agree() -> None:
+    """Every on-page benefit calculator prices what the charter prices.
+
+    There were three copies of this chain and I found them one at a time. The
+    calculator workbook was corrected, then the business-case wizard, and the
+    formula sheet's own volben card was left holding 480,000 contacts at $6.80
+    — the whole billing queue against a rate measured on 11,592 adjustments,
+    and cost-to-serve as the price of a reopen. It returned $172,013 where the
+    charter's chain gives $23,581: 7.3x, in a calculator a reader types their
+    own numbers into.
+
+    Nothing in tools/ writes the formula sheet, so nothing could propagate a
+    fix to it. This checks it instead.
+    """
+    page = HTML.read_text(encoding="utf-8")
+    charter = (TEMPLATES / "01-project-charter.md").read_text(encoding="utf-8")
+    m = re.search(r"([\d,]{5,}) in-scope billing adjustments a year", charter)
+    adj = float(m.group(1).replace(",", "")) if m else None
+    m2 = re.search(r"\$([\d.]+) a reopen", charter)
+    reopen = float(m2.group(1)) if m2 else 38.60
+    check(adj is not None,
+          "the charter states the in-scope population the calculators use",
+          "wording moved; the calculators can no longer be checked against it")
+    if adj is None:
+        return
+    i = page.find('id:"volben"')
+    check(i > 0, "the formula sheet still carries the volben card",
+          "the card was renamed or removed, so this check is measuring nothing")
+    if i < 0:
+        return
+    card = page[i:i + 2000]
+    vol = re.search(r'"k": "v"[^}]*?"v": ([\d.]+)', card)
+    cost = re.search(r'"k": "c"[^}]*?"v": ([\d.]+)', card)
+    check(vol and float(vol.group(1)) == adj,
+          "the volben calculator's volume is the in-scope population",
+          f"it defaults to {vol.group(1) if vol else '?'} against the charter's "
+          f"{adj:,.0f} — a rate measured on one population against a volume "
+          f"from a wider one is the defect the charter records")
+    check(cost and abs(float(cost.group(1)) - reopen) < 0.01,
+          "the volben calculator prices a reopen at the cost of a reopen",
+          f"it defaults to {cost.group(1) if cost else '?'} against the "
+          f"charter's {reopen} — cost-to-serve is not the price of rework")
+
+
 def test_no_contrast_aliases() -> None:
     """No glossary entry may claim its own opposite as another name for it.
 
@@ -2284,6 +2328,7 @@ def main() -> int:
     test_glossary_coverage()
     print("CASE       the worked project's figures reproduce from each other")
     test_control_limits_close()
+    test_benefit_calculators_agree()
     test_no_contrast_aliases()
     test_waves_tile()
     test_kappa_bands_agree()
