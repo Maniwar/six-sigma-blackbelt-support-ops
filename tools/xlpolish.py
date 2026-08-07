@@ -970,8 +970,23 @@ def write_chart_notes(wb) -> int:
             # FIRST time, so walking down to the next empty one wrote a second
             # copy on every rebuild — 42 notes became 76 in one round trip.
             # Look for this chart's note anywhere on the sheet before placing it.
-            if any(c.value == text for r in ws.iter_rows() for c in r
-                   if isinstance(c.value, str)):
+            # Matching the NEW text only handles the unchanged case. Edit a
+            # note and the old one no longer matches, so it stays where it is
+            # and the new one lands on the next free cell — the kappa sheet
+            # ended up with the retracted 0.4 band in D22 and its replacement
+            # in D23. Clear any previous note for THIS chart first: same lead-in,
+            # same opening sentence, different tail.
+            lead = "HOW TO READ IT.  " + note.split(".")[0]
+            done = False
+            for r in ws.iter_rows():
+                for c in r:
+                    if not isinstance(c.value, str) or not c.value.startswith("HOW TO READ IT"):
+                        continue
+                    if c.value == text:
+                        done = True
+                    elif c.value.startswith(lead[:60]):
+                        c.value = None
+            if done:
                 continue
             while True:
                 cell = ws.cell(row=row, column=col)

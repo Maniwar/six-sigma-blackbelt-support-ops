@@ -60,8 +60,9 @@ NOTES: dict[str, str] = {
     # --------------------------------------------------------------- measure
     "Cohen's kappa against the usual thresholds":
         "Kappa is agreement after chance is removed, which is why it is so much lower "
-        "than the raw agreement percentage people quote. Below 0.4 the data cannot be "
-        "used for individual performance management at all. Fix the rubric and re-run — "
+        "than the raw agreement percentage people quote. This programme runs on "
+        "07-msa-attribute-agreement.md's bands: above 0.80 good, 0.60 to 0.80 marginal "
+        "and aggregate-only, below 0.60 unacceptable. Fix the rubric and re-run — "
         "improving the training rarely moves it.",
     "Where your measurement error is — under 30% or the study stops here":
         "Bars are % study variation, a share of standard deviation. The worked example "
@@ -280,9 +281,10 @@ ACTIONS: dict[str, str] = {
         "Build the Must-bes to parity and spend the remaining effort on one Delighter. Anything "
         "in Indifferent comes out of the scope now, while removing it is still cheap.",
     "Cohen's kappa against the usual thresholds":
-        "Below 0.4, stop and rewrite the rubric — do not analyse the data you have and do not use "
-        "it for individual performance management. Re-run the study on the new definitions and "
-        "only then carry on.",
+        "Below 0.60, stop and rewrite the rubric — do not analyse the data you have and do not use "
+        "it for individual performance management. Between 0.60 and 0.80 you may analyse in "
+        "aggregate but still not judge a person on it. Re-run the study on the new "
+        "definitions and only then carry on.",
     "Where your measurement error is — under 30% or the study stops here":
         "At 28.4% this is usable with the caution stated, not clean. Reproducibility is more than "
         "twice repeatability, so run a calibration session against a written rubric and re-test — "
