@@ -479,6 +479,38 @@ def test_control_limits_close() -> None:
           f"formula MAX(1, B6/1.128) cannot do")
 
 
+def test_kappa_bands_agree() -> None:
+    """One set of kappa acceptance bands, everywhere the pack states them.
+
+    07-msa-attribute-agreement.md runs >0.80 good, 0.60-0.80 marginal, <0.60
+    unacceptable. The curriculum table, the tool card, the on-page calculator,
+    the glossary card, the GLOSS payload, the worked example and the calculator
+    workbook all carried the looser 0.75 / 0.40 cuts instead — so the pack
+    called a kappa of 0.41 marginal in seven places while its own template
+    halts all use of the data below 0.60. The worked example reports exactly
+    0.41, and the live calculator printed the verdict the template rejects.
+
+    Seven copies of one rule is the shape that keeps recurring here, so this
+    checks the numbers rather than the words: the loose cuts must not appear,
+    and the strict ones must.
+    """
+    page = HTML.read_text(encoding="utf-8")
+    for loose in ("0.75 – 0.90", "0.75–0.90", "0.40 – 0.75", "0.4–0.75",
+                  "B13>0.75", "k>0.75"):
+        check(loose not in page,
+              f"the page states no kappa band at {loose!r}",
+              "these are the AIAG-style cuts; the pack runs on >0.80 good, "
+              "0.60-0.80 marginal, <0.60 unacceptable, and a band that passes "
+              "a rubric the template halts is the wrong way round when the "
+              "data reaches someone's performance review")
+    tpl = (TEMPLATES / "07-msa-attribute-agreement.md").read_text(encoding="utf-8")
+    for strict in (">0.80", "0.60–0.80", "<0.60"):
+        check(strict in tpl,
+              f"the MSA template still states the {strict} band",
+              "the page is checked against these, so if the template's wording "
+              "moves the check is measuring nothing")
+
+
 def test_pages_publishes_as_is() -> None:
     """docs/ must publish without Jekyll touching it.
 
@@ -2180,6 +2212,7 @@ def main() -> int:
     test_glossary_coverage()
     print("CASE       the worked project's figures reproduce from each other")
     test_control_limits_close()
+    test_kappa_bands_agree()
     test_pages_publishes_as_is()
     test_docs_counts()
     test_baseline_window()

@@ -89,9 +89,15 @@ SINGLE: list[tuple[str, str, str, str]] = [
     ("19-black-belt-calculators.xlsx", "2 QA agreement (kappa)", "B13",
      '=IFERROR((B11-B12)/(1-B12),"")'),
     ("19-black-belt-calculators.xlsx", "2 QA agreement (kappa)", "B14",
+     # The bands the pack runs on, from 07-msa-attribute-agreement.md: good
+     # above 0.80, marginal 0.60-0.80, unacceptable below 0.60. This carried
+     # the looser AIAG-style 0.75/0.40 cuts, so the workbook called a kappa of
+     # 0.41 MARGINAL where the template halts all use of the data — and the
+     # same split sat in the curriculum table, the tool card, the on-page
+     # calculator, the glossary and the worked example.
      '=IF(B13="","",IF(B13>0.9,"EXCELLENT — fit for purpose",'
-     'IF(B13>0.75,"GOOD — usable, fix the weakest rubric items",'
-     'IF(B13>0.4,"MARGINAL — do NOT use for individual performance management",'
+     'IF(B13>0.8,"GOOD — usable, fix the weakest rubric items",'
+     'IF(B13>0.6,"MARGINAL — aggregate analysis only, never individual performance management",'
      '"UNACCEPTABLE — halt all use of this data until fixed"))))'),
 
     # -- 19 calculators, sheet 3: the verdict read B15, which sits inside the
