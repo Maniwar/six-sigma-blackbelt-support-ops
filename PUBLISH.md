@@ -100,12 +100,53 @@ for every calculated cell. To change one:
 python3 -m pip install openpyxl formulas
 python3 tools/patch_workbooks.py   # apply the canonical formulas to templates/*.xlsx
 python3 tools/sync_html.py         # re-embed workbooks, tooltips and docs/index.html
-python3 tools/verify.py            # 798 checks: structure, arithmetic, four-way sync
+python3 tools/verify.py            # structure, arithmetic, four-way sync
 ```
 
 `patch_workbooks.py` is idempotent — running it twice changes nothing. Do not
 edit formulas directly in Excel: the next `patch_workbooks.py` run will
 overwrite them, and `verify.py` will fail in the meantime.
+
+`verify.py` is the largest gate but not the only one. Before you push, run all
+of them; each reads something the others do not, and a green `verify` says
+nothing about what the reader actually opens:
+
+```bash
+python3 tools/verify.py          # structure, arithmetic, four-way sync
+python3 tools/qa_templates.py    # workbook structure, examples, chart rubric
+python3 tools/qa_properties.py   # inputs actually move the outputs
+python3 tools/qa_citations.py    # every cross-reference resolves to its figure
+python3 tools/qa_visual.py       # drives the real page in a headless browser
+python3 tools/qa_wordtables.py   # reads the produced .docx, not the source
+python3 tools/qa_selftest.py     # mutation-tests the checks themselves
+```
+
+A run that skips a layer says so and fails; one you asked to skip (`--fast`,
+`--skip-browser`, `--skip-optional`) exits clean but prints NOT RUN and never
+counts the missing checks as passes.
+
+## Correcting a claim that appears more than once
+
+Read this before changing any figure or any sentence that states a rule.
+
+Almost every defect this pack has had was one rule stated in several places and
+corrected in some of them: acceptance bands wrong in seven places, a benefit
+chain in three, a sampling bias in four. Twice a fix was reported complete while
+a copy survived somewhere nobody had looked.
+
+So when you correct a claim, **grep the whole pack for the old wording first** —
+the page, `templates/*.md`, and the workbooks, whose prose lives in cell values
+and cell comments and will not turn up in a plain grep. Then record it:
+
+* the old wording goes in `RETIRED` in `tools/retired.py`, with why it is wrong
+  and what replaced it;
+* if the figure appears in more than one place, the new value goes in
+  `CANONICAL` with a pattern that identifies a statement of that fact.
+
+`verify.py` then refuses the old wording anywhere in any artefact, and requires
+every statement of the fact to carry the same value. This is the step that turns
+"I fixed it everywhere" from something you believe into something the build
+checks. It is not optional bookkeeping: it is the fix.
 
 ## If you edit the HTML by hand
 
