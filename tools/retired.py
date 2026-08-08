@@ -166,6 +166,44 @@ RETIRED: list[Retired] = [
         "Fleiss at all",
         "a statement that the pack does not compute it, and the pairwise route",
     ),
+    # The one this registry existed for and did not catch, because I corrected
+    # the threshold in the curriculum and did not retire the old value. It
+    # survived in two GENERATORS — worked_examples.py and md_guidance.py — and
+    # so in the shipped hypothesis log, where the project's headline test read
+    # "well past the 1.5 we agreed mattered" and booked itself Accepted while
+    # the charter said the benefit misses the Finance floor. Found by an audit,
+    # which is exactly what this file is meant to make unnecessary.
+    Retired(
+        "1.5 we agreed mattered",
+        "the retired practical-significance threshold, which booked the project's "
+        "headline test as passing while its charter said it misses the floor",
+        "13.1 points — what 11,592 adjustments must move to clear the $50,000 floor",
+    ),
+    Retired(
+        "threshold was 1.5 pts",
+        "the same retired threshold, in the guidance generator that rewrites the "
+        "evidence pack",
+        "the threshold is 13.1 pts",
+    ),
+    Retired(
+        "1.5 percentage points — below this",
+        "the same retired threshold, in the generator that rewrites the charter",
+        "13.1 percentage points on 11,592 in-scope adjustments",
+    ),
+    Retired(
+        "test of baseline reopens against pilot reopens",
+        "a before/after comparison, which the pilot protocol forbids and this pack "
+        "teaches against: it is contaminated by seasonality and mix shift. The "
+        "pre-registered test is treatment against concurrent control",
+        "the two-proportion test of treatment against concurrent control",
+    ),
+    Retired(
+        "the 960-minute wait survives the project",
+        "960 minutes is the customer-confirmation wait at F17 of the value stream "
+        "map; the wait in front of the vendor batch, which is what this risk is "
+        "about, is the 720 at F15",
+        "the 720-minute wait in front of the batch survives the project",
+    ),
 ]
 
 

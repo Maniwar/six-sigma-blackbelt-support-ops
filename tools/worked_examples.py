@@ -175,8 +175,10 @@ def hypothesis_log(wb) -> int:
     rows = [
         [1, "Did the deferred-close rule cut reopens?", "2-proportion test", "Proportion",
          "Yes", "Contact reason, tenure", 0.41, 7420, 7180, 0.0001, "-4.9 pts",
-         "-6.1 to -3.7", "1.5 pts", None, "Reopens fell 4.9 points, well past the 1.5 we agreed mattered",
-         "Accepted", "2026-06-14", "M. Berenji"],
+         "-6.1 to -3.7", "13.1 pts", None,
+         "Reopens fell 4.9 points — real, and short of the 13.1 points registered as the "
+         "smallest change that clears the floor. Significant is not the same as bookable",
+         "Rejected", "2026-06-14", "M. Berenji"],
         [2, "Did the shorter code list improve routing accuracy?", "2-proportion test",
          "Proportion", "Yes", "Queue, tenure", 0.22, 4100, 4260, 0.0031, "+6.2 pts",
          "+2.1 to +10.3", "3.0 pts", None, "Routing accuracy up 6.2 points",

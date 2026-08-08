@@ -75,7 +75,7 @@ of another — the most common way a real benefit case dies.
 > 966 adjustments in the baseline month (09-baseline-document, section 5). Row 4 is
 > OD-BIL-004 v2 — every billing ticket reaching Resolved, 14.2% over 1–31 Mar
 > (06-data-lineage, competing-definitions table). The 6.2-point gap the project is
-> signed up to close is row 1's gap and cannot be carried to row 3's population: 966
+> signed up to close is row 1's gap and cannot be carried to row 4's population: 966
 > adjustments a month is 11,592 a year against 266,000 billing contacts a year
 > (01-project-charter), so in-scope adjustments are 4.4% of the queue and 1,646 of
 > its 37,772 reopens. Fixing every one of them moves row 4 from 14.2% to 13.58% —

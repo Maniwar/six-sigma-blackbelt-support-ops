@@ -149,9 +149,9 @@ must then recompute this field by the method below, before the 90-day benefit ch
 > and then by the queue's 266,000 — the wrong price of a reopen and the wrong
 > population, compounding into a threshold the project appeared to clear by 1.9x: 6.2
 > points against 3.3, and, on the v1.0 chain in §11, $95,324 realized against the
-> $50,000 floor. The p-value itself comes from a two-proportion
-> test of baseline reopens against pilot reopens — run it in
-> `13-hypothesis-test-log.xlsx`, which picks the test and prints the decision rule.*
+> $50,000 floor. The p-value itself comes from the two-proportion test of
+> treatment against concurrent control pre-registered at 16-pilot-protocol.md:54 — never a
+> baseline-against-pilot before/after — logged in `13-hypothesis-test-log.xlsx`.*
 
 ## 6. Team and RACI
 
@@ -190,7 +190,7 @@ Signed by affected ops leader: ____________________  Date: __________
 
 | Risk / dependency | Impact | Mitigation | Owner |
 |---|---|---|---|
-| *The 02:00 posting batch is run by the billing platform vendor; the window sits in the contract, not in our gift* | *If it cannot move, anything raised after 17:00 still waits overnight and the 960-minute wait survives the project* | *Change request raised at Define, not at Improve. Fallback agreed with the vendor: a second 14:00 run for adjustments under $250* | *A. Okafor, Billing Ops* |
+| *The 02:00 posting batch is run by the billing platform vendor; the window sits in the contract, not in our gift* | *If it cannot move, anything raised after 17:00 still waits overnight and the 720-minute wait in front of the batch survives the project (10-value-stream-map.xlsx, sheet 'Value stream', F15 — the 960 minutes at F17 is the customer-confirmation wait, which this risk does not touch)* | *Change request raised at Define, not at Improve. Fallback agreed with the vendor: a second 14:00 run for adjustments under $250* | *A. Okafor, Billing Ops* |
 | *QA analysts agree only moderately on the "resolution confirmed" rubric item — first-pass kappa 0.52* | *The primary metric is read off that item, so the 14.2% in-scope adjustment baseline (OD-BIL-004-ADJ, 137/966) could be wrong in either direction* | *Re-calibrate the rubric and re-run the attribute agreement study before the Measure tollgate closes — see 07-msa-attribute-agreement.md* | *L. Haddad, QA manager* |
 | *Adjustment volume roughly doubles over the billing cycle peak, the 12th to the 18th of each month* | *A pilot that dodges the peak will not generalise; one that straddles it confounds the change with volume* | *Pilot runs a full billing cycle and the read blocks on cycle week — protocol in 16-pilot-protocol.md* | *M. Berenji* |
 
