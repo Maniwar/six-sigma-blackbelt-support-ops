@@ -165,6 +165,93 @@ def audit_doc(key: str, doc: str, preview: str = "") -> list[str]:
                         f"{real[0][:50]!r}")
                     break
 
+        # 4. A heading narrower than its own longest word. Word cannot wrap
+        #    inside a word, so it sets the heading one letter per line and the
+        #    column becomes a vertical ribbon. This is what a reader sees first
+        #    and it is what the earlier width work missed: the checks proved
+        #    columns were not EMPTY and not below Word's cell padding, and never
+        #    that the text could fit in them. A control plan came out eighteen
+        #    columns at a third of an inch.
+        CH, PAD = 96, 96                       # twips per character, plus margins
+        rows = RE_ROW.findall(tbl)
+        head = next((r for r in rows if "<w:tblHeader/>" in r), None)
+        # A rotated heading reads down the column and needs one line-height
+        # of width, not its own length.
+        if head and "<w:textDirection" not in head:
+            at = 0
+            for cell in RE_CELL.findall(head):
+                m = RE_SPAN.search(cell)
+                span = int(m.group(1)) if m else 1
+                ci, at = at, at + span
+                if ci >= len(grid):
+                    break
+                # The width the heading actually has is the sum of the columns
+                # it spans. Comparing a spanning heading against one column's
+                # width reported the fishbone's category labels as too narrow
+                # when each of them has three columns to sit in — this check
+                # misreading the table, not the table being wrong.
+                # The FIRST visual line only. A heading cell can carry its
+                # formula on a second line, and joining the two reads the
+                # heading and the formula as one 24-character token — which is
+                # this check misreading its own fix rather than a defect. A
+                # formula is allowed to be too long for its column; it wraps.
+                lines = [l.strip() for l in cell_lines(cell) if l.strip()]
+                first = lines[0] if lines else ""
+                longest = max((len(w) for w in first.split()), default=0)
+                avail = sum(grid[ci:ci + span])
+                if longest and avail < longest * CH + PAD:
+                    bad.append(
+                        f"{key} table#{ti} col#{ci}: heading "
+                        f"{first[:28]!r} has a {longest}-character word "
+                        f"in {avail}dxa ({avail/1440:.2f}in) — Word will set "
+                        f"it one letter per line")
+
+        # 6. A body column too narrow for an ordinary word. Rotating the
+        #    headings stops them breaking but says nothing about the cells
+        #    below, and a 0.36in column breaks those instead. Only ordinary
+        #    words count: a 68-character identifier fits nowhere and Word
+        #    breaks it wherever it must, which is not a layout defect.
+        # Body rows only. cols[] includes the header row, and a rotated heading
+        # reads down its column — counting it here re-flagged every heading the
+        # rotation had just fixed, which is this check undoing its own premise.
+        body_rows = [r for r in RE_ROW.findall(tbl) if "<w:tblHeader/>" not in r]
+        body_cols: list[list[str]] = [[] for _ in grid]
+        for row in body_rows:
+            at = 0
+            for cell in RE_CELL.findall(row):
+                m = RE_SPAN.search(cell)
+                span = int(m.group(1)) if m else 1
+                if at < len(grid) and span == 1:
+                    body_cols[at].append(cell_text(cell))
+                at += span
+        for ci, col in enumerate(body_cols):
+            if ci >= len(grid):
+                break
+            ordinary = [w for cell in col for w in cell.split()
+                        if 3 <= len(w) <= 14 and not w.startswith("=")]
+            if not ordinary:
+                continue
+            longest_body = max(len(w) for w in ordinary)
+            if grid[ci] < longest_body * CH + PAD:
+                worst = max(ordinary, key=len)
+                bad.append(
+                    f"{key} table#{ti} col#{ci}: {grid[ci]}dxa "
+                    f"({grid[ci]/1440:.2f}in) cannot hold {worst!r} — an "
+                    f"ordinary word Word will have to break")
+
+        # 5. A grid wider than the page. Every column can be wide enough for
+        #    its own text and the table still run off the paper — the control
+        #    plan's eighteen columns added to 21,392 twips against 12,960
+        #    usable. The heading check above looked at columns one at a time and
+        #    could not see it; this adds them up.
+        page = 12960 if 'w:orient="landscape"' in doc else 9360
+        total = sum(grid)
+        if total > page + 40:
+            bad.append(
+                f"{key} table#{ti}: its {len(grid)} columns add to {total}dxa "
+                f"({total/1440:.2f}in) against {page/1440:.2f}in of usable page — "
+                f"the right-hand columns fall off the paper")
+
     # Document-level properties. These are stated once per file rather than
     # per table, because each is about the document being coherent with itself.
     data = [t for t in tables(doc) if not is_chart_bar(t)]

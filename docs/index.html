@@ -6325,6 +6325,11 @@ var DOCX = (function(){
    embed as a real image part, so the drawing in the .docx is the drawing in
    the .xlsx rather than an approximation of it. */
 var IMAGES = [];
+// Usable width in twips. Portrait Letter with 1in margins is 9360; landscape
+// is 12960. build() picks one from how wide the widest table actually is.
+var PAGE_W = 9360;
+// Set while rendering one column group of a table too wide for the page.
+var KEEP_ONLY = null;
 var EMU = 914400, PAGE_EMU = Math.round(6.5 * 914400);   // Letter, 1in margins
 
 function drawingXml(i, im){
@@ -6500,7 +6505,10 @@ function tableFrom(tbl){
   var rows = [].slice.call(tbl.querySelectorAll('tr')).filter(function(r){
     return r.parentNode === tbl || r.parentNode.parentNode === tbl; });
   if(!rows.length) return '';
-  var widthTotal = 9360;                       // usable width for Letter with 1" margins
+  // Set by build(): 9360 twips on portrait Letter with 1in margins, 12960 on
+  // landscape. A control plan is eighteen columns and an FMEA twenty-five;
+  // neither has ever been a portrait document.
+  var widthTotal = PAGE_W;
   var cols = Math.max.apply(null, rows.map(function(r){ return r.children.length; })) || 1;
   var w = Math.floor(widthTotal/cols);
   var chart = tbl.getAttribute('data-chart') === '1';
@@ -6522,15 +6530,25 @@ function tableFrom(tbl){
   // spanning cell says nothing about which of the columns under it matter —
   // and these sheets open with a full-width title row, so counting spans as
   // evidence marked all 22 columns live and dropped none of them.
-  var load = [], k;
-  for(k=0;k<cols;k++) load[k] = 0;
+  var load = [], longest = [], headWord = [], k;
+  for(k=0;k<cols;k++){ load[k] = 0; longest[k] = 0; headWord[k] = 0; }
   rows.forEach(function(tr){
     var at = 0;
     [].slice.call(tr.children).forEach(function(td){
       var sp = parseInt(td.getAttribute('colspan')||'1', 10) || 1;
       // A bar is an empty shaded cell: no text, but the column is the chart.
       var len = visLen(td) || (td.getAttribute('data-bar') ? 12 : 0);
-      if(sp === 1 && at < cols) load[at] = Math.max(load[at], len);
+      if(sp === 1 && at < cols){
+        load[at] = Math.max(load[at], len);
+        // The longest single word, which is what cannot be wrapped away.
+        var isHdr = !!xword(td).head || td.tagName === 'TH';
+        var words = (visLen(td) ? (td.textContent||'') : '').split(/\s+/);
+        for(var wi=0; wi<words.length; wi++){
+          var L = Math.min(words[wi].length, 14);   // a longer token wraps or breaks
+          if(isHdr) headWord[at] = Math.max(headWord[at], L);
+          else      longest[at]  = Math.max(longest[at], L);
+        }
+      }
       at += sp;
     });
   });
@@ -6542,6 +6560,50 @@ function tableFrom(tbl){
   // A table of nothing but spanning rows — a standalone banner — has no column
   // that carries its own text. Keep it whole rather than deleting it.
   if(!keep.length) for(k=0;k<cols;k++) keep.push(k);
+
+  // A table can be too wide for any page. Twenty-five FMEA columns on nine
+  // landscape inches is 0.36in each — narrower than "New" — and no
+  // distribution fixes that, because the columns' own minimums already exceed
+  // the paper. Rotating the headings stopped them breaking and left the cells
+  // below breaking instead.
+  //
+  // So split it the way a wide spreadsheet has always been printed: column
+  // groups, stacked, each carrying the first column again so a row can be
+  // followed across them. Decided from what the columns need, not from a
+  // column count, because ten prose columns and ten score columns are not the
+  // same table.
+  if(!chart && !KEEP_ONLY){
+    var minNeed = keep.map(function(c){
+      return Math.min(Math.round(Math.max(longest[c], headWord[c]) * 96) + 96, 2200);
+    });
+    var total0 = minNeed.reduce(function(a, b){ return a + b; }, 0);
+    if(total0 > widthTotal && keep.length > 3){
+      var keyW = minNeed[0], groups = [], cur = [], curW = keyW;
+      for(var gi=1; gi<keep.length; gi++){
+        if(cur.length && curW + minNeed[gi] > widthTotal){
+          groups.push(cur); cur = []; curW = keyW;
+        }
+        cur.push(keep[gi]); curW += minNeed[gi];
+      }
+      if(cur.length) groups.push(cur);
+      if(groups.length > 1){
+        var out = '';
+        for(var gj=0; gj<groups.length; gj++){
+          KEEP_ONLY = [keep[0]].concat(groups[gj]);
+          out += para(run('Columns ' + (gj+1) + ' of ' + groups.length +
+                          ' — the first column repeats so a row can be followed across.',
+                          {i:true, sz:17, color:'5B6675'}), {spaceBefore:120}) +
+                 tableFrom(tbl);
+        }
+        KEEP_ONLY = null;
+        return out;
+      }
+    }
+  }
+  if(KEEP_ONLY) keep = KEEP_ONLY.slice();
+
+  // Decided before the widths, because it changes how they are computed.
+  var rotate = !chart && keep.length > 9;
 
   var grid = [];
   if(explicit){
@@ -6561,14 +6623,67 @@ function tableFrom(tbl){
     // Word applies as cell padding when a table declares none, so the text
     // area was negative and the heading rendered one letter per line. Give
     // every column enough to hold a short word, taken from the widest ones.
-    var MINCOL = Math.min(470, Math.floor(widthTotal/grid.length));
+    // A flat floor was wrong in both directions. Every column got 470 twips
+    // whether it held a sentence or a single digit, so on a 25-column FMEA the
+    // twelve one-character score columns took about an inch away from the
+    // prose columns that needed it — and 470 twips is 0.33in, which still
+    // cannot hold an eight-letter heading, so Word broke those headings one
+    // letter per line. That is the vertical ribbon a reader actually sees.
+    //
+    // Size the floor to the longest unbreakable word the column has to show.
+    // A score column needs room for "DET", a prose column for its heading.
+    var CH = 96, PAD = 96;             // twips per character at this size, plus cell margins
+    // Eighteen headings will not fit across a page at any distribution — the
+    // control plan's own add to 21,392 twips against 12,960 usable, so sizing
+    // columns to their headings just runs the table off the edge instead of
+    // breaking the words. A wide table rotates its headings instead, which is
+    // how a control plan or an FMEA is printed on paper anyway; then only the
+    // body content sets the width.
+    var need = keep.map(function(c){
+      var w = rotate ? longest[c] : Math.max(longest[c], headWord[c]);
+      return Math.min(Math.round(w * CH) + PAD, 2200);
+    });
     var owed = 0;
-    grid.forEach(function(g, i){ if(g < MINCOL){ owed += MINCOL-g; grid[i] = MINCOL; } });
+    grid.forEach(function(g, i){ if(g < need[i]){ owed += need[i]-g; grid[i] = need[i]; } });
+    // Take the shortfall from whichever column is furthest above its own need.
     while(owed > 0){
-      var big = grid.indexOf(Math.max.apply(null, grid));
-      var take = Math.min(owed, grid[big]-MINCOL);
-      if(take <= 0) break;
-      grid[big] -= take; owed -= take;
+      var best = -1, slack = 0;
+      grid.forEach(function(g, i){ if(g - need[i] > slack){ slack = g - need[i]; best = i; } });
+      if(best < 0) break;
+      var take = Math.min(owed, slack);
+      grid[best] -= take; owed -= take;
+    }
+    // Whatever the floors wanted, the grid has to add to the page or Word puts
+    // the right-hand columns off the paper. This was the failure underneath the
+    // last one: columns wide enough for their text, summing to 21,392 twips
+    // against 12,960 usable, so the table ran off the edge instead.
+    var sum2 = grid.reduce(function(a, b){ return a + b; }, 0);
+    if(sum2 > widthTotal){
+      // Take the excess from whichever column is furthest ABOVE what it needs,
+      // never below it. Scaling every column by the same ratio instead shrank a
+      // column needing 400 twips as hard as one needing 2,200, which is how the
+      // FMEA ended up with 95-twip columns — 0.07in, narrower than the word
+      // "New". Prose columns have slack and wrap; a three-letter score column
+      // has none.
+      var excess = sum2 - widthTotal, guard = 0;
+      while(excess > 0 && guard++ < 500){
+        var big = -1, slack = 0;
+        grid.forEach(function(g, i){ if(g - need[i] > slack){ slack = g - need[i]; big = i; } });
+        if(big < 0) break;
+        var cut = Math.min(excess, slack);
+        grid[big] -= cut; excess -= cut;
+      }
+      // Still over: the table genuinely does not fit and every column is at its
+      // floor. Share the remainder so nothing is singled out.
+      if(excess > 0){
+        var each = Math.ceil(excess / grid.length);
+        grid.forEach(function(g, i){ grid[i] = Math.max(120, g - each); });
+      }
+    }
+    // Give any slack back to the widest column so the grid meets the page.
+    var sum3 = grid.reduce(function(a, b){ return a + b; }, 0);
+    if(sum3 < widthTotal && grid.length){
+      grid[grid.indexOf(Math.max.apply(null, grid))] += widthTotal - sum3;
     }
   }
   // Re-index onto the surviving columns so a cell still lands under its heading.
@@ -6604,9 +6719,15 @@ function tableFrom(tbl){
       if(s.b) fmt.b = true;
       if(s.color) fmt.color = s.color;
       var inner = td ? runsFrom(td, fmt) : '';
+      // Bottom-to-top text in the heading of a wide table. A vertical heading
+      // needs one line-height of width instead of its whole length, which is
+      // the only way eighteen columns fit a page — and is how these forms are
+      // printed on paper.
+      var rot = (rotate && isHead && td) ? '<w:textDirection w:val="btLr"/>' : '';
       return '<w:tc><w:tcPr><w:tcW w:w="'+cw+'" w:type="dxa"/>'+
         (span>1?'<w:gridSpan w:val="'+span+'"/>':'')+
         (s.fill?'<w:shd w:val="clear" w:fill="'+s.fill+'"/>':'')+
+        rot+
         '</w:tcPr>'+
         (td && td.getAttribute('data-bar')
           ? barCell(td, cw) + para('', {tight:true})
@@ -6729,6 +6850,22 @@ function build(title, html, images){
   var host = document.createElement('div');
   host.innerHTML = html;
   IMAGES = images || [];
+  // A control plan is eighteen columns wide and an FMEA twenty-five. Portrait
+  // gives each of them a third of an inch, which is narrower than the words in
+  // their own headings, so Word sets those headings one letter per line. These
+  // are landscape documents and always were; the export just never said so.
+  var widest = 0;
+  [].slice.call(host.querySelectorAll('table')).forEach(function(t){
+    if(t.getAttribute('data-chart') === '1') return;
+    [].slice.call(t.rows).forEach(function(r){
+      var n = 0;
+      [].slice.call(r.children).forEach(function(td){
+        n += parseInt(td.getAttribute('colspan')||'1', 10) || 1; });
+      if(n > widest) widest = n;
+    });
+  });
+  var land = widest > 9;
+  PAGE_W = land ? 12960 : 9360;
   var body = blocks(host);
   var doc = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
     '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'+
@@ -6737,7 +6874,9 @@ function build(title, html, images){
     ' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'+
     ' xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'+
     '<w:body>'+ body +
-    '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/>'+
+    '<w:sectPr>'+(land
+      ? '<w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/>'
+      : '<w:pgSz w:w="12240" w:h="15840"/>')+
     '<w:pgMar w:top="1080" w:right="1440" w:bottom="1080" w:left="1440" w:header="720" w:footer="720"/>'+
     '</w:sectPr></w:body></w:document>';
 
