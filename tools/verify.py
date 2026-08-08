@@ -479,6 +479,58 @@ def test_control_limits_close() -> None:
           f"formula MAX(1, B6/1.128) cannot do")
 
 
+def test_nothing_retired_survives() -> None:
+    """No artefact carries a claim this pack has retired, or a second rendering
+    of a fact it allows one of.
+
+    This is the general form of most of the checks around it. Each of those was
+    written after a defect shipped, catches that defect and nothing else, and
+    exists because one rule was stated in several places and corrected in some:
+    the kappa bands in seven places, the benefit chain in three, a sampling bias
+    in four, the rolled yield in five. Twice I reported one closed while a copy
+    survived somewhere I had not looked.
+
+    tools/retired.py holds the two registries. Adding to it is part of fixing a
+    defect: the old wording goes in RETIRED and the new figure in CANONICAL, and
+    from then on a missed copy — or one a generator puts back — fails by name
+    instead of waiting for the next audit.
+
+    It reads the page, the markdown templates, and every string cell and note in
+    every workbook, because the copies have turned up in all three.
+    """
+    from openpyxl import load_workbook
+
+    import retired as R
+
+    bad: list[str] = []
+    # The AUTHORED page, not the embedded template payload. Previews are
+    # generated from the workbooks and checked against them elsewhere, and a
+    # computed cell inside one can legitimately hold a number that means
+    # something else where it is authored.
+    page = HTML.read_text(encoding="utf-8")
+    a, b, _ = extract_tpls(page)
+    bad += R.scan(page[:a] + page[b:], "six-sigma-blackbelt-support-ops.html")
+    for md in sorted(TEMPLATES.glob("*.md")):
+        bad += R.scan(md.read_text(encoding="utf-8"), f"templates/{md.name}")
+    for xl in sorted(TEMPLATES.glob("*.xlsx")):
+        wb = load_workbook(xl)
+        chunks: list[str] = []
+        for ws in wb.worksheets:
+            for row in ws.iter_rows():
+                for cell in row:
+                    if isinstance(cell.value, str):
+                        chunks.append(cell.value)
+                    if cell.comment is not None:
+                        chunks.append(cell.comment.text)
+        bad += R.scan("\n".join(chunks), f"templates/{xl.name}")
+
+    check(not bad,
+          f"no retired claim survives anywhere ({len(R.RETIRED)} retired, "
+          f"{len(R.CANONICAL)} canonical facts)",
+          "\n      ".join(bad[:6]) + (f"\n      ... and {len(bad)-6} more"
+                                       if len(bad) > 6 else ""))
+
+
 def test_aht_chain_reaches_payroll() -> None:
     """Handle time becomes paid time in two steps, in all three calculators.
 
@@ -2378,6 +2430,7 @@ def main() -> int:
     test_glossary_coverage()
     print("CASE       the worked project's figures reproduce from each other")
     test_control_limits_close()
+    test_nothing_retired_survives()
     test_aht_chain_reaches_payroll()
     test_benefit_calculators_agree()
     test_no_contrast_aliases()
