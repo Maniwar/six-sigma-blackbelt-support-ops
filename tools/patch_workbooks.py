@@ -119,10 +119,27 @@ SINGLE: list[tuple[str, str, str, str]] = [
     ("19-black-belt-calculators.xlsx", "6 Staffing", "B12",
      '=IFERROR(B5*B6/3600/B7/(1-B8)-B5*B6/3600/B7,"")'),
     ("19-black-belt-calculators.xlsx", "6 Staffing", "B13", '=IFERROR(B5*B6/3600/B7/(1-B8),"")'),
+    # Occupancy converts handle time into AVAILABLE time, not paid time. This
+    # chain stopped there and called the result "Paid hours freed", pricing the
+    # saving as though nobody were paid for a break, a coaching session or a
+    # holiday. Shrinkage is the step that was missing, and leaving it out
+    # understates the benefit by 1/(1-shrinkage) — about 47% at 32%. The same
+    # stop-at-occupancy error was in the page's formula card and in the
+    # business-case wizard; all three carry the full chain now.
+    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "A10", "Shrinkage"),
+    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "B10", 0.32),
+    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "A12", "On-phone hours freed"),
     ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "B12", '=IFERROR(B5*B6/3600/B8,"")'),
-    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "B13", '=IFERROR(B5*B6/3600/B8/1760,"")'),
-    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "B14", '=IFERROR(B5*B6/3600/B8*B7,"")'),
-    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "B15", '=IFERROR(B5*B6/3600/B8*B7*B9,"")'),
+    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "A13", "Paid hours freed"),
+    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "B13",
+     '=IFERROR(B5*B6/3600/B8/(1-B10),"")'),
+    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "B14",
+     '=IFERROR(B5*B6/3600/B8/(1-B10)*B7,"")'),
+    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "B15",
+     '=IFERROR(B5*B6/3600/B8/(1-B10)*B7*B9,"")'),
+    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "A16", "People-equivalent (FTE)"),
+    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "B16",
+     '=IFERROR(B5*B6/3600/B8/(1-B10)/1760,"")'),
 
     # -- 19 calculators, sheet 9: NPV hardcoded years 1-3 while Simple ROI used
     #    B6*B7 for any B7, so the two disagreed above three years; year 1 was
@@ -491,12 +508,26 @@ NOTES: list[tuple[str, str, str, str]] = [
     ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "D11",
      "AHT = average handle time. The raw hours of talk, hold and after-call work your change "
      "removes across a year."),
+    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "D10",
+     "Share of PAID time that is not available for contacts at all: breaks, training, coaching, "
+     "meetings, sickness, holiday. From workforce management, and agree the list — 25% and 40% "
+     "are both common and the difference is entirely definitional. Occupancy above gets you to "
+     "available hours; this gets you the rest of the way to payroll."),
+    # This note used to say freeing an hour of handle time "frees rather more
+    # than an hour of payroll", which is the error the row itself made:
+    # occupancy converts handle time into AVAILABLE time, and payroll is one
+    # step further out.
     ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "D12",
-     "More than the handle-hours above, because agents are never occupied every minute — freeing "
-     "an hour of handle time frees rather more than an hour of payroll."),
+     "More than the handle-hours above, because agents are never occupied every minute. This is "
+     "AVAILABLE time, not payroll — occupancy is measured against the hours an agent is logged "
+     "in and ready, and paid time carries shrinkage on top."),
     ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "D13",
-     "The same saving expressed as whole people, at 1,760 productive hours a year. This is the "
-     "unit an executive actually hears."),
+     "What payroll actually carries, and therefore what the saving is worth. Stopping at the row "
+     "above prices it as though nobody were paid for a break, and understates the case by "
+     "1 ÷ (1 − shrinkage) — about 47% at 32%."),
+    ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "D16",
+     "The same saving expressed as whole people, at 1,760 paid hours a year. This is the unit an "
+     "executive actually hears, and it is on paid hours so it compares to a headcount line."),
     ("19-black-belt-calculators.xlsx", "7 Benefit — AHT", "D14",
      "The value before anything is discounted for what decays at rollout. Never quote this figure "
      "on its own."),
@@ -647,8 +678,21 @@ def patch_notes(wb, wbname: str) -> int:
         c = ws[cell]
         if c.__class__.__name__ == "MergedCell":
             raise SystemExit(f"{wbname} {sheet}!{cell} is inside a merged range")
-        if c.value not in (None, "") and c.value != text:
-            raise SystemExit(f"{wbname} {sheet}!{cell} already holds {c.value!r}")
+        # Refuse to clobber something that is not a note — a formula, a number,
+        # a heading. But a cell already holding PROSE is a note this registry
+        # owns, and refusing that made the registry able to add a note and
+        # never to correct one: the AHT tab's D12 said freeing an hour of
+        # handle time "frees rather more than an hour of payroll", which is the
+        # error the row itself made, and it could not be edited without the
+        # build exiting. The same shape as write_chart_notes, which could not
+        # replace a note either.
+        held = c.value
+        if held not in (None, "") and held != text:
+            editable = isinstance(held, str) and len(held) > 40 and not held.startswith("=")
+            if not editable:
+                raise SystemExit(
+                    f"{wbname} {sheet}!{cell} already holds {held!r} — that is not a "
+                    f"note, so NOTES will not overwrite it")
         if c.value != text:
             c.value = text
             n += 1

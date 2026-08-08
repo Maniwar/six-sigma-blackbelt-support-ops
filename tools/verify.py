@@ -479,6 +479,56 @@ def test_control_limits_close() -> None:
           f"formula MAX(1, B6/1.128) cannot do")
 
 
+def test_aht_chain_reaches_payroll() -> None:
+    """Handle time becomes paid time in two steps, in all three calculators.
+
+    Occupancy converts a handle-time saving into AVAILABLE hours — the time an
+    agent is logged in and ready. Payroll is one step further out, because paid
+    time carries shrinkage: breaks, training, coaching, sickness, holiday. All
+    three calculators divided by occupancy, called the result "paid hours" and
+    stopped, pricing the saving as though nobody were paid for a break. At the
+    32% shrinkage the pack uses elsewhere that understates the benefit by 47%.
+
+    Three copies again, and nothing compared them — the formula card, the
+    business-case wizard and the calculator workbook each had to be found
+    separately. This compares them.
+    """
+    from openpyxl import load_workbook
+
+    page = HTML.read_text(encoding="utf-8")
+    i = page.find('id:"ahtben"')
+    check(i > 0, "the formula sheet still carries the ahtben card",
+          "renamed or removed, so this check is measuring nothing")
+    if i < 0:
+        return
+    card = page[i:i + 3000]
+    check('"k": "s"' in card,
+          "the AHT card asks for shrinkage",
+          "without it the card divides by occupancy and calls the result paid "
+          "hours, which is available hours")
+    check("oh=hh/v.o, ph=oh/(1-v.s)" in card,
+          "the AHT card converts available hours to paid hours",
+          "the chain must divide by occupancy and then by (1 - shrinkage)")
+
+    check("onPhone/(1-V.shrink/100)" in page,
+          "the business-case wizard converts available hours to paid hours",
+          "its AHT archetype stopped at occupancy")
+    check("a.kind==='shrink' || a.kind==='aht'" in page,
+          "the wizard asks an AHT project for its shrinkage",
+          "it fell back to the default, so the reader was never shown the "
+          "number their benefit was divided by")
+
+    ws = load_workbook(TEMPLATES / "19-black-belt-calculators.xlsx")["7 Benefit — AHT"]
+    for cell, want in (("B13", "(1-B10)"), ("B14", "(1-B10)"), ("B15", "(1-B10)")):
+        got = str(ws[cell].value or "")
+        check(want in got,
+              f"the calculator workbook's {cell} divides by (1 - shrinkage)",
+              f"it reads {got!r}")
+    check(isinstance(ws["B10"].value, (int, float)),
+          "the calculator workbook has a shrinkage input",
+          f"B10 reads {ws['B10'].value!r}")
+
+
 def test_benefit_calculators_agree() -> None:
     """Every on-page benefit calculator prices what the charter prices.
 
@@ -2328,6 +2378,7 @@ def main() -> int:
     test_glossary_coverage()
     print("CASE       the worked project's figures reproduce from each other")
     test_control_limits_close()
+    test_aht_chain_reaches_payroll()
     test_benefit_calculators_agree()
     test_no_contrast_aliases()
     test_waves_tile()
