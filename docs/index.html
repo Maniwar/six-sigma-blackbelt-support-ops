@@ -6639,9 +6639,17 @@ function tableFrom(tbl){
     // breaking the words. A wide table rotates its headings instead, which is
     // how a control plan or an FMEA is printed on paper anyway; then only the
     // body content sets the width.
+    // The heading always counts, whether or not the cell is rotated.
+    //
+    // Rotation was doing double duty: turning the heading sideways AND excusing
+    // a narrow column. w:textDirection is a Word feature and Pages ignores it,
+    // so on a Mac the heading stayed horizontal in a column sized as though it
+    // would not — and "Wait BEFORE this step" came out "Wai t BEF ORE". The
+    // rotation stays, because it reads well where it is honoured, but it no
+    // longer buys any width. A table that cannot fit its headings horizontally
+    // is split instead, which every renderer understands.
     var need = keep.map(function(c){
-      var w = rotate ? longest[c] : Math.max(longest[c], headWord[c]);
-      return Math.min(Math.round(w * CH) + PAD, 2200);
+      return Math.min(Math.round(Math.max(longest[c], headWord[c]) * CH) + PAD, 2200);
     });
     var owed = 0;
     grid.forEach(function(g, i){ if(g < need[i]){ owed += need[i]-g; grid[i] = need[i]; } });

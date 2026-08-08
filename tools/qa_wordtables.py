@@ -175,9 +175,12 @@ def audit_doc(key: str, doc: str, preview: str = "") -> list[str]:
         CH, PAD = 96, 96                       # twips per character, plus margins
         rows = RE_ROW.findall(tbl)
         head = next((r for r in rows if "<w:tblHeader/>" in r), None)
-        # A rotated heading reads down the column and needs one line-height
-        # of width, not its own length.
-        if head and "<w:textDirection" not in head:
+        # Rotation is NOT an exemption. w:textDirection is a Word feature and
+        # Pages ignores it, so a heading sized as though it were vertical comes
+        # out horizontal in a column too narrow for it — which is the defect a
+        # reader on a Mac actually sees. Check the width the heading needs if
+        # nothing rotates it.
+        if head:
             at = 0
             for cell in RE_CELL.findall(head):
                 m = RE_SPAN.search(cell)
