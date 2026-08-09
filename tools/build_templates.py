@@ -1133,7 +1133,10 @@ def pareto():
           "Normality assessment for support data. Support durations are right-skewed: "
           "the mean flatters you, the median and p90 do not. Read the skew before you "
           "pick a test — a two-sample t-test on data this shaped will mislead you, and "
-          "the non-parametric equivalent will not.", 4)
+          "the non-parametric equivalent will not. This tab gives you in numbers what a "
+          "histogram or a boxplot would show you in a picture: where the middle sits, how "
+          "far the tail runs, and whether the two disagree. It does not draw either one — "
+          "plot those in your BI tool or notebook and read them beside this.", 4)
     widths(ws2, [34, 18, 18, 60])
     ws2.cell(row=4, column=1, value="Paste your values into column B").font = F_NOTE
     header(ws2, 5, ["Statistic", "Value", "", "What it tells you"])

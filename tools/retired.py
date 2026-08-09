@@ -333,6 +333,16 @@ RETIRED: list[Retired] = [
         "A2 = 0.81 on the twelve published rates, p = 0.02, and the departure "
         "named as the release week",
     ),
+    Retired(
+        "9-point gap between rank 1 and rank 2",
+        "the X-Y matrix's old 270-against-261 pair, quoted from the CTQ tree as "
+        "the yardstick for how little separates the top of that ranking. "
+        "Re-scoring on the three CTQs the tree actually weights replaced it with "
+        "two exact ties, and this sentence was the copy the retirement missed - "
+        "it names the gap in words rather than repeating either number, so "
+        "nothing that matched on 270 or 261 could see it",
+        "the first two rows tie outright at 192 and the next two at 148",
+    ),
 ]
 
 
@@ -367,7 +377,64 @@ CANONICAL: list[Canonical] = [
         "50,000",
         "the bar the worked project fails, which is the lesson",
     ),
+    # Added when the authored page prose was found to be covered by nothing.
+    # Each pattern was run over the whole pack before being added here, and
+    # every one of them fires on at least nine sentences that already agree --
+    # a canonical matching one place enforces nothing, and one that matches a
+    # look-alike is worse than none. The two the pack will not let you add:
+    # "kappa 0.78", because 0.52 first-pass and 0.84 re-test are both real and
+    # both correct; and any bare "14.2%", because the queue rate and the
+    # in-scope adjustment rate agree to the decimal and are different
+    # quantities -- which is the defect the whole pack is built around.
+    Canonical(
+        "the improvement target",
+        r"(?:target|goal) of ([\d.]+)%",
+        "8.0",
+        "the number the project is judged against. Stated fifteen times across "
+        "the page and the templates, and written both as 8% and 8.0%, which is "
+        "why this registry compares numbers rather than strings",
+    ),
+    Canonical(
+        "the baseline month's in-scope volume",
+        r"([\d,]{3,}) (?:contacts|adjustments) in the baseline month",
+        "966",
+        "the denominator of the project's headline rate. Nine statements; the "
+        "annualised 11,592 is a different figure with its own entry above",
+    ),
+    Canonical(
+        "reopens in the baseline month",
+        r"([\d,]{3,}) reopens in 966",
+        "137",
+        "the numerator of the same rate. Eleven statements, and the pair has to "
+        "stay arithmetically consistent with 14.2%",
+    ),
+    Canonical(
+        "the baseline-to-goal gap",
+        r"([\d.]+)[- ]point(?:s)? gap",
+        "6.2",
+        "14.2% to 8.0% on the in-scope population. Ten statements. It caught a "
+        "stale one on the way in: the CTQ tree still described the X-Y matrix's "
+        "retired 270-against-261 pair as a 9-point gap",
+    ),
 ]
+
+
+def _same_number(got: str, want: str) -> bool:
+    """Numeric equality, not string equality.
+
+    The pack writes the same figure both ways -- "a target of 8%" and "8.0%",
+    "266,000" and "266000" -- and comparing the strings made a canonical fire
+    on eleven sentences that were all correct. A canonical that cannot survive
+    its own pack's house style is a canonical nobody can add, which is how this
+    registry ends up with four entries and the prose ends up unchecked.
+    """
+    a, b = got.replace(",", "").strip(), want.replace(",", "").strip()
+    if a == b:
+        return True
+    try:
+        return float(a) == float(b)
+    except ValueError:
+        return False
 
 
 def scan(text: str, path: str) -> list[str]:
@@ -387,7 +454,7 @@ def scan(text: str, path: str) -> list[str]:
             continue
         for m in re.finditer(c.pattern, text, c.flags):
             got = m.group(1)
-            if got.replace(",", "") != c.value.replace(",", ""):
+            if not _same_number(got, c.value):
                 out.append(
                     f"{path}: states {c.name} as {got!r}, and the pack's single "
                     f"rendering is {c.value!r} — {c.why}")

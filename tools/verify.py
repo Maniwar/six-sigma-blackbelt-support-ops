@@ -798,6 +798,60 @@ def test_docs_counts() -> None:
                   f"{xlsx} workbooks and {md} markdown documents")
 
 
+def test_gallery_card_matches_its_manifest_desc() -> None:
+    """Each template is described twice, by hand, and the two must agree.
+
+    The gallery card and the `desc` field of the TPLS manifest are separate
+    authored strings for the same template, and nothing compared them. They are
+    the sentences a reader uses to decide whether to download a file, and an
+    audit of the authored prose found six of them describing workbooks that do
+    not exist: six fishbone branches where the file's validation list has seven,
+    Kano categories under names the workbook never uses, histogram bins in a
+    workbook with no histogram, a stakeholder map plotting interest where the
+    axis is support, a randomised DOE run order with no RAND in the sheet, and
+    a RACI flag for "an A on every row" when the formula is row-wise.
+
+    This does not check a card against its workbook -- that is a claim in prose
+    and no regex settles it. It checks the two copies against each other, so a
+    correction applied to one of them cannot silently leave the other behind,
+    which is how five of those six came to be wrong in two places at once.
+    """
+    import html as _html
+
+    src = HTML.read_text(encoding="utf-8")
+    _, _, tpls = extract_tpls(src)
+    gallery = src[src.index('<section id="templates"'): src.index("const TPLS=")]
+
+    def norm(t: str) -> str:
+        return " ".join(_html.unescape(re.sub(r"<[^>]+>", "", t)).split())
+
+    cards = {norm(m.group(1)): norm(m.group(2))
+             for m in re.finditer(r"<h4>([^<]+)</h4></div><p>(.*?)</p>", gallery, re.S)}
+
+    # The swimlane card opens by saying which tool the workbook sits behind,
+    # because that tool is the only one in the library with a workbook of its
+    # own. Everything after that first sentence agrees with the manifest.
+    ALLOWED_TO_DIFFER = {"33-swimlane-process-map"}
+
+    missing, differ = [], []
+    for slug, e in tpls.items():
+        title, desc = norm(e.get("title", "")), norm(e.get("desc", ""))
+        if title not in cards:
+            missing.append(f"{slug} ({title!r})")
+        elif cards[title] != desc and slug not in ALLOWED_TO_DIFFER:
+            differ.append(f"{slug}: card {cards[title][:60]!r} vs desc {desc[:60]!r}")
+
+    check(not missing, f"every template has a gallery card ({len(tpls)} templates)",
+          "no card found for: " + ", ".join(missing))
+    check(not differ,
+          "every gallery card says what its manifest entry says",
+          "the two hand-written descriptions have drifted apart:\n      "
+          + "\n      ".join(differ))
+    stale = sorted(ALLOWED_TO_DIFFER - {s for s in tpls})
+    check(not stale, "every card/desc exemption still names a real template",
+          "exempted templates that no longer exist: " + ", ".join(stale))
+
+
 def test_worked_example_figures_are_the_packs() -> None:
     """Every figure the page's walkthrough states must be one the pack states.
 
@@ -2694,6 +2748,7 @@ def main() -> int:
     test_kappa_bands_agree()
     test_pages_publishes_as_is()
     test_docs_counts()
+    test_gallery_card_matches_its_manifest_desc()
     test_worked_example_figures_are_the_packs()
     test_baseline_series_recomputes()
     test_baseline_window()

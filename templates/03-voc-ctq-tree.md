@@ -115,9 +115,10 @@ scores every cause 9 strong / 6 moderate / 3 weak / 1 none (`11-cause-effect-xy-
 a cause that shortens it both score 9 against a handle-time column, so on the weight of 4
 this row used to carry both would collect 4 x 9 = 36 toward being investigated first,
 against 4 x 1 = 4 for a cause unrelated to handle time — a 32-point swing awarded with no
-regard to direction. The same workbook calls the 9-point gap between rank 1 and rank 2 of
-its own worked example "inside anyone's scoring noise", so a sign-blind 32 can reorder the
-top of the ranking on its own. And the direction is not open: 01-project-charter.md:173
+regard to direction. That is larger than anything separating the top of the workbook's own
+worked example, where the first two rows tie outright at 192 and the next two tie at 148, so
+a sign-blind 32 does not merely reorder the ranking — it invents an order where the matrix
+found none. And the direction is not open: 01-project-charter.md:173
 records the Tier 1 handle-time target formally moved from 412 s to 450 s for the pilot
 quarter, so the project has already agreed to move this guardrail the wrong way — a
 weighted column would have paid the causes that do it.
