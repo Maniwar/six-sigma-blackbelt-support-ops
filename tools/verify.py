@@ -798,6 +798,124 @@ def test_docs_counts() -> None:
                   f"{xlsx} workbooks and {md} markdown documents")
 
 
+def test_worked_example_figures_are_the_packs() -> None:
+    """Every figure the page's walkthrough states must be one the pack states.
+
+    The walkthrough narrates the same project the templates document, and
+    nothing checked it. It drifted, in the way an unchecked thing does: it
+    described "a Laney p-prime chart over 52 weeks" showing "a stable process"
+    with "two known billing-system incident weeks (excluded and documented)",
+    against a baseline document that is twelve weeks, answers "Process stable?
+    No", and excludes nothing -- it keeps its one release week in on purpose.
+
+    test_case_study already anchors the benefit chain to the charter, but one
+    figure at a time and each rule written after its own defect. This is the
+    general form: pull every number out of the authored section and require it
+    to appear somewhere in the templates or their workbooks.
+
+    WHAT IT DOES NOT CATCH, including the drift that prompted it. A corpus this
+    size contains most small integers somewhere, so a figure that drifts to
+    another small integer still matches -- 52 is a real data value in three
+    workbooks, and this check passes the "over 52 weeks" sentence. It bites on
+    DISTINCTIVE figures: benefits, volumes, five-digit counts, unusual
+    decimals. Those are also the ones that carry a business case, so it is
+    worth having, but it is not the general cover it first looks like.
+
+    The 52-week claim itself is held by tools/retired.py, which matches the
+    sentence rather than the number. Between them: the registry catches a
+    known-wrong claim coming back, this catches a figure wandering somewhere
+    the pack never says. Neither catches a NEW wrong small integer, and no
+    check here does.
+
+    Magnitudes only, not units -- the pack states the same quantity as 0.85 and
+    as 85%, as $6.80 and as 6.8, and matching those strictly produces noise
+    rather than findings.
+    """
+    src = HTML.read_text(encoding="utf-8")
+    try:
+        start = src.index('<section id="worked">')
+        end = src.index('<section id="templates">', start)
+    except ValueError:
+        check(False, "the worked-project walkthrough can still be located in the page",
+              "the section ids moved, so the walkthrough is going unchecked again")
+        return
+    worked = re.sub(r"<[^>]+>", " ", src[start:end])
+
+    pack = "\n".join(f.read_text(encoding="utf-8")
+                     for f in sorted(TEMPLATES.glob("*.md")))
+    for wb_path in sorted(TEMPLATES.glob("*.xlsx")):
+        try:
+            wb = load_workbook(wb_path)
+        except Exception:                                        # noqa: BLE001
+            continue
+        for ws in wb.worksheets:
+            for row in ws.iter_rows():
+                for cell in row:
+                    v = cell.value
+                    # Formula TEXT is all cell references -- $B$52, G52, A52 --
+                    # so folding it in seeds the corpus with every row and
+                    # column index in the pack and makes almost any small
+                    # integer match something. Literals and prose only.
+                    if v is not None and not str(v).startswith("="):
+                        pack += "\n" + str(v)
+                    if cell.comment is not None:
+                        pack += "\n" + str(cell.comment.text)
+
+    def figures(text: str) -> set[str]:
+        out: set[str] = set()
+        for m in re.findall(r"\d[\d,]*(?:\.\d+)?", text):
+            v = m.replace(",", "").rstrip(".")
+            try:
+                if float(v) < 2:        # 0 and 1 are noise, not figures
+                    continue
+            except ValueError:
+                continue
+            out.add(v)
+        return out
+
+    # Figures the walkthrough is entitled to state on its own, because they are
+    # outcomes of the worked project rather than inputs the templates carry.
+    # Anything not on this list has to exist somewhere in the pack.
+    NARRATIVE_ONLY = {
+        "2.07":   "upper bound of a regression confidence interval",
+        "9.1":    "lower bound of the credit-request difference CI, and the 6-month drift rate",
+        "11.5":   "upper bound of that same CI",
+        "10.3":   "the credit-request difference in points",
+        "22.4":   "reopen rate with a credit request",
+        "12.1":   "reopen rate without one",
+        "5.5":    "months from charter to certification",
+        "8.2":    "touch-time minutes in the value stream summary",
+        "5.6":    "points delivered against the 6.2 chartered",
+        "8.6":    "the post-improvement centre line at 90 days",
+        "10.4":   "its UCL",
+        "8.5":    "the rate after the 6-month control was tightened",
+        "13.96":  "the queue rate after 649 avoided reopens, not the 13.58% for all 1,646",
+        "649":    "reopens avoided at the delivered 5.6 points, against 719 at the chartered 6.2",
+        "21294":  "the realised benefit",
+        "25051":  "the gross before realisation",
+        "26900":  "part of the retired chain the walkthrough records rather than deletes",
+        "155500": "the retired benefit figure, kept for the same reason",
+    }
+    unmatched = sorted(figures(worked) - figures(pack) - set(NARRATIVE_ONLY),
+                       key=float)
+    check(not unmatched,
+          f"every figure in the worked-project walkthrough is one the pack states "
+          f"({len(figures(worked))} checked)",
+          "the walkthrough states figures that appear nowhere in the templates or "
+          "their workbooks: " + ", ".join(unmatched) + " — either the pack has "
+          "moved and the walkthrough has not, or the walkthrough is describing a "
+          "different project. Add it to NARRATIVE_ONLY with a reason if it is "
+          "genuinely an outcome the templates do not carry")
+
+    # The list must not rot into a blanket exemption: an entry that no longer
+    # appears in the walkthrough is one nobody removed.
+    stale = sorted(set(NARRATIVE_ONLY) - figures(worked), key=float)
+    check(not stale,
+          "every narrative-only exemption is still needed",
+          "these are exempted and no longer appear in the walkthrough: "
+          + ", ".join(stale))
+
+
 def test_baseline_series_recomputes() -> None:
     """Every figure in the baseline's distribution must follow from its series.
 
@@ -2576,6 +2694,7 @@ def main() -> int:
     test_kappa_bands_agree()
     test_pages_publishes_as_is()
     test_docs_counts()
+    test_worked_example_figures_are_the_packs()
     test_baseline_series_recomputes()
     test_baseline_window()
     test_case_study()
