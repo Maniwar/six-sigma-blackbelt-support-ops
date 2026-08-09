@@ -430,11 +430,18 @@ def test_control_limits_close() -> None:
 
     They did not. The document declared sigma z = 4.25 at n ~ 5,100 and p =
     14.2%, which puts the limits at 20.4% / 8.0%, and shipped 17.1% / 11.3%.
-    The limits were the right ones — 17.1/11.3 is exactly sigma z 1.98, and at
-    20.4% the special cause the document spends a section explaining stops
-    signalling, while the LCL lands on the 8.0% specification. It was the
-    declared factor that was wrong, corroborated by nothing and derived
-    nowhere. Recomputing it here is three lines and would have caught it.
+    At 20.4% the special cause the document spends a section explaining stops
+    signalling, while the LCL lands on the 8.0% specification, so the declared
+    factor was the wrong one — corroborated by nothing and derived nowhere.
+    Recomputing it here is three lines and would have caught it.
+
+    The shipped 17.1/11.3 were not right either, only less wrong: they were
+    exactly sigma z 1.98, and 1.98 had itself been read backwards off them.
+    Both are retired now. The limits are 17.2% / 11.2% at sigma z 2.08,
+    computed from the twelve weekly rates in section 3 by
+    test_baseline_series_recomputes. This check stays as it was, because it
+    tests a different thing: that whatever the document declares, its limits
+    follow from it.
     """
     import math
 
@@ -789,6 +796,137 @@ def test_docs_counts() -> None:
                   f"{name}: {what} matches the pack",
                   f"expected {phrase!r}; the pack has {len(tpls)} templates, "
                   f"{xlsx} workbooks and {md} markdown documents")
+
+
+def test_baseline_series_recomputes() -> None:
+    """Every figure in the baseline's distribution must follow from its series.
+
+    Section 3 used to state a standard deviation of 1.4 points. No twelve-point
+    series can produce it: the document's own release week reads 18.9% against a
+    mean of 14.2%, and that single deviation puts the sample floor at 1.48
+    before any other week contributes. p95 was quoted at 16.9%, below the 18.9%
+    maximum, which no percentile convention allows either. Both had been
+    asserted rather than computed, and nothing could catch them because there
+    was no series to check against -- the drift check cannot even see "1.4
+    points" (two digits is below its figure threshold) and neither can the
+    citation checker.
+
+    The twelve weekly rates are published in the standard-deviation row now, and
+    this recomputes the whole section from them. An asserted statistic in this
+    document is a defect by construction from here on.
+    """
+    import math
+    import statistics
+
+    doc = (TEMPLATES / "09-baseline-document.md").read_text(encoding="utf-8")
+    m = re.search(r"Standard deviation \| \*([\d.]+) points, on the twelve weekly rates "
+                  r"this section is cut on: ([^(]+)\(", doc)
+    check(m is not None,
+          "the baseline publishes the weekly series its distribution is cut on",
+          "section 3 states statistics with no series behind them, which is how a "
+          "standard deviation below its own arithmetic floor shipped")
+    if not m:
+        return
+    stated_sd = float(m.group(1))
+    rates = [float(x) for x in re.findall(r"\d+\.\d+", m.group(2))]
+    check(len(rates) == 12, "the baseline series has twelve weekly points",
+          f"found {len(rates)}: {rates}")
+    if len(rates) != 12:
+        return
+
+    def pct(q: float) -> float:
+        """Linear interpolation between order statistics, as numpy does."""
+        xs = sorted(rates)
+        k = (len(xs) - 1) * q / 100
+        lo = math.floor(k)
+        hi = min(lo + 1, len(xs) - 1)
+        return xs[lo] + (k - lo) * (xs[hi] - xs[lo])
+
+    mean = sum(rates) / 12
+    sd = statistics.stdev(rates)
+    var0 = sum((x - mean) ** 2 for x in rates) / 12
+    skew = (sum((x - mean) ** 3 for x in rates) / 12) / var0 ** 1.5
+
+    def row(label: str) -> str:
+        r = re.search(r"\| " + re.escape(label) + r" \| \*(.*?)\*? ?\|", doc)
+        return r.group(1) if r else ""
+
+    def opens_with(label: str, want: str) -> bool:
+        """The row must OPEN with the value, not merely contain it somewhere.
+
+        Containment was not enough. A row reading "-1.56, a left skew --
+        restated from the 1.56 this row used to carry" contains "1.56" and
+        passed, while telling the reader the opposite sign; so did a percentile
+        row that listed a wrong set and then quoted the right one as superseded.
+        Every one of these rows states its value first, so anchor there.
+        """
+        return row(label).lstrip("*").startswith(want)
+
+    check(abs(sd - stated_sd) < 0.05,
+          f"the baseline's standard deviation is the one its series gives ({sd:.2f})",
+          f"the row says {stated_sd} and the twelve rates give {sd:.3f}")
+
+    med = statistics.median(rates)
+    check(opens_with("**Median**", f"{med:.1f}%"),
+          f"the baseline's median is the one its series gives ({med:.1f}%)",
+          f"the row reads {row('**Median**')!r}")
+
+    want = " / ".join(f"{pct(q):.1f}%" for q in (10, 50, 90, 95))
+    check(opens_with("p10 / p50 / p90 / p95", want),
+          f"the baseline's percentiles are the ones its series gives ({want})",
+          f"the row reads {row('p10 / p50 / p90 / p95')!r}")
+
+    check(opens_with("Skewness", f"{skew:.2f}"),
+          f"the baseline's skewness is the one its series gives ({skew:.2f})",
+          f"the row reads {row('Skewness')!r}")
+
+    # The maximum has to be the special cause section 2 spends a row explaining,
+    # and it has to be the ONLY point outside the limits, or the stability
+    # verdict in section 2 describes a different series from this one.
+    ucl = re.search(r"UCL / LCL \| \*([\d.]+)% / ([\d.]+)%", doc)
+    if ucl:
+        hi, lo = float(ucl.group(1)), float(ucl.group(2))
+        out = [x for x in rates if x > hi or x < lo]
+        check(len(out) == 1 and abs(out[0] - max(rates)) < 1e-9,
+              "exactly one weekly point sits outside the baseline's control limits",
+              f"{len(out)} points outside {lo}-{hi}: {out} — section 2 claims one")
+
+    # The ordinary p-chart limits are the argument for using Laney at all, and
+    # the row counts how many weeks fall outside them. It said six. Five do.
+    om = re.search(r"Its limits would be ([\d.]+)% / ([\d.]+)%, and (\w+) of the twelve", doc)
+    if om:
+        hi_o, lo_o = float(om.group(1)), float(om.group(2))
+        words = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+                 "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+        said = words.get(om.group(3).lower())
+        got = sum(1 for x in rates if x > hi_o or x < lo_o)
+        check(said == got,
+              f"the baseline counts the weeks outside its ordinary limits correctly ({got})",
+              f"the row says {om.group(3)!r} of twelve outside {lo_o}-{hi_o}; the series gives {got}")
+
+    # Anderson-Darling, on the same series, with the same estimator the row names.
+    am = re.search(r"Anderson-Darling A² = ([\d.]+) on the twelve published rates", doc)
+    if am:
+        xs = sorted(rates)
+        sd_s = statistics.stdev(xs)
+        mu = sum(xs) / len(xs)
+        # Normal CDF without scipy: 0.5 * erfc(-z / sqrt(2)).
+        cdf = [0.5 * math.erfc(-((x - mu) / sd_s) / math.sqrt(2)) for x in xs]
+        k = len(xs)
+        a2 = -k - sum((2 * (i + 1) - 1) * (math.log(cdf[i]) + math.log(1 - cdf[k - 1 - i]))
+                      for i in range(k)) / k
+        check(abs(a2 - float(am.group(1))) < 0.005,
+              f"the baseline's Anderson-Darling statistic is the one its series gives ({a2:.2f})",
+              f"the row states {am.group(1)} and the twelve rates give {a2:.4f}")
+
+    # Ppu is computed on this series too, so it cannot drift from it either.
+    ppu = re.search(r"Ppu −([\d.]+) — \(8\.0% − ([\d.]+)%\) ÷ \(3 × ([\d.]+) points\)", doc)
+    if ppu:
+        want_ppu = (float(ppu.group(2)) - 8.0) / (3 * float(ppu.group(3)))
+        check(abs(float(ppu.group(1)) - want_ppu) < 0.01,
+              f"the baseline's Ppu follows from its own mean and standard deviation "
+              f"(−{want_ppu:.2f})",
+              f"the row states −{ppu.group(1)}")
 
 
 def test_baseline_window() -> None:
@@ -2438,6 +2576,7 @@ def main() -> int:
     test_kappa_bands_agree()
     test_pages_publishes_as_is()
     test_docs_counts()
+    test_baseline_series_recomputes()
     test_baseline_window()
     test_case_study()
     print("GUIDANCE   the template filler's numbers match the pack's")

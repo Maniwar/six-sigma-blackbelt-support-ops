@@ -116,8 +116,9 @@ RETIRED: list[Retired] = [
     Retired(
         "sigma z = 4.25",
         "a factor corroborated by nothing, which puts the baseline's control "
-        "limits at 20.4%/8.0% against the 17.1%/11.3% it ships",
-        "sigma z = 1.98",
+        "limits at 20.4%/8.0% against the 17.2%/11.2% it ships",
+        "sigma z = 2.08, computed from the twelve weekly rates rather than read "
+        "backwards off the limits it was supposed to justify",
     ),
     Retired(
         "0.78 × 0.94 × 0.88 × 0.96",
@@ -235,6 +236,103 @@ RETIRED: list[Retired] = [
         "the same pair in the Rank definition",
         "H15 and H22 both total 192; H17 and H19 both total 148",
     ),
+    # Section 3 of the baseline was written without a series behind it, so its
+    # figures could not all be true at once. The standard deviation was below
+    # the floor its own maximum forces, and p95 sat below that maximum. The
+    # twelve weekly rates are published now and everything is computed from
+    # them, so each of the old assertions is retired by name.
+    Retired(
+        "*1.4 points*",
+        "a baseline standard deviation no series can produce: one week at 18.9% "
+        "against a mean of 14.2% puts the floor at 1.48 on its own. It was the "
+        "least-protected figure in the pack — too few digits for the drift check "
+        "to see and below the citation checker's threshold",
+        "1.8 points, computed from the twelve weekly rates now published beside it",
+    ),
+    Retired(
+        "3 × 1.4 points",
+        "the same standard deviation inside the Ppu derivation",
+        "3 × 1.8 points, giving Ppu -1.15",
+    ),
+    Retired(
+        "12.3% / 14.0% / 16.2% / 16.9%",
+        "baseline percentiles that put p95 at 16.9% below an 18.9% maximum, which "
+        "no 12-point series can do under any percentile convention",
+        "12.4% / 14.0% / 14.9% / 16.7%",
+    ),
+    Retired(
+        "0.31 — mild right skew",
+        "a skewness describing a series with no release week in it",
+        "1.56",
+    ),
+    Retired(
+        "1.98 — read off the limits",
+        "a Laney sigma_z derived from the limits it was meant to justify, so it "
+        "corroborated nothing",
+        "2.08, the average moving range of the z-scores / 1.128",
+    ),
+    Retired(
+        "17.1% / 11.3%",
+        "Laney limits computed from that circular sigma_z. Not anchored on the\n        markdown cell's asterisks, which was the first attempt: the page states\n        the same limits in prose, and that rendering went unseen",
+        "17.2% / 11.2%",
+    ),
+    Retired(
+        "UCL 17.1%, LCL 11.3%",
+        "the same limits in the walkthrough's prose rendering",
+        "UCL 17.2%, LCL 11.2%",
+    ),
+    Retired(
+        "Ppu −1.48",
+        "a capability index computed on the unreachable 1.4-point standard deviation",
+        "Ppu -1.15",
+    ),
+    # The curriculum's own walkthrough of the worked project contradicted the
+    # baseline document it ships, on four counts at once, and no check covered
+    # authored page prose. It is the same defect this file exists for, one level
+    # up: the narrative and the artefact were corrected independently.
+    Retired(
+        "Laney p′ chart over 52 weeks showed a stable process",
+        "the walkthrough described a 52-week stable baseline; the document it "
+        "walks through is 12 weeks and section 2 answers 'Process stable? No'",
+        "the twelve signed weeks, not stable, one release week above the UCL",
+    ),
+    Retired(
+        "two known billing-system incident weeks (excluded and documented)",
+        "the baseline excludes nothing: section 2 records one special cause and "
+        "keeps it, because the release ships every six weeks and will recur",
+        "one release week, kept in",
+    ),
+    # Live in tools/md_guidance.py until this change, and re-injected into any
+    # emptied row. Retiring what the template showed but not what the generator
+    # held is how the same wrong number comes back a release later.
+    Retired(
+        "Ppu 0.42",
+        "a capability index for a process whose mean sits above its only limit, "
+        "so the index has to be negative. Scoped: the calculators' SLA tab has a "
+        "genuinely different worked example that also reads Ppu 0.42",
+        "Ppu -1.15",
+        allowed_in=("CHANGELOG.md", "tools/retired.py", "docs-review.md",
+                    "tools/verify.py", "19-black-belt-calculators.xlsx"),
+    ),
+    Retired(
+        "58% of weeks above the 8.0% target",
+        "every one of the twelve weeks is above the target; 58% was derivable "
+        "from no series in the document",
+        "100% - all 12 weeks sit above the 8.0% target",
+    ),
+    Retired(
+        "Approximately symmetric at weekly aggregation",
+        "a series with one week four points clear of the other eleven is not "
+        "approximately symmetric, and its skewness is 1.56",
+        "Not symmetric: eleven weeks between 12.2% and 14.9% and one at 18.9%",
+    ),
+    Retired(
+        "Anderson-Darling p = 0.03, which at 12 weekly points is not a concern",
+        "the departure from normality is the release week, which is the point of "
+        "sections 2 and 4, not something to wave through on sample size",
+        "A2 = 0.81 on the twelve published rates, p = 0.02, and the departure "
+        "named as the release week",
+    ),
 ]
 
 
@@ -278,7 +376,8 @@ def scan(text: str, path: str) -> list[str]:
     for r in RETIRED:
         if any(path.endswith(a) for a in r.allowed_in):
             continue
-        pat = r"\b" + re.escape(r.text) + r"\b" if r.word else re.escape(r.text)
+        body = r"\s+".join(re.escape(w) for w in r.text.split())
+        pat = r"\b" + body + r"\b" if r.word else body
         if re.search(pat, text):
             out.append(
                 f"{path}: carries the retired claim {r.text!r} — {r.why}. "
