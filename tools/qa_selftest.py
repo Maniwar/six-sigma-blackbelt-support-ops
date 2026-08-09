@@ -1127,6 +1127,207 @@ def run(book: Path) -> tuple[int, int, list[str]]:
     return killed, applied, survivors
 
 
+# ------------------------------------------------- baseline-series mutants
+# The three checks doing the most work in this repo had no mutation coverage,
+# which is the failure this whole file exists to catch, sitting in the file
+# that catches it. test_baseline_series_recomputes carries seven assertions
+# over the baseline's whole distribution; test_worked_example_figures_are_the_packs
+# guards the page's narrative against the templates; test_nothing_retired_survives
+# is the general registry every past correction is now pinned to. All three
+# were mutation-tested by hand when written and by nothing afterwards, so a
+# later edit could quietly hollow any of them out while this file went on
+# printing "Every check still has teeth".
+#
+# The containment bug is in here on purpose. The first version of the series
+# check tested `value in row` rather than anchoring at the start, so a row
+# reading "-1.56, a left skew - restated from the 1.56" passed it while
+# telling the reader the opposite sign. An adversarial pass found it. If the
+# check is ever loosened back, bl_skew_restated fires.
+
+def bl_sd(text: str):
+    if "| Standard deviation | *1.8 points" not in text:
+        return None, None
+    return (text.replace("| Standard deviation | *1.8 points",
+                         "| Standard deviation | *1.4 points"),
+            "the standard deviation put back below the floor its own maximum forces")
+
+
+def bl_rate(text: str):
+    if "18.9, 14.0, 12.6" not in text:
+        return None, None
+    return (text.replace("18.9, 14.0, 12.6", "16.9, 14.0, 12.6"),
+            "one weekly rate altered, so the series no longer gives the stated SD")
+
+
+def bl_skew_restated(text: str):
+    """The exact evasion an adversarial pass found in the first version."""
+    if "| Skewness | *1.56 — the moment" not in text:
+        return None, None
+    return (text.replace("| Skewness | *1.56 — the moment",
+                         "| Skewness | *−1.56, a left skew — restated from the 1.56 — the moment"),
+            "skewness sign flipped while still containing the right digits")
+
+
+def bl_percentiles(text: str):
+    if "| p10 / p50 / p90 / p95 | *12.4% / 14.0% / 14.9% / 16.7%" not in text:
+        return None, None
+    return (text.replace("| p10 / p50 / p90 / p95 | *12.4% / 14.0% / 14.9% / 16.7%",
+                         "| p10 / p50 / p90 / p95 | *11.0% / 13.0% / 18.0% / 18.9%, superseding "
+                         "12.4% / 14.0% / 14.9% / 16.7%"),
+            "percentiles replaced, with the right set quoted after them as superseded")
+
+
+def bl_ordinary_count(text: str):
+    if "and five of the twelve weekly rates" not in text:
+        return None, None
+    return (text.replace("and five of the twelve weekly rates",
+                         "and six of the twelve weekly rates"),
+            "the count of weeks outside the ordinary limits overstated by one")
+
+
+def bl_ad(text: str):
+    if "Anderson-Darling A² = 0.81 on" not in text:
+        return None, None
+    return (text.replace("Anderson-Darling A² = 0.81 on", "Anderson-Darling A² = 0.93 on"),
+            "the Anderson-Darling statistic no longer the one the series gives")
+
+
+def bl_ppu(text: str):
+    if "Ppu −1.15 — (8.0% − 14.2%)" not in text:
+        return None, None
+    return (text.replace("Ppu −1.15 — (8.0% − 14.2%)", "Ppu −1.48 — (8.0% − 14.2%)"),
+            "Ppu no longer following from the mean and SD beside it")
+
+
+def bl_series_removed(text: str):
+    old = "1.8 points, on the twelve weekly rates this section is cut on: 14.9,"
+    if old not in text:
+        return None, None
+    return (text.replace(old, "1.8 points. 14.9,"),
+            "the series unpublished, so every statistic goes back to an assertion")
+
+
+def bl_ucl(text: str):
+    if "| UCL / LCL | *17.2% / 11.2%* |" not in text:
+        return None, None
+    return (text.replace("| UCL / LCL | *17.2% / 11.2%* |", "| UCL / LCL | *14.5% / 11.2%* |"),
+            "limits narrowed until five weeks signal, against section 2's claim of one")
+
+
+BASELINE_MUTANTS = [
+    ("baseline: SD below its arithmetic floor", bl_sd),
+    ("baseline: a weekly rate altered", bl_rate),
+    ("baseline: skewness sign flipped, digits kept", bl_skew_restated),
+    ("baseline: percentiles replaced, right set quoted as superseded", bl_percentiles),
+    ("baseline: ordinary-limit count overstated", bl_ordinary_count),
+    ("baseline: Anderson-Darling detached from the series", bl_ad),
+    ("baseline: Ppu detached from the mean and SD", bl_ppu),
+    ("baseline: the series unpublished", bl_series_removed),
+    ("baseline: limits narrowed past the special cause", bl_ucl),
+]
+
+
+def pg_retired_claim(text: str):
+    """A retired claim back in the page's authored prose, wrapped as the page
+    wraps it — which is what defeated the matcher before scan() normalised
+    whitespace."""
+    anchor = "<p><strong>Baseline.</strong> Laney p\u2032 chart over the twelve signed weeks"
+    if anchor not in text:
+        return None, None
+    return (text.replace(anchor,
+                         "<p><strong>Baseline.</strong> Laney p\u2032 chart over 52 weeks showed\n"
+                         "  a stable process, over the twelve signed weeks"),
+            "a retired claim reintroduced across a line wrap")
+
+
+def pg_figure_drift(text: str):
+    if "<strong>$21,294</strong>" not in text:
+        return None, None
+    return (text.replace("<strong>$21,294</strong>", "<strong>$23,881</strong>"),
+            "the walkthrough's realised benefit moved to a figure no template states")
+
+
+def pg_volume_drift(text: str):
+    if "on 61,400 resolved billing" not in text:
+        return None, None
+    return (text.replace("on 61,400 resolved billing", "on 74,300 resolved billing"),
+            "the walkthrough's record count moved away from the baseline's")
+
+
+PAGE_MUTANTS = [
+    ("page: retired claim reintroduced, line-wrapped", pg_retired_claim),
+    ("page: walkthrough benefit drifted from the pack", pg_figure_drift),
+    ("page: walkthrough record count drifted from the pack", pg_volume_drift),
+]
+
+
+def run_baseline() -> tuple[int, int, list[str]]:
+    """Mutate the artefacts on disk, in a copy, and require each check to fire.
+
+    These checks read files rather than in-memory fixtures, so the whole tree
+    is copied and verify's module constants are pointed at the copy. Anything
+    less and a surviving mutant would be left in the real repo.
+    """
+    import importlib
+
+    V = importlib.import_module("verify")
+    killed = applied = 0
+    survivors: list[str] = []
+
+    with tempfile.TemporaryDirectory() as td:
+        work = Path(td)
+        shutil.copytree(TEMPLATES, work / "templates")
+        page = ROOT / "six-sigma-blackbelt-support-ops.html"
+        shutil.copy2(page, work / page.name)
+        real_t, real_h = V.TEMPLATES, V.HTML
+        V.TEMPLATES, V.HTML = work / "templates", work / page.name
+
+        def fails(fn) -> set[str]:
+            V.FAILURES.clear()
+            V.PASSES[0] = 0
+            fn()
+            return set(V.FAILURES)
+
+        try:
+            doc = work / "templates" / "09-baseline-document.md"
+            clean = doc.read_text(encoding="utf-8")
+            base = fails(V.test_baseline_series_recomputes)
+            for name, mutate in BASELINE_MUTANTS:
+                out, what = mutate(clean)
+                if out is None:
+                    continue
+                doc.write_text(out, encoding="utf-8")
+                applied += 1
+                if fails(V.test_baseline_series_recomputes) - base:
+                    killed += 1
+                else:
+                    survivors.append(f"    SURVIVED [BASELINE] {name} — {what}")
+                doc.write_text(clean, encoding="utf-8")
+
+            html = work / page.name
+            clean_h = html.read_text(encoding="utf-8")
+            base_w = fails(V.test_worked_example_figures_are_the_packs)
+            base_r = fails(V.test_nothing_retired_survives)
+            for name, mutate in PAGE_MUTANTS:
+                out, what = mutate(clean_h)
+                if out is None:
+                    continue
+                html.write_text(out, encoding="utf-8")
+                applied += 1
+                caught = ((fails(V.test_worked_example_figures_are_the_packs) - base_w)
+                          or (fails(V.test_nothing_retired_survives) - base_r))
+                if caught:
+                    killed += 1
+                else:
+                    survivors.append(f"    SURVIVED [PAGE] {name} — {what}")
+                html.write_text(clean_h, encoding="utf-8")
+        finally:
+            V.TEMPLATES, V.HTML = real_t, real_h
+            V.FAILURES.clear()
+            V.PASSES[0] = 0
+    return killed, applied, survivors
+
+
 def main() -> int:
     only = [a for a in sys.argv[1:] if not a.startswith("-")]
     books = sorted(TEMPLATES.glob("*.xlsx"))
@@ -1197,6 +1398,12 @@ def main() -> int:
         if a:
             print(f"  {'(input properties)':36s} {k}/{a} mutants killed"
                   f"{'' if k == a else '   <-- a check did not fire'}")
+        k, a, s = run_baseline()
+        total_k += k
+        total_a += a
+        survivors += s
+        print(f"  {'(baseline series + page prose)':36s} {k}/{a} mutants killed"
+              f"{'' if k == a else '   <-- a check did not fire'}")
     print(f"\n  {total_k}/{total_a} mutants killed across {len(books)} workbooks")
     if survivors:
         print(f"\n{len(survivors)} SURVIVING MUTANT(S) — these checks cannot fail:")
