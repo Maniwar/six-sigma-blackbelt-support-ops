@@ -41,8 +41,9 @@ NOTES: dict[str, str] = {
     "Weighted total by candidate cause — the top three are where you start":
         "Bars are the weighted totals, so height already accounts for which CTQ matters "
         "most. Look for a clear step down after the top few. Where the top bars are level "
-        "— 270 against 261 here — the ranking is inside anyone's scoring noise, and you "
-        "should treat them as one set to investigate rather than an order to work through.",
+        "— two rows at 192 here, and two more at 148 — the matrix has not ranked them and "
+        "cannot, so treat each level set as one thing to investigate rather than an order "
+        "to work through.",
     "Causes per branch — a thin bar is a blind spot":
         "This counts causes, not their importance. A branch with one cause usually means "
         "the team ran out of ideas there, not that the branch is clean — Measurement and "
@@ -268,8 +269,9 @@ ACTIONS: dict[str, str] = {
         "Attack the waiting, not the working. At 1.07% efficiency, halving every touch time on "
         "the map would save 13 minutes of 2,426 — the queues are the project.",
     "Weighted total by candidate cause — the top three are where you start":
-        "Take the top three into the fishbone and the FMEA together, not the top one on its own. "
-        "270 against 261 will not survive re-scoring by a different group.",
+        "Take the top four into the fishbone and the FMEA together, not the top one on its own — "
+        "the ties put four rows in the top two ranks. None of it survives re-scoring by a "
+        "different group, which is the point: this orders your investigation, not your evidence.",
     "Causes per branch — a thin bar is a blind spot":
         "Go back to the thin branches before scoring anything. A branch with one cause is a "
         "question nobody asked, and scoring the chart as it stands ranks the branches you "

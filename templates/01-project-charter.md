@@ -58,18 +58,18 @@ Reduce / increase `<metric>` from `<baseline>` to `<target>` by `<date>`, while 
 > *11,592 in-scope adjustments a year x 6.2 points = 719 reopens avoided*
 > *719 x $38.60 = $27,753 gross*
 > *$27,753 x 0.85 = $23,590 realized*
-> *less the handle time the fix adds: `<seconds added per in-scope adjustment, measured>`*
+> *less the handle time the fix adds: +23 s an in-scope adjustment (16-pilot-protocol.md:125)*
 >
-> *The pack has never measured that last line. The "roughly 40 s" at §7 is a Define-stage
-> expectation, not a measurement, and the gage study in 08-msa-gage-rr.md, section 3,
-> records that it did not measure it either. R. Okonjo, who owns the AHT scorecard in §7,
-> must state the measured figure from the pilot. It cannot be due before the Improve
-> tollgate: §8 records the pilot as being read AT that gate, on 2026-09-25, so the figure
-> does not exist until the gate is held. It is due by the 90-day benefit checkpoint on
-> 2027-02-12 (18-handover-and-benefit-validation.md:142), where
-> 18-handover-and-benefit-validation.md:96 already asks Analytics to price the same
-> measured change across the 11,592 adjustments; the realized benefit falls by whatever
-> it comes to.*
+> *The pilot measured that last line; nothing prices it. It is +23 s a contact — 7:04 (424 s)
+> treatment against 6:41 (401 s) concurrent control on the in-scope adjustment population,
+> 16-pilot-protocol.md:125 (§6), read at the Improve tollgate, which §8 records as closed. The
+> "roughly 40 s" at §7 is a Define-stage expectation, not a measurement, and is superseded by
+> that reading; the blank at 08-msa-gage-rr.md, section 3, is scoped to that study and is not
+> a statement about the pack. Two things are open. M. Berenji must reconcile the read-out's
+> design and population before the +23 s is carried into a benefit chain (16-pilot-protocol.md:129).
+> Finance must then price it across the 11,592: 11,592 x 23 s is 266,616 s, 74 agent
+> hours a year, against the 82 the 719 avoided reopens return below. Both by the 90-day
+> checkpoint on 2027-02-12 (18-handover-and-benefit-validation.md:142); 18-handover-and-benefit-validation.md:96 already carries the ask. The realized benefit falls by whatever the price comes to.*
 >
 > ***$23,590 does not clear the $50,000 Finance floor (§5) — it is less than half of it,
 > before the handle-time deduction.*** *The project cannot be booked as chartered. It is
@@ -123,8 +123,8 @@ which of the two it means is the defect this table exists to prevent.*
 |---|---|---|---|---|
 | Primary | *7-day reopen rate, in-scope billing adjustments* | *14.2% — 137 reopens / 966 contacts* | *8.0%* | *OD-BIL-004-ADJ — a separate definition written for this population* |
 | Context, not a project metric | *7-day reopen rate, all billing tickets* | *14.2% — whole Billing queue* | *none; it is not a project target* | *OD-BIL-004 v2 (06-data-lineage.md:61)* |
-| Secondary | *Median resolution time, billing* | *4.6 h* | *4.0 h* | *OD-BIL-007 v1* |
-| Counter-balancing | *CSAT, billing contacts* | *4.11* | *no decline* | *OD-CX-002 v3* |
+| Secondary | *Median resolution time, in-scope billing adjustments* | *4.6 h* | *4.0 h* | *`<no operational definition exists — OD-BIL-007 v1 is named here and nowhere else in the pack, and the competing-definitions table registers only the two OD-BIL-004 variants (06-data-lineage.md:58-62). The 4.6 h and 4.0 h are sourced in no document either; "Median resolution time" appears in this row alone. Analytics, who own the OD-BIL-004-ADJ query this lineage does not trace (06-data-lineage.md:68), must register a resolution-time definition on this population — clock start, clock stop, and whether the deliberate wait for the posting to confirm is counted, since the fix lengthens it by design — and restate both figures on it, before the 90-day checkpoint on 2027-02-12 (18-handover-and-benefit-validation.md:142). Until then this row states a target against an unmeasured baseline>`* |
+| Counter-balancing | *CSAT, in-scope billing adjustments — row 1's population, not the Billing queue* | *4.11 out of 5 (16-pilot-protocol.md:103)* | *No decline greater than 0.15 — the tolerance the pilot registers and stops early on (16-pilot-protocol.md:60,103), not the "no decline" this row used to carry* | *`<no operational definition exists — OD-CX-002 v3 is named here and nowhere else in the pack. The 4.11 was previously attributed to "billing contacts", which names neither of the two populations §4 distinguishes; the only measured 4.11 in the pack is the in-scope adjustment figure at 16-pilot-protocol.md:103, and one value carrying two population labels across two documents is the defect §11 records. M. Berenji, who owns the pilot's counter-balancing read-out, must register a CSAT definition stating the survey trigger, the response window, the scale and the population, by the same date>`* |
 
 **Practical significance threshold:** `<percentage points — not settled. The threshold is
 a function of the annual in-scope adjustment volume, and nobody has pulled one: the
@@ -183,7 +183,7 @@ Signed by affected ops leader: ____________________  Date: __________
 | Define | *2026-04-06* | *2026-04-24* | *Charter signed, SIPOC agreed* |
 | Measure | *2026-04-27* | *2026-06-05* | *MSA passed, baseline signed* |
 | Analyze | *2026-06-08* | *2026-07-24* | *Root causes evidenced on two keys* |
-| Improve | *2026-07-27* | *2026-09-25* | *Pilot read, solution selected* |
+| Improve | *2026-07-27* | *2026-07-31* | *Pilot read, solution selected* |
 | Control | *2026-09-28* | *2026-12-18* | *90 days of control data; benefit re-worked at this gate and found not to clear the Finance floor — §11* |
 
 ## 9. Known risks and dependencies

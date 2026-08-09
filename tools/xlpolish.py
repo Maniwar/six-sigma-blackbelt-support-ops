@@ -319,13 +319,19 @@ GLOSSES = {
            "the other waits makes every one look large and tells you nothing about which to "
            "remove",
     "Weighted total": "Weighted total = that cause's scores multiplied by the CTQ weights along "
-           "the top and added up. With weights of 10, 7, 8, 5 and 9 (C11:G11) the closing-before-"
-           "posting row totals 270 (H15). It is a ranking device, not a measurement — the gap "
-           "between 270 and 261 is inside anyone's scoring noise, so treat the top few as a set "
-           "to investigate rather than an order to work through",
+           "the top and added up. With weights of 10, 9 and 7 (C11:E11) the closing-before-"
+           "posting row totals 192 (H15). It is a ranking device, not a measurement — the "
+           "auto-close row totals 192 as well (H22), and those two are one mechanism seen from "
+           "both ends, so treat the top few as a set to investigate rather than an order to "
+           "work through",
+    # No cell references. These definitions are keyed on the COLUMN LABEL and
+    # written into every sheet that has one, so the X-Y matrix's H15/H22 were
+    # being quoted at a reader of the Pareto sheet, where they mean nothing.
+    # The numbers belong in "Weighted total", which only the X-Y matrix has.
     "Rank": "Rank = position by weighted total, 1 being highest. Ties are not broken, so two "
-           "rows can share a rank. Read it with the totals beside it: rank 1 at 270 and rank 2 at "
-           "261 (H15, H16) is a photo finish, and a rank alone hides that",
+           "rows can share a rank. Always read it with the totals beside it: a rank on its own "
+           "hides both a photo finish and an exact tie, and no amount of re-scoring separates "
+           "two rows that scored the same",
     "Weighted score": "Weighted score = each criterion's 1-5 score times the weight above it, "
            "added up, so it lands back on the 1-5 scale. The weights here run 0.25, 0.20, 0.15 "
            "and four at 0.10 (C10:I10) and must sum to 1, or the scores are not comparable. The "

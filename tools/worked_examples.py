@@ -134,17 +134,26 @@ def fmea(wb) -> int:
 
 
 def xy_matrix(wb) -> int:
-    """Eight candidate causes, so the ranking has something to rank."""
+    """Eight candidate causes, scored against the three CTQs the tree weights.
+
+    The columns are the three weighted rows of 03-voc-ctq-tree.md and nothing
+    else, because the sheet's own rule (How-to B14) is that weights come from
+    the CTQ tree. Scores use the 9/6/3/1 scale the sheet asks for.
+
+    Two pairs tie — 192 and 148 — and that is the lesson rather than a defect:
+    the two 192s are the same mechanism seen twice, and a weighted total cannot
+    tell them apart. The rank column will not do the thinking for you.
+    """
     ws = wb["X-Y matrix"]
     rows = [
-        ["Ticket closed before the adjustment posts", "Process", 9, 3, 6, 6, 9, None, None],
-        ["Contact reason mis-tagged at triage", "Process", 6, 9, 8, 4, 6, None, None],
-        ["Billing Ops sweep runs once a day", "Method", 8, 4, 9, 7, 5, None, None],
-        ["Evidence requirements not stated to Tier 1", "Method", 5, 6, 7, 3, 4, None, None],
-        ["Nightly batch has no failure alerting", "Machine", 7, 2, 8, 9, 3, None, None],
-        ["New-hire tenure under 90 days", "People", 6, 7, 4, 5, 8, None, None],
-        ["Credit authority not enforced in the tool", "Machine", 3, 5, 3, 8, 4, None, None],
-        ["Auto-close at 96 hours with no reminder", "Process", 8, 3, 5, 6, 7, None, None],
+        ["Ticket closed before the adjustment posts", "Process", 9, 9, 3, None, None, None, None],
+        ["Contact reason mis-tagged at triage", "Process", 3, 1, 3, None, None, None, None],
+        ["Billing Ops sweep runs once a day", "Method", 6, 9, 1, None, None, None, None],
+        ["Evidence requirements not stated to Tier 1", "Method", 6, 3, 3, None, None, None, None],
+        ["Nightly batch has no failure alerting", "Machine", 6, 9, 1, None, None, None, None],
+        ["New-hire tenure under 90 days", "People", 6, 3, 6, None, None, None, None],
+        ["Credit authority not enforced in the tool", "Machine", 3, 6, 1, None, None, None, None],
+        ["Auto-close at 96 hours with no reminder", "Process", 9, 9, 3, None, None, None, None],
     ]
     return _rows(ws, 15, rows)
 

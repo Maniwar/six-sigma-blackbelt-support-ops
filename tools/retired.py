@@ -204,6 +204,37 @@ RETIRED: list[Retired] = [
         "about, is the 720 at F15",
         "the 720-minute wait in front of the batch survives the project",
     ),
+    Retired(
+        "2026-09-25",
+        "an Improve tollgate actual that cannot have happened: it leaves 84 days "
+        "to the Control gate on a row claiming 90, and puts full rollout 53 days "
+        "before the gate that selected the solution. It sat in the charter, in "
+        "the SIPOC twice, and in the guidance generator that rewrites the charter",
+        "2026-07-31 — the only Friday in the window the other dates force, and "
+        "every other actual in that table is a Friday",
+    ),
+    # The X-Y matrix ranked eight causes against five CTQs that appear in no
+    # CTQ tree, using weights no customer set — breaking the rule printed on
+    # the workbook's own How-to sheet. Every number the sheet teaches with
+    # moved when it was re-headed on the three the tree weights.
+    Retired(
+        "10, 7, 8, 5 and 9",
+        "X-Y matrix weights invented in the room, against the sheet's own rule "
+        "that weights come from the CTQ tree. The tree weights three rows, at "
+        "10, 9 and 7, and explicitly declines to weight the one the fourth "
+        "column paraphrased",
+        "10, 9 and 7 (C11:E11), from 03-voc-ctq-tree.md section 5",
+    ),
+    Retired(
+        "270 against 261",
+        "the matrix's headline teaching pair, computed from the orphan columns",
+        "two rows at 192, and two more at 148 — exact ties, not a photo finish",
+    ),
+    Retired(
+        "rank 1 at 270 and rank 2 at 261",
+        "the same pair in the Rank definition",
+        "H15 and H22 both total 192; H17 and H19 both total 148",
+    ),
 ]
 
 

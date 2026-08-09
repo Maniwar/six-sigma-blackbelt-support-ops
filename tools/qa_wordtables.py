@@ -144,6 +144,65 @@ def audit_doc(key: str, doc: str, preview: str = "") -> list[str]:
                     f"{key} table#{ti} col#{ci}: empty in all {len(col)} rows "
                     f"yet {grid[ci]}dxa wide")
 
+        # 1b. A sparse row padded out with bordered blanks.
+        #
+        # Check 1 only sees a column empty in EVERY row, so it was blind to the
+        # thing a reader actually complains about: every sheet opens with a
+        # three-row colour legend — a swatch and a sentence — sitting on a grid
+        # eleven columns wide, and the nine cells after the sentence were drawn
+        # as empty bordered boxes. A strip of blank cells down the page, in a
+        # document whose OOXML is entirely well-formed. Nothing here was
+        # malformed; the cells were simply empty, so reading the XML for errors
+        # could never have found it.
+        #
+        # Restricted to rows that fill at most half the grid. A data row whose
+        # last column is blank has to keep that blank or it stops lining up
+        # with its heading, and that is not what this is about.
+        for ri, row in enumerate(RE_ROW.findall(tbl)):
+            cells, i = [], 0
+            for cell in RE_CELL.findall(row):
+                m = RE_SPAN.search(cell)
+                span = int(m.group(1)) if m else 1
+                cells.append((cell_text(cell).strip(), "<w:shd" in cell, span))
+                i += span
+            if i < 2:
+                continue
+            filled = sum(sp for txt, _, sp in cells if txt)
+            # A row with nothing in it at all is a blank line of the form —
+            # these are templates, and the reader is meant to write on them.
+            # Only a RAGGED row is the defect: something in it, then a run of
+            # boxes that exist because the grid is wider than the sentence.
+            if not filled or filled * 2 > i:
+                continue
+
+            # Counted in CELLS, not columns. One empty cell spanning nine
+            # columns is one box on the page and reads as deliberate space;
+            # nine of them side by side is the strip a reader complains about.
+            # What matters is how many boxes get drawn.
+            def _run(seq: list) -> int:
+                n = 0
+                for txt, shaded, _sp in seq:
+                    if txt or shaded:
+                        break
+                    n += 1
+                return n
+
+            # Only the runs at the two ENDS. Blanks in the middle of a row are
+            # load-bearing: on the swimlane map they are the time slots that
+            # lane has no step in, and closing them up slides every later step
+            # under the wrong column.
+            head_run, tail_run = _run(cells), _run(cells[::-1])
+            if head_run + tail_run >= 2:
+                where = []
+                if head_run:
+                    where.append(f"{head_run} before it")
+                if tail_run:
+                    where.append(f"{tail_run} after it")
+                bad.append(
+                    f"{key} table#{ti} row#{ri}: fills {filled} of {i} columns "
+                    f"and draws empty bordered cells {' and '.join(where)} — "
+                    f"the reader sees a strip of blank boxes")
+
         # 2. A value and the formula that produced it on one visual line.
         for row in RE_ROW.findall(tbl):
             for cell in RE_CELL.findall(row):

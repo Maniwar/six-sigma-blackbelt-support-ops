@@ -513,7 +513,26 @@ def audit_example(path: Path, wb) -> None:
                 # answer looks like. Every workbook here ships a worked example
                 # row for exactly this purpose; a yellow column has to appear in
                 # it. Only the REST of the column stays blank.
-                if head and not filled:
+                # A column in a numbered run — "CTQ 4" where "CTQ 1" is
+                # demonstrated — is the same kind of column as the ones the
+                # example does fill. The reader HAS been shown what goes in it,
+                # three times over. This is the only exemption: the column has
+                # to be a later member of a series whose earlier member is
+                # filled in, so it cannot excuse a "Reviewed by" column that
+                # nothing anywhere demonstrates.
+                sibling = False
+                m_ser = re.match(r"^(.*?)(\d+)$", (head or "").strip())
+                if m_ser:
+                    stem, num = m_ser.group(1), int(m_ser.group(2))
+                    for ocol, ohead in cols.items():
+                        om = re.match(r"^(.*?)(\d+)$", (ohead or "").strip())
+                        if not om or om.group(1) != stem or int(om.group(2)) >= num:
+                            continue
+                        if any(ws.cell(row=r, column=ocol).value not in (None, "")
+                               for r in range(first, last + 1)):
+                            sibling = True
+                            break
+                if head and not filled and not sibling:
                     fail(book, "EXAMPLE",
                          f"{ws.title}!{get_column_letter(col)}{first}:{last} — the "
                          f"example declares a {head!r} column and leaves it empty on "

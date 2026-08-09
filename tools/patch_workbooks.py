@@ -221,6 +221,53 @@ REPEATED: list[tuple[str, str, str, str, range]] = [
 
 # Literal value / label corrections: (workbook, sheet, cell, value)
 VALUES: list[tuple[str, str, str, object]] = [
+    # The matrix ranked this project's causes against five CTQs that appear in
+    # no CTQ tree — and the rule it breaks is printed on its own How-to sheet:
+    # "Weights come from the CTQ tree, which came from customers. If the team
+    # invents the weights in the room, you have built an opinion aggregator."
+    # One of the five, "Not asked to repeat myself", paraphrases the tree row
+    # 03-voc-ctq-tree.md forbids weighting, because it would put the queue's
+    # 266,000 contacts back into a matrix ranking causes for 11,592.
+    #
+    # Re-headed on the three the tree actually weights, and re-scored, because
+    # the columns no longer mean what they meant. The scores also now use the
+    # 9/6/3/1 scale the How-to sheet asks for — the old ones used 8, 7, 5, 4
+    # and 2, which are not on it.
+    # Says why two of the five columns are empty, so the blank is read as a
+    # decision rather than an omission — and answers the question the
+    # unlabelled input at G10 would otherwise leave open.
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "A12",
+     "Columns 4 and 5 are spare, and this example leaves them empty on purpose. "
+     "The CTQ tree behind this project weights three requirements, so three are "
+     "filled in. A fourth column with no tree row behind it has no weight anyone "
+     "can defend, and the handle-time row the tree explicitly refuses to weight is "
+     "the one most teams would have put there."),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "C10", "7-day reopen rate, in-scope billing adjustments (OD-BIL-004-ADJ)"),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "C11", 10),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "D10", "Share of in-scope adjustments confirmed posted before the case is closed"),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "D11", 9),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "E10", "Share of contacts with a commitment date logged"),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "E11", 7),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "F10", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "F11", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "G10", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "G11", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "F15", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "G15", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "F16", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "G16", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "F17", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "G17", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "F18", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "G18", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "F19", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "G19", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "F20", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "G20", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "F21", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "G21", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "F22", None),
+    ("11-cause-effect-xy-matrix.xlsx", "X-Y matrix", "G22", None),
     # The collection plan gave the baseline window as a calendar quarter while
     # 09-baseline-document.md gives it as 2026-01-05 to 2026-03-29, "12 whole
     # weeks", and the charter says in terms that the 61,400 is "over a 12-week
