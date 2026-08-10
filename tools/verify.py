@@ -850,6 +850,22 @@ def test_favicon_is_real() -> None:
     check('<meta name="theme-color"' in src,
           "the page sets a theme colour for the browser chrome")
 
+    # A real favicon.ico beside both copies of the page. Safari does not render
+    # data-URI favicons, so the data URIs above are invisible to it, and a lot
+    # of tooling asks for /favicon.ico by reflex whatever the page declares.
+    # It has to sit next to the master AND next to the deployed mirror, because
+    # the link is relative and the two are served from different directories.
+    check('<link rel="icon" href="favicon.ico"' in src,
+          "the page points at a favicon.ico as well as its inline copies",
+          "Safari renders no data-URI favicon, so without this the tab is blank there")
+    for ico in (ROOT / "favicon.ico", DOCS.parent / "favicon.ico"):
+        raw = ico.read_bytes() if ico.exists() else b""
+        # ICO header: reserved 0, type 1, then the image count.
+        ok = raw[:4] == b"\x00\x00\x01\x00" and int.from_bytes(raw[4:6], "little") >= 1
+        check(ok, f"{ico.relative_to(ROOT)} is a real icon file ({len(raw):,} bytes)",
+              "missing or not an ICO — the relative link resolves against the "
+              "directory the page is served from, so both copies need one")
+
 
 def test_gallery_card_matches_its_manifest_desc() -> None:
     """Each template is described twice, by hand, and the two must agree.
