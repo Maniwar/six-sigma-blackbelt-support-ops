@@ -1,5 +1,11 @@
 # Build and test dependencies for tools/. Not needed to *use* the program —
 # the published HTML is self-contained and has no runtime dependencies.
+#
+# PYTHON 3.12 OR LATER. verify.py uses a backslash inside an f-string
+# expression, which PEP 701 allowed in 3.12; on 3.11 the file does not
+# parse and you get a SyntaxError rather than a failing check. Worth
+# knowing because the two look nothing alike in CI, and because piping a
+# run through `tail` hides the exit code — a crash then reads as a pass.
 openpyxl>=3.1          # read/write the Excel templates
 formulas>=1.2          # required: recalculates workbooks for tools/verify.py.
                        # Not optional since v3.8 — without it verify.py FAILS

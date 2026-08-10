@@ -798,6 +798,71 @@ def test_docs_counts() -> None:
                   f"{xlsx} workbooks and {md} markdown documents")
 
 
+def test_tool_entries_match_their_templates() -> None:
+    """A tool-library entry must not contradict the workbook it links to.
+
+    This is the check that was missing, and the monthly prose audit found out
+    the hard way. In August the gallery card was corrected from "influence
+    against interest" to "influence against support" -- the workbook's second
+    axis is Support -2..+2 and its Action formula keys on opposition, not
+    inattention. The tool library said "interest" three more times, one section
+    up, in the entry that actually teaches the tool. The card check compares the
+    card against the manifest desc; nothing compared either against the library,
+    so a fix applied to one of three places passed everything.
+
+    Not a general prose check -- no regex settles a claim about a file. It
+    checks the specific pairs a workbook can be read for: a term the entry uses
+    for an axis or a column, against the terms the workbook actually uses. Add
+    a pair when an audit finds one, the same way retired.py grows.
+    """
+    src = HTML.read_text(encoding="utf-8")
+    seg = src[src.index('id="toolList"'): src.index("const TPLS=")]
+
+    # (template, the word the entry must not use, the word the workbook uses,
+    #  why the two are not interchangeable)
+    FORBIDDEN = [
+        ("22-stakeholder-and-raci", "interest", "support",
+         "the sheet's second axis is Support -2..+2 and its Action column keys "
+         "on opposition; someone can follow a project closely and want it dead"),
+    ]
+    bad = []
+    for block in seg.split('<details class="tool"')[1:]:
+        block = block.split("</details>")[0]
+        name = re.search(r'<span class="tn">([^<]*)</span>', block)
+        links = set(re.findall(r'data-(?:tpl|tplchip|dl)="([0-9][^"]*)"', block))
+        for slug, wrong, right, why in FORBIDDEN:
+            if slug in links and re.search(rf"\b{wrong}\b", block, re.I):
+                bad.append(f"{(name.group(1) if name else '?')!r} links to {slug} "
+                           f"and says {wrong!r}; the workbook says {right!r} — {why}")
+    check(not bad,
+          f"no tool entry contradicts the workbook it links to "
+          f"({len(FORBIDDEN)} pair(s) checked)",
+          "\n      ".join(bad))
+
+
+def test_python_floor_is_stated() -> None:
+    """This suite needs 3.12, and the file that tells you so must say it.
+
+    verify.py puts a backslash inside an f-string expression, which PEP 701
+    allowed in 3.12. On 3.11 the module does not parse: you get a SyntaxError,
+    not a failing check, and the two look nothing alike in a CI log. A monthly
+    audit run on 3.11 reported it as an environment note, which is the only
+    reason anyone found out.
+    """
+    import sys
+
+    req = (ROOT / "tools" / "requirements.txt").read_text(encoding="utf-8")
+    check("PYTHON 3.12 OR LATER" in req,
+          "requirements.txt states the Python floor this suite needs",
+          "a 3.11 runner reports a SyntaxError rather than a failed check, and "
+          "nothing tells the person reading it why")
+    check(sys.version_info >= (3, 12),
+          f"running on the Python this suite needs (3.12+, this is "
+          f"{sys.version_info.major}.{sys.version_info.minor})",
+          "the suite parsed, so this cannot actually fail here — it is a guard "
+          "for anyone who lowers the floor later without lowering the syntax")
+
+
 def test_favicon_is_real() -> None:
     """The page ships a favicon, and it is a decodable image of the right size.
 
@@ -2804,6 +2869,8 @@ def main() -> int:
     test_kappa_bands_agree()
     test_pages_publishes_as_is()
     test_docs_counts()
+    test_tool_entries_match_their_templates()
+    test_python_floor_is_stated()
     test_favicon_is_real()
     test_gallery_card_matches_its_manifest_desc()
     test_worked_example_figures_are_the_packs()
