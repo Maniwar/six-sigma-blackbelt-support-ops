@@ -798,6 +798,41 @@ def test_docs_counts() -> None:
                   f"{xlsx} workbooks and {md} markdown documents")
 
 
+def test_version_markers_agree() -> None:
+    """The three places this pack states its version must say the same thing.
+
+    There are three: the <meta name="app-version"> tag, the version printed
+    under the title, and the top heading of CHANGELOG.md. The changelog's own
+    opening paragraph tells the reader to compare the last two -- "check it
+    against the top entry below to see whether you are looking at the current
+    build" -- which only works if something keeps them together.
+
+    Nothing did. The tag was checked for existence and never for agreement, so
+    the release heading sat on v3.9 while thirty-two entries accumulated under
+    it, most of them describing work the heading did not mention. That is the
+    same defect as everything else in this release, in the file that announces
+    the releases.
+    """
+    src = HTML.read_text(encoding="utf-8")
+    log = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+
+    meta = re.search(r'<meta name="app-version" content="([0-9.]+)"', src)
+    shown = re.search(r"Customer Support Operations &middot; v([0-9.]+)", src)
+    top = re.search(r"^## New in v([0-9.]+)", log, re.M)
+    check(None not in (meta, shown, top),
+          "the version is stated in the tag, on the page and in the changelog",
+          f"meta={bool(meta)} shown={bool(shown)} changelog={bool(top)} — one of "
+          f"the three moved, so they can no longer be compared")
+    if None in (meta, shown, top):
+        return
+    versions = {"app-version tag": meta.group(1),
+                "the version under the title": shown.group(1),
+                "the top CHANGELOG heading": top.group(1)}
+    check(len(set(versions.values())) == 1,
+          f"all three version markers agree (v{meta.group(1)})",
+          "; ".join(f"{k} says {v}" for k, v in versions.items()))
+
+
 def test_tool_entries_match_their_templates() -> None:
     """A tool-library entry must not contradict the workbook it links to.
 
@@ -2869,6 +2904,7 @@ def main() -> int:
     test_kappa_bands_agree()
     test_pages_publishes_as_is()
     test_docs_counts()
+    test_version_markers_agree()
     test_tool_entries_match_their_templates()
     test_python_floor_is_stated()
     test_favicon_is_real()
