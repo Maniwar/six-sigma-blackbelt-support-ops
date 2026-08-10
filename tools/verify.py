@@ -798,6 +798,59 @@ def test_docs_counts() -> None:
                   f"{xlsx} workbooks and {md} markdown documents")
 
 
+def test_favicon_is_real() -> None:
+    """The page ships a favicon, and it is a decodable image of the right size.
+
+    It shipped without one for its whole life, so every tab showed the browser's
+    blank sheet and the page was unfindable in a row of them.
+
+    Declared as PNG data URIs rather than an inline SVG: an SVG favicon carrying
+    a sigma renders in whatever font the viewer happens to have, and this mark
+    is the one thing on the page that has to look identical everywhere. Data
+    URIs rather than files because the build's whole premise is one file you can
+    send to someone -- a favicon.ico beside it would be the first thing to go
+    missing.
+
+    Checks the bytes, not the markup: a link with a truncated or corrupt payload
+    is exactly as blank in the tab as no link at all, and looks fine in a diff.
+    """
+    import base64
+    import struct
+
+    src = HTML.read_text(encoding="utf-8")
+    want = {"16x16", "32x32", "48x48", "180x180"}
+    found = {}
+    for m in re.finditer(r'<link rel="(icon|apple-touch-icon)"[^>]*?sizes="(\d+x\d+)"'
+                         r'[^>]*?href="data:image/png;base64,([A-Za-z0-9+/=]+)"', src):
+        found[m.group(2)] = m.group(3)
+    check(want <= set(found),
+          f"the page declares a favicon at every size a browser asks for ({sorted(want)})",
+          f"missing: {sorted(want - set(found))} — a tab with no icon is a tab "
+          f"nobody can find in a row of twenty")
+    for size, payload in sorted(found.items()):
+        w, h = (int(x) for x in size.split("x"))
+        try:
+            raw = base64.b64decode(payload, validate=True)
+        except Exception:                                        # noqa: BLE001
+            check(False, f"the {size} favicon decodes", "the base64 payload is not valid")
+            continue
+        # PNG: 8-byte signature, then an IHDR chunk whose data starts with
+        # width and height as big-endian uint32.
+        ok_sig = raw[:8] == b"\x89PNG\r\n\x1a\n"
+        gw, gh = struct.unpack(">II", raw[16:24]) if len(raw) >= 24 else (0, 0)
+        # And the file has to END. A truncated payload keeps its signature and
+        # its IHDR -- both live in the first 24 bytes -- so it passed every
+        # test above while rendering as nothing at all, which is the failure
+        # this check exists for. IEND is the last twelve bytes of a PNG.
+        ok_end = raw[-12:] == b"\x00\x00\x00\x00IEND\xaeB`\x82"
+        check(ok_sig and ok_end and (gw, gh) == (w, h),
+              f"the {size} favicon is a complete PNG of that size ({len(raw):,} bytes)",
+              f"signature ok={ok_sig}, ends with IEND={ok_end}, header says "
+              f"{gw}x{gh}, the link claims {size}")
+    check('<meta name="theme-color"' in src,
+          "the page sets a theme colour for the browser chrome")
+
+
 def test_gallery_card_matches_its_manifest_desc() -> None:
     """Each template is described twice, by hand, and the two must agree.
 
@@ -2735,6 +2788,7 @@ def main() -> int:
     test_kappa_bands_agree()
     test_pages_publishes_as_is()
     test_docs_counts()
+    test_favicon_is_real()
     test_gallery_card_matches_its_manifest_desc()
     test_worked_example_figures_are_the_packs()
     test_baseline_series_recomputes()
