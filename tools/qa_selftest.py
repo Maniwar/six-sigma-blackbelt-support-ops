@@ -1254,10 +1254,91 @@ def pg_volume_drift(text: str):
             "the walkthrough's record count moved away from the baseline's")
 
 
+def pg_chain_avoidable(text: str):
+    if "represents 719 avoidable" not in text:
+        return None, None
+    return (text.replace("represents 719 avoidable", "represents 1,646 avoidable"),
+            "avoidable reopens taken off the whole queue instead of the in-scope population")
+
+
+def pg_chain_gross(text: str):
+    if "= $25,051 gross" not in text:
+        return None, None
+    return (text.replace("= $25,051 gross", "= $31,343 gross"),
+            "gross benefit no longer the reduction at the stated unit cost")
+
+
+def pg_chain_lesson(text: str):
+    """The one that used to survive: the sentence exists in the embedded
+    template payload too, so searching the whole file found it there no matter
+    what the case study said."""
+    old = "so <strong>the project was not bookable as chartered</strong>"
+    if old not in text:
+        return None, None
+    return (text.replace(old, "so <strong>the project was bookable as chartered</strong>"),
+            "the lesson sentence deleted from the page while the payload still carries it")
+
+
+def pg_unit_cost(text: str):
+    old = "$38.60 it costs to serve a billing contact twice"
+    if old not in text:
+        return None, None
+    return (text.replace(old, "$6.80 it costs to serve a billing contact twice"),
+            "an avoided reopen priced at cost-to-serve, the defect the example teaches against")
+
+
 PAGE_MUTANTS = [
     ("page: retired claim reintroduced, line-wrapped", pg_retired_claim),
     ("page: walkthrough benefit drifted from the pack", pg_figure_drift),
     ("page: walkthrough record count drifted from the pack", pg_volume_drift),
+]
+
+# Run against test_case_study_chain_closes ALONE. These are arithmetic breaks,
+# and the drift check kills most of them as a side effect -- a figure that no
+# longer follows from the chain is usually also a figure the pack never states.
+# Accepting either kill proved nothing about the chain check: deleting one of
+# its assertions left every mutant still dying, to the other check.
+# Each of these breaks ONE link and leaves the rest of the chain arithmetically
+# intact, so it can only be killed by the assertion guarding that link. Without
+# them, deleting an assertion left every mutant still dying to a neighbour.
+
+def pg_realised_only(text: str):
+    """Moves the realised figure AND the headline that quotes it, so the only
+    broken link is realised = gross x factor. Moving realised alone also trips
+    the headline assertion, and then deleting this one changes nothing."""
+    if "<strong>$21,294</strong>" not in text:
+        return None, None
+    return (text.replace("<strong>$21,294</strong>", "<strong>$22,900</strong>")
+                .replace('<div class="num">$21.3k</div>', '<div class="num">$22.9k</div>'),
+            "realised benefit no longer the gross at the stated realisation factor")
+
+
+def pg_headline_only(text: str):
+    if '<div class="num">$21.3k</div>' not in text:
+        return None, None
+    return (text.replace('<div class="num">$21.3k</div>', '<div class="num">$24.8k</div>'),
+            "the headline stat no longer the benefit the page derives below it")
+
+
+def pg_reduction_only(text: str):
+    """Moves the reduction AND the two figures downstream of it, so only the
+    'reduction follows from the in-scope population' link is left broken."""
+    if "649 reopens avoided annualized" not in text or "= $25,051 gross" not in text:
+        return None, None
+    out = (text.replace("649 reopens avoided annualized", "700 reopens avoided annualized")
+               .replace("= $25,051 gross", "= $27,020 gross")
+               .replace("<strong>$21,294</strong>", "<strong>$22,967</strong>")
+               .replace('<div class="num">$21.3k</div>', '<div class="num">$23.0k</div>'))
+    return out, "reduction no longer 5.6 points of the in-scope population, chain otherwise consistent"
+
+CHAIN_MUTANTS = [
+    ("chain: avoidable reopens off the wrong population", pg_chain_avoidable),
+    ("chain: gross benefit detached from the reduction", pg_chain_gross),
+    ("chain: the lesson sentence deleted", pg_chain_lesson),
+    ("chain: a reopen priced at cost-to-serve", pg_unit_cost),
+    ("chain: realised detached from gross x factor", pg_realised_only),
+    ("chain: headline stat detached from the derivation", pg_headline_only),
+    ("chain: reduction off the in-scope population", pg_reduction_only),
 ]
 
 
@@ -1308,6 +1389,7 @@ def run_baseline() -> tuple[int, int, list[str]]:
             clean_h = html.read_text(encoding="utf-8")
             base_w = fails(V.test_worked_example_figures_are_the_packs)
             base_r = fails(V.test_nothing_retired_survives)
+            base_c = fails(V.test_case_study_chain_closes)
             for name, mutate in PAGE_MUTANTS:
                 out, what = mutate(clean_h)
                 if out is None:
@@ -1320,6 +1402,18 @@ def run_baseline() -> tuple[int, int, list[str]]:
                     killed += 1
                 else:
                     survivors.append(f"    SURVIVED [PAGE] {name} — {what}")
+                html.write_text(clean_h, encoding="utf-8")
+
+            for name, mutate in CHAIN_MUTANTS:
+                out, what = mutate(clean_h)
+                if out is None:
+                    continue
+                html.write_text(out, encoding="utf-8")
+                applied += 1
+                if fails(V.test_case_study_chain_closes) - base_c:
+                    killed += 1
+                else:
+                    survivors.append(f"    SURVIVED [CHAIN] {name} — {what}")
                 html.write_text(clean_h, encoding="utf-8")
         finally:
             V.TEMPLATES, V.HTML = real_t, real_h

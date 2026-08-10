@@ -416,6 +416,26 @@ CANONICAL: list[Canonical] = [
         "stale one on the way in: the CTQ tree still described the X-Y matrix's "
         "retired 270-against-261 pair as a 9-point gap",
     ),
+    # The case study states two of these facts in wording no other part of the
+    # pack uses, so the general patterns above miss it. Registered separately
+    # rather than widened, because widening them is how a canonical starts
+    # matching a look-alike: these two phrasings occur exactly once each.
+    Canonical(
+        "the in-scope population, as the case study words it",
+        r"Adjustments are ([\d,]+) of the billing",
+        "11,592",
+        "the population the 6.2-point gap may be applied to. The case study "
+        "once applied it to the whole queue instead, which is the defect the "
+        "charter records and the example exists to teach against",
+    ),
+    Canonical(
+        "the cost of an avoided reopen, as the case study words it",
+        r"\$([\d.]+) it costs to serve a billing contact twice",
+        "38.60",
+        "a reopen carries the investigation and the redo. The case study once "
+        "priced it at $6.80, the cost of serving one contact, inside the "
+        "example written to teach against exactly that substitution",
+    ),
 ]
 
 
