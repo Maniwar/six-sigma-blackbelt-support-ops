@@ -778,10 +778,26 @@ def test_docs_counts() -> None:
     xlsx = sum(1 for v in tpls.values() if v.get("ext") == "xlsx")
     md = sum(1 for v in tpls.values() if v.get("ext") == "md")
 
+    # Counts this check did not cover, and the docstring above lists three of
+    # them as things README had already been wrong about once: they were
+    # corrected and never pinned, which is the whole failure mode this file
+    # exists for. Derived from the artefacts, not typed in here.
+    import zipfile
+
+    charts = sum(
+        len([n for n in zipfile.ZipFile(w).namelist()
+             if re.match(r"xl/charts/chart\d+\.xml$", n)])
+        for w in sorted(TEMPLATES.glob("*.xlsx")))
+    authored = HTML.read_text(encoding="utf-8")
+    authored = authored[: authored.index("const TPLS=")]
+    tools_n = authored.count('<details class="tool"')
+
     for name, wants in (
             ("README.md", [(f"{len(tpls)} templates", "template count"),
                            (f"{xlsx} real Excel workbooks", "workbook count"),
-                           (f"across the {xlsx} workbooks", "workbook count in the charts line")]),
+                           (f"across the {xlsx} workbooks", "workbook count in the charts line"),
+                           (f"{charts} native Excel charts", "chart count"),
+                           (f"{tools_n} tools", "tool-library count")]),
             ("PUBLISH.md", [(f"{len(tpls)} project templates", "template count"),
                             (f"{md} Markdown documents, {xlsx} Excel workbooks", "the split")]),
             (".github/ISSUE_TEMPLATE/bug_report.yml",

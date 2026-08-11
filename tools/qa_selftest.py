@@ -1499,6 +1499,19 @@ def main() -> int:
         print(f"  {'(baseline series + page prose)':36s} {k}/{a} mutants killed"
               f"{'' if k == a else '   <-- a check did not fire'}")
     print(f"\n  {total_k}/{total_a} mutants killed across {len(books)} workbooks")
+
+    # README quotes this number as a claim about the pack. verify.py cannot
+    # cheaply know it -- the total is mutants x workbooks and only falls out of
+    # a real run -- so the check lives where the number does. It went stale at
+    # 309 while the suite reached 328, in the paragraph that argues a check you
+    # cannot trip is worse than no check at all.
+    readme = ROOT / "README.md"
+    if readme.exists():
+        want = f"{total_a} mutants, all killed"
+        if want not in readme.read_text(encoding="utf-8"):
+            survivors.append(
+                f"    README.md quotes a mutant count that is not this one — "
+                f"expected {want!r} for the {total_a} mutants this run applied")
     if survivors:
         print(f"\n{len(survivors)} SURVIVING MUTANT(S) — these checks cannot fail:")
         print("\n".join(sorted(set(survivors))))

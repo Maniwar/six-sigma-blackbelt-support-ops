@@ -70,7 +70,7 @@ Two further harnesses exist because the audit alone kept passing things a reader
   magnitude.
 - **`tools/qa_selftest.py`** reintroduces each defect the repo has actually shipped and asserts the audit
   still catches it. A check that has passed for months is either guarding a solved problem or unable to
-  fire, and those look identical from a green run. 309 mutants, all killed, or the build fails.
+  fire, and those look identical from a green run. 328 mutants, all killed, or the build fails.
 
 ### Built for people who are not statisticians
 - **Every acronym is clickable.** 274 glossary entries, matched in either case. Anything with a dotted underline opens a plain-English explainer: what it means, why it matters, and exactly where to find the number in your own systems.
