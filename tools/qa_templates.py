@@ -960,8 +960,11 @@ def audit_rubric(path: Path, wb, guidance: int) -> list[dict]:
 
 
 # --------------------------------------------------------------- markdown
-# Eleven of the twenty-eight templates are markdown documents, and until now not
-# one check had ever opened one: every layer above globs *.xlsx. That is the
+# A third of the templates are markdown documents, and until now not one check
+# had ever opened one: every layer above globs *.xlsx. The split is pinned by
+# verify.test_docs_counts rather than written out here — this comment said
+# 'twenty-eight' from the day it was added, when there were 32 files and never
+# 28 of anything, inside the sentence explaining that unchecked things drift. That is the
 # whole reason 08-msa-gage-rr shipped an ANOVA results table with its
 # "% Contribution" and "% Study variation" columns empty on all five rows and no
 # method anywhere in the file — the identical defect the EXAMPLE layer catches

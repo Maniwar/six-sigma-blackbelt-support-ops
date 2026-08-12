@@ -630,7 +630,7 @@ def stamp(wb):
     """Freeze the document timestamps so a rebuild that changes nothing is empty.
 
     openpyxl writes the current time into docProps/core.xml on every save. Every
-    worksheet XML can be byte-identical and all 19 workbooks still come out with
+    worksheet XML can be byte-identical and every workbook still comes out with
     different bytes, which changes the base64 embedded in the page, which makes
     the HTML differ too. So `git diff` after a rebuild always showed 20 modified
     files and could never tell anyone whether the rebuild actually did anything
