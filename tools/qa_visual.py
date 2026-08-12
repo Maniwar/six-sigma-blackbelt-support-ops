@@ -50,6 +50,31 @@ OUT = ROOT / ".qa-visual"
 # Where Chrome might be. One hardcoded path was itself part of the problem
 # below: a machine that had Chrome somewhere else looked identical to a machine
 # that had none, and both reported success.
+def _playwright_chromes() -> list[str]:
+    """Browsers installed the Playwright/puppeteer way, which are not on PATH.
+
+    A scheduled audit ran in a container that had a perfectly good Chromium at
+    /opt/pw-browsers/chromium-1234/chrome-linux/chrome and this list could not
+    see it, so the browser-backed layer stayed NOT RUN with the browser sitting
+    right there. Nothing here is required to exist; a glob that matches nothing
+    costs a few milliseconds.
+    """
+    roots = [os.environ.get("PLAYWRIGHT_BROWSERS_PATH") or "", "/opt/pw-browsers",
+             str(Path.home() / ".cache" / "ms-playwright"),
+             str(Path.home() / "Library" / "Caches" / "ms-playwright"),
+             str(Path.home() / ".cache" / "puppeteer")]
+    out: list[str] = []
+    for root in roots:
+        if not root or not Path(root).is_dir():
+            continue
+        for pat in ("chromium-*/chrome-linux/chrome",
+                    "chromium-*/chrome-linux64/chrome",
+                    "chromium-*/chrome-mac/Chromium.app/Contents/MacOS/Chromium",
+                    "chrome/*/chrome-linux64/chrome"):
+            out += sorted(str(m) for m in Path(root).glob(pat))
+    return out
+
+
 CHROME_CANDIDATES = [
     os.environ.get("CHROME"),
     os.environ.get("CHROME_PATH"),
@@ -59,8 +84,17 @@ CHROME_CANDIDATES = [
     shutil.which("google-chrome"),
     shutil.which("chromium"),
     shutil.which("chromium-browser"),
+    *_playwright_chromes(),
 ]
 CHROME = next((c for c in CHROME_CANDIDATES if c and Path(c).exists()), "")
+
+# Chrome refuses to start as root without this, and it does it by exiting
+# immediately — so a run with a valid binary looked exactly like a run with no
+# binary at all, and the layer stayed NOT RUN. Containers and CI runners are
+# usually root. Adding it when we are not root would weaken the sandbox for no
+# reason, so it is conditional.
+CHROME_FLAGS = (["--no-sandbox", "--disable-dev-shm-usage"]
+                if hasattr(os, "geteuid") and os.geteuid() == 0 else [])
 
 # Set by main() when the operator has said, in as many words, that they know
 # the browser-backed checks will not run. Nothing else may set it.
@@ -362,7 +396,7 @@ def word_document() -> tuple[str, list] | None:
         page = Path(td) / "page.html"
         page.write_text(src, encoding="utf-8")
         r = subprocess.run(
-            [CHROME, "--headless", "--disable-gpu", "--virtual-time-budget=9000",
+            [CHROME, *CHROME_FLAGS, "--headless", "--disable-gpu", "--virtual-time-budget=9000",
              "--dump-dom", f"file://{page}"], capture_output=True, text=True, timeout=180)
     m = re.search(r'<div id="__out">([A-Za-z0-9+/=]*)</div>', r.stdout)
     g = re.search(r'<div id="__geo">(.*?)</div>', r.stdout, re.S)
@@ -533,7 +567,7 @@ def template_export(pick: str = "") -> dict | None:
         page = Path(td) / "p.html"
         page.write_text(src, encoding="utf-8")
         r = subprocess.run(
-            [CHROME, "--headless", "--disable-gpu", "--virtual-time-budget=9000",
+            [CHROME, *CHROME_FLAGS, "--headless", "--disable-gpu", "--virtual-time-budget=9000",
              "--dump-dom", f"file://{page}"], capture_output=True, text=True, timeout=180)
     m = re.search(r'<div id="__tpl">(.*?)</div>', r.stdout, re.S)
     if not m:
@@ -738,7 +772,7 @@ def glossary_behaviour() -> dict | None:
         page = Path(td) / "g.html"
         page.write_text(src, encoding="utf-8")
         r = subprocess.run(
-            [CHROME, "--headless", "--disable-gpu", "--virtual-time-budget=9000",
+            [CHROME, *CHROME_FLAGS, "--headless", "--disable-gpu", "--virtual-time-budget=9000",
              "--dump-dom", f"file://{page}"], capture_output=True, text=True, timeout=180)
     m = re.search(r'<div id="__gl">(.*?)</div>', r.stdout, re.S)
     if not m:
@@ -900,7 +934,7 @@ def render(entries: dict, css: str) -> int:
         page.write_text(preview_page(entry, css), encoding="utf-8")
         png = OUT / f"{slug}.png"
         subprocess.run(
-            [CHROME, "--headless", "--disable-gpu", "--hide-scrollbars",
+            [CHROME, *CHROME_FLAGS, "--headless", "--disable-gpu", "--hide-scrollbars",
              "--window-size=1080,4200", f"--screenshot={png}", f"file://{page}"],
             capture_output=True, timeout=120)
         page.unlink(missing_ok=True)
