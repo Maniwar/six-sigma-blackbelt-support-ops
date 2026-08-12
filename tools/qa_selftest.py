@@ -1509,9 +1509,17 @@ def main() -> int:
     if readme.exists():
         want = f"{total_a} mutants, all killed"
         if want not in readme.read_text(encoding="utf-8"):
+            # If a layer did not run, this run applied fewer mutants than a full
+            # one and the README is right while this is wrong. Saying "expected
+            # 324" without that caveat proposes a fix that would bless the
+            # missing layer — the exact defect this suite exists to catch, in
+            # its own failure message.
+            why = (f" — but {len(skipped)} layer(s) did not run this time, so this "
+                   f"run applied fewer mutants than a full one. Fix the layer, not "
+                   f"the README; see the NOT RUN lines below") if skipped else ""
             survivors.append(
                 f"    README.md quotes a mutant count that is not this one — "
-                f"expected {want!r} for the {total_a} mutants this run applied")
+                f"expected {want!r} for the {total_a} mutants this run applied{why}")
     if survivors:
         print(f"\n{len(survivors)} SURVIVING MUTANT(S) — these checks cannot fail:")
         print("\n".join(sorted(set(survivors))))

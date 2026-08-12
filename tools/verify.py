@@ -814,6 +814,108 @@ def test_docs_counts() -> None:
                   f"{xlsx} workbooks and {md} markdown documents")
 
 
+def test_readme_counts_the_page_offers() -> None:
+    """The glossary and formula-card counts README quotes, derived from the page.
+
+    Both were left unpinned because I could not measure them, and both turned
+    out to be right. The methods came from a scheduled audit and are worth
+    keeping, because the obvious way to count each is wrong:
+
+    GLOSS is not one literal. It is a base object followed by ten
+    Object.assign calls and a conditional patch, so counting keys in the first
+    literal, or counting glTerms, undercounts badly. What a reader can actually
+    reach is Object.keys(GLOSS): the filter block re-renders #glList from it on
+    load, one card per key, and sets #glTotal to that length. 274 entries; the
+    453 distinct clickable strings that resolve to them are what "matched in
+    either case" describes, and are a different number.
+
+    The formula cards are not class="fml". That is a static monospace specimen
+    block used for worked figures and skeletons, and it occurs 15 times -- one
+    away from the right answer, which is the kind of coincidence that makes a
+    wrong count look verified. The cards are FORMS, rendered with class "lf";
+    "fml-" only ever appears as an id prefix.
+
+    Evaluated under node rather than parsed, because both are JavaScript and a
+    regex over either is what produced the wrong numbers in the first place.
+    Skipped, loudly, if node is unavailable.
+    """
+    import json
+    import shutil
+    import subprocess
+    import tempfile
+
+    node = shutil.which("node")
+    if not node:
+        NOT_RUN.append(("README's glossary and formula-card counts", False))
+        return
+
+    src = HTML.read_text(encoding="utf-8")
+
+    def balanced(open_ch: str, close_ch: str, at: int) -> str:
+        """The literal starting at `at`, honouring strings and escapes."""
+        depth, instr, esc = 0, None, False
+        for j in range(at, len(src)):
+            ch = src[j]
+            if esc:
+                esc = False
+                continue
+            if instr:
+                if ch == "\\":
+                    esc = True
+                elif ch == instr:
+                    instr = None
+                continue
+            if ch in "\"'`":
+                instr = ch
+                continue
+            if ch == open_ch:
+                depth += 1
+            elif ch == close_ch:
+                depth -= 1
+                if depth == 0:
+                    return src[at:j + 1]
+        return ""
+
+    lines = src.splitlines()
+    g = next(i for i, l in enumerate(lines) if l.lstrip().startswith("const GLOSS="))
+    t = next(i for i, l in enumerate(lines) if l.lstrip().startswith("const TPLS="))
+    gloss_src = "\n".join(lines[g:t])          # the base literal AND every Object.assign
+
+    fm = re.search(r"(?:const|var|let)\s+FORMS\s*=\s*\[", src)
+    forms_src = ("const fm=(x,d)=>String(x), pct=x=>String(x), esc=x=>String(x);\n"
+                 + src[fm.start(): fm.start() + len(balanced("[", "]", src.index("[", fm.start())))
+                       + (src.index("[", fm.start()) - fm.start())]) if fm else ""
+
+    script = gloss_src + "\n" + forms_src + """
+console.log(JSON.stringify({
+  gloss: Object.keys(GLOSS).length,
+  forms: typeof FORMS === 'undefined' ? -1 : FORMS.length,
+  live: typeof FORMS === 'undefined' ? false : FORMS.every(f =>
+        Array.isArray(f.inputs) && f.inputs.length && typeof f.calc === 'function')
+}));
+"""
+    with tempfile.TemporaryDirectory() as td:
+        js = Path(td) / "counts.js"
+        js.write_text(script, encoding="utf-8")
+        r = subprocess.run([node, str(js)], capture_output=True, text=True, timeout=120)
+    ok = r.returncode == 0 and r.stdout.strip().startswith("{")
+    check(ok, "the page's GLOSS and FORMS evaluate under node",
+          (r.stderr or r.stdout)[-200:])
+    if not ok:
+        return
+    got = json.loads(r.stdout.strip().splitlines()[-1])
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    check(f"{got['gloss']} glossary entries" in readme,
+          f"README states the glossary size the page renders ({got['gloss']})",
+          f"the page renders {got['gloss']} entries from Object.keys(GLOSS)")
+    check(f"{got['forms']} live formula cards" in readme,
+          f"README states the number of formula cards FORMS builds ({got['forms']})",
+          f"FORMS has {got['forms']} entries")
+    check(got["live"],
+          "every formula card is live — it has inputs and a calc()",
+          "a card in FORMS has no inputs or no calc(), so 'live' overstates it")
+
+
 def test_version_markers_agree() -> None:
     """The three places this pack states its version must say the same thing.
 
@@ -2920,6 +3022,7 @@ def main() -> int:
     test_kappa_bands_agree()
     test_pages_publishes_as_is()
     test_docs_counts()
+    test_readme_counts_the_page_offers()
     test_version_markers_agree()
     test_tool_entries_match_their_templates()
     test_python_floor_is_stated()

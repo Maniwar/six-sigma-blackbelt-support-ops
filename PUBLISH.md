@@ -81,8 +81,11 @@ it are load-bearing:
   Remove that and every cell shows as blank until the user presses F9.
 
 `tools/verify.py` extracts that JavaScript from the shipped HTML, runs it under
-node for all four problem archetypes, and recalculates each workbook to confirm
-it produces the same numbers the page displayed. If you change the benefit
+node for every problem archetype the wizard offers, and recalculates each
+workbook to confirm it produces the same numbers the page displayed. The wizard
+ships ten; three of them share a benefit shape, so the harness runs eight
+distinct kinds. Both numbers are derived by the check rather than written here,
+because this paragraph said "four" for long enough that nobody noticed. If you change the benefit
 model, that test is what tells you whether the Excel still agrees with the
 screen.
 
